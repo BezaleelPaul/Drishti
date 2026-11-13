@@ -3,10 +3,10 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/services/ml/model_runner.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
-import 'package:netra_ai_mobile/services/ml/quality_gate.dart';
-import 'package:netra_ai_mobile/services/ml/screening_orchestrator.dart';
+import 'package:drishti/services/ml/model_runner.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/quality_gate.dart';
+import 'package:drishti/services/ml/screening_orchestrator.dart';
 
 /// Orchestrator integrity: the production screening path must never fabricate
 /// probabilities, never grade without a real model output, and must keep the

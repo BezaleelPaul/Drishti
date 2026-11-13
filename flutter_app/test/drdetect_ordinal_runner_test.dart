@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/services/ml/drdetect_ordinal_runner.dart';
-import 'package:netra_ai_mobile/services/ml/model_runner.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/drdetect_ordinal_runner.dart';
+import 'package:drishti/services/ml/model_runner.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
 
 /// Fail-closed + parity contracts for the DRDetect ordinal TFLite runner.
 ///

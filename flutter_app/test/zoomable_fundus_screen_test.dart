@@ -3,9 +3,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/models/retinal_markers.dart';
-import 'package:netra_ai_mobile/widgets/review/lesion_marker_painter.dart';
-import 'package:netra_ai_mobile/widgets/review/zoomable_fundus_screen.dart';
+import 'package:drishti/models/retinal_markers.dart';
+import 'package:drishti/widgets/review/lesion_marker_painter.dart';
+import 'package:drishti/widgets/review/zoomable_fundus_screen.dart';
 
 Uint8List _png() {
   final image = img.Image(width: 32, height: 32);

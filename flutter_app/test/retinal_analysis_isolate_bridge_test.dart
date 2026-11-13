@@ -2,9 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/services/ml/pipeline/drishti_inference_engine.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline/pipeline_exceptions.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline/retinal_analysis_isolate_bridge.dart';
+import 'package:drishti/services/ml/pipeline/drishti_inference_engine.dart';
+import 'package:drishti/services/ml/pipeline/pipeline_exceptions.dart';
+import 'package:drishti/services/ml/pipeline/retinal_analysis_isolate_bridge.dart';
 
 /// The native LiteRT runtime is not guaranteed inside `flutter test`, so these
 /// tests exercise the bridge's failure and lifecycle contract with deliberately

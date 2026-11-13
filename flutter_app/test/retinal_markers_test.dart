@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/models/retinal_markers.dart';
+import 'package:drishti/models/retinal_markers.dart';
 
 void main() {
   group('RetinalMarkers.fromJson', () {

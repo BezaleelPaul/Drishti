@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
 
 /// Task 1.2: the ONE shared score derivation used by DrClassifierDart's own
 /// result building (and, from task 2.2, by the orchestrator conversion) so

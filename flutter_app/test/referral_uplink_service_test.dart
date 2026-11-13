@@ -4,10 +4,10 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:netra_ai_mobile/services/consent_service.dart';
-import 'package:netra_ai_mobile/services/deidentify.dart';
-import 'package:netra_ai_mobile/services/offline_queue_service.dart';
-import 'package:netra_ai_mobile/services/referral_uplink_service.dart';
+import 'package:drishti/services/consent_service.dart';
+import 'package:drishti/services/deidentify.dart';
+import 'package:drishti/services/offline_queue_service.dart';
+import 'package:drishti/services/referral_uplink_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

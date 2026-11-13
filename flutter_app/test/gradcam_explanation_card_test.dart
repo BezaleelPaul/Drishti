@@ -3,8 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/models/screening_models.dart';
-import 'package:netra_ai_mobile/widgets/review/gradcam_explanation_card.dart';
+import 'package:drishti/models/screening_models.dart';
+import 'package:drishti/widgets/review/gradcam_explanation_card.dart';
 
 ScreeningAnalysisModel analysis({String? gradcamUrl, String? backend}) =>
     ScreeningAnalysisModel(

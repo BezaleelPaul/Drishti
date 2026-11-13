@@ -3,10 +3,10 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/services/ml/model_runner.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
-import 'package:netra_ai_mobile/services/ml/quality_gate.dart';
-import 'package:netra_ai_mobile/services/ml/screening_orchestrator.dart';
+import 'package:drishti/services/ml/model_runner.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/quality_gate.dart';
+import 'package:drishti/services/ml/screening_orchestrator.dart';
 
 /// Task 1.2: the stored screening record's backend field is nullable with no
 /// default claim — a record written when no model ran can no longer assert

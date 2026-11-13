@@ -255,18 +255,20 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
         elevation: 0,
         title: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(
-              Icons.remove_red_eye_outlined,
-              color: ScannerHUDTheme.neonCyan,
+          children: [
+            Image.asset(
+              'assets/branding/drishti_mark.png',
+              height: 24,
+              width: 24,
             ),
-            SizedBox(width: 6),
-            Text(
+            const SizedBox(width: 8),
+            const Text(
               'DRISHTI',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
+                letterSpacing: 0.5,
               ),
             ),
           ],

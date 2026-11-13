@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/services/ml/quality_gate.dart';
+import 'package:drishti/services/ml/quality_gate.dart';
 
 /// Reproduces the user's field report: random phone images must be
 /// rejected by the on-device gate (server rejects all of them).

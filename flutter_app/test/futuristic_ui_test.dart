@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/screens/splash/futuristic_splash_screen.dart';
-import 'package:netra_ai_mobile/widgets/futuristic/futuristic_ui.dart';
+import 'package:drishti/screens/splash/futuristic_splash_screen.dart';
+import 'package:drishti/widgets/futuristic/futuristic_ui.dart';
 
 void main() {
   group('FuturisticGlowButton Widget Tests', () {

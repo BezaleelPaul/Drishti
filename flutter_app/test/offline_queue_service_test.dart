@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/services/offline_queue_service.dart';
+import 'package:drishti/services/offline_queue_service.dart';
 
 void main() {
   group('OfflineQueueService (Ticket B-2)', () {

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/models/result_status.dart';
+import 'package:drishti/models/result_status.dart';
 
 /// Result-status vocabulary and pure derivation rules
 /// (requirements 5.3, 6.1, 6.3, 6.4, 6.6, 8.5; design "Status state machine"

@@ -3,9 +3,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/services/ml/pipeline/pipeline_exceptions.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline/retinal_preprocess_config.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline/retinal_preprocessor.dart';
+import 'package:drishti/services/ml/pipeline/pipeline_exceptions.dart';
+import 'package:drishti/services/ml/pipeline/retinal_preprocess_config.dart';
+import 'package:drishti/services/ml/pipeline/retinal_preprocessor.dart';
 
 /// Synthetic 256px fundus: a textured disc on a black border.
 img.Image fundusFrame({int size = 256}) {

@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/widgets/orbit/orbit.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner.dart';
+import 'package:drishti/widgets/orbit/orbit.dart';
+import 'package:drishti/widgets/scanner/scanner.dart';
 
 void main() {
   group('OrbitScannerState unit tests', () {

@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/models/retinal_markers.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline/structure_segmenter.dart';
+import 'package:drishti/models/retinal_markers.dart';
+import 'package:drishti/services/ml/pipeline/structure_segmenter.dart';
 
 /// Synthetic fundus: dark-red circular retina on black background, a bright
 /// yellowish optic-disc blob left of centre, and three small dark dots

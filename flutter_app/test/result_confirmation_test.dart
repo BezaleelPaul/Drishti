@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/models/result_status.dart';
-import 'package:netra_ai_mobile/models/screening_models.dart';
+import 'package:drishti/models/result_status.dart';
+import 'package:drishti/models/screening_models.dart';
 
 /// ScreeningAnalysisModel status/confirmation provenance fields and the
 /// pure merge rule (requirements 5.3, 6.3, 6.4, 6.6; design "Models Layer

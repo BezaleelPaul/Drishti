@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline/dr_inference_result.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline/pipeline_exceptions.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/pipeline/dr_inference_result.dart';
+import 'package:drishti/services/ml/pipeline/pipeline_exceptions.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
 
 DRInferenceResult decodeOrdinal(double score) {
   return DrishtiOutputDecoder.decode(

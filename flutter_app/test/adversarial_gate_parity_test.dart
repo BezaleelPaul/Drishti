@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
-import 'package:netra_ai_mobile/services/ml/quality_gate.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/quality_gate.dart';
 
 /// Red-team parity: every adversarial fixture the SERVER gate rejects must
 /// also be rejected by the ON-DEVICE Dart gate (P2 parity contract).

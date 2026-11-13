@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/services/ml/confidence_evaluator.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/confidence_evaluator.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
 
 void main() {
   group('ConfidenceEvaluatorDart (parity with src/pipeline/confidence.py)', () {

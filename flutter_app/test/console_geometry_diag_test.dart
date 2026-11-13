@@ -1,10 +1,10 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/widgets/orbit/orbit.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner_game.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner_state.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner_view.dart';
+import 'package:drishti/widgets/orbit/orbit.dart';
+import 'package:drishti/widgets/scanner/scanner_game.dart';
+import 'package:drishti/widgets/scanner/scanner_state.dart';
+import 'package:drishti/widgets/scanner/scanner_view.dart';
 
 /// LAYOUT REGRESSION GUARD
 ///

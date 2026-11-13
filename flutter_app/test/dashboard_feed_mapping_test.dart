@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/screens/figma_dashboard_screen.dart';
-import 'package:netra_ai_mobile/theme/figma_theme.dart';
+import 'package:drishti/screens/figma_dashboard_screen.dart';
+import 'package:drishti/theme/figma_theme.dart';
 
 const _months = [
   'Jan',

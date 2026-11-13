@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/services/consent_service.dart';
+import 'package:drishti/services/consent_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

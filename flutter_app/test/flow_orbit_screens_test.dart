@@ -4,14 +4,14 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:netra_ai_mobile/models/screening_models.dart';
-import 'package:netra_ai_mobile/screens/flow/flow_analysis_screen.dart';
-import 'package:netra_ai_mobile/screens/flow/flow_result_screen.dart';
-import 'package:netra_ai_mobile/screens/flow/flow_specialist_screen.dart';
-import 'package:netra_ai_mobile/screens/flow/flow_state.dart';
-import 'package:netra_ai_mobile/widgets/orbit/orbit.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner.dart';
-import 'package:netra_ai_mobile/widgets/workflow_bar.dart';
+import 'package:drishti/models/screening_models.dart';
+import 'package:drishti/screens/flow/flow_analysis_screen.dart';
+import 'package:drishti/screens/flow/flow_result_screen.dart';
+import 'package:drishti/screens/flow/flow_specialist_screen.dart';
+import 'package:drishti/screens/flow/flow_state.dart';
+import 'package:drishti/widgets/orbit/orbit.dart';
+import 'package:drishti/widgets/scanner/scanner.dart';
+import 'package:drishti/widgets/workflow_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/screens/about_screen.dart';
-import 'package:netra_ai_mobile/screens/figma_dashboard_screen.dart';
-import 'package:netra_ai_mobile/screens/flow/flow_register_screen.dart';
-import 'package:netra_ai_mobile/screens/queue_screen.dart';
-import 'package:netra_ai_mobile/widgets/nav/neon_nav_rail.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner_theme.dart';
+import 'package:drishti/screens/about_screen.dart';
+import 'package:drishti/screens/figma_dashboard_screen.dart';
+import 'package:drishti/screens/flow/flow_register_screen.dart';
+import 'package:drishti/screens/queue_screen.dart';
+import 'package:drishti/widgets/nav/neon_nav_rail.dart';
+import 'package:drishti/widgets/scanner/scanner_theme.dart';
 
 /// The streamlined drawer contract (Screening / Triage & Operations /
 /// Support): prototypes and duplicated intake screens are gone, the single

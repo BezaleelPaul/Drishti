@@ -1,7 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/widgets/charts/severity_distribution_chart.dart';
+import 'package:drishti/widgets/charts/severity_distribution_chart.dart';
 
 // LangScope.langOf falls back to AppLang.en when no scope is present, so a
 // plain MaterialApp is enough — context.tr resolves the English strings.

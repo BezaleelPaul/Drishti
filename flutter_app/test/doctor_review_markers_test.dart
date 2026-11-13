@@ -5,10 +5,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/models/retinal_markers.dart';
-import 'package:netra_ai_mobile/screens/doctor_review_screen.dart';
-import 'package:netra_ai_mobile/services/api_service.dart';
-import 'package:netra_ai_mobile/widgets/review/marker_viewer.dart';
+import 'package:drishti/models/retinal_markers.dart';
+import 'package:drishti/screens/doctor_review_screen.dart';
+import 'package:drishti/services/api_service.dart';
+import 'package:drishti/widgets/review/marker_viewer.dart';
 
 /// Real 1x1 PNG so Image.memory decodes cleanly in the test binding.
 const String _tinyPngBase64 =

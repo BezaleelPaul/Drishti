@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/services/ml/dr_classifier.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/dr_classifier.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
 
 /// Class-mapping and output-validation parity with
 /// src/pipeline/schema.py + src/classification/classifier.py.

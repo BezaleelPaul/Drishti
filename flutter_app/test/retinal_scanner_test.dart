@@ -1,7 +1,7 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner.dart';
+import 'package:drishti/widgets/scanner/scanner.dart';
 
 void main() {
   group('ScannerAnimationState Unit Tests', () {

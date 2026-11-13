@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/widgets/fx/particle_field.dart';
-import 'package:netra_ai_mobile/widgets/nav/neon_nav_rail.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner_theme.dart';
+import 'package:drishti/widgets/fx/particle_field.dart';
+import 'package:drishti/widgets/nav/neon_nav_rail.dart';
+import 'package:drishti/widgets/scanner/scanner_theme.dart';
 
 /// Two fake destinations so navigation can be asserted without dragging in
 /// the real clinical screens (and their services) into a widget test.

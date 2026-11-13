@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/services/deidentify.dart';
+import 'package:drishti/services/deidentify.dart';
 
 void main() {
   group('DeidentificationService (Ticket C-2)', () {

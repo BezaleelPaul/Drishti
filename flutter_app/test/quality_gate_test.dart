@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
-import 'package:netra_ai_mobile/services/ml/quality_gate.dart';
-import 'package:netra_ai_mobile/services/ml/quality_thresholds.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/quality_gate.dart';
+import 'package:drishti/services/ml/quality_thresholds.dart';
 
 void main() {
   group('QualityGateDart (parity with src/quality/checker.py)', () {

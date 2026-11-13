@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:netra_ai_mobile/l10n/lang_scope.dart';
-import 'package:netra_ai_mobile/main.dart';
-import 'package:netra_ai_mobile/screens/figma_dashboard_screen.dart';
+import 'package:drishti/l10n/lang_scope.dart';
+import 'package:drishti/main.dart';
+import 'package:drishti/screens/figma_dashboard_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

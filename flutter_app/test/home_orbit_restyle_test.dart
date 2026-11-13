@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:netra_ai_mobile/screens/figma_dashboard_screen.dart';
-import 'package:netra_ai_mobile/screens/flow/flow_register_screen.dart';
-import 'package:netra_ai_mobile/widgets/orbit/orbit.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner.dart';
+import 'package:drishti/screens/figma_dashboard_screen.dart';
+import 'package:drishti/screens/flow/flow_register_screen.dart';
+import 'package:drishti/widgets/orbit/orbit.dart';
+import 'package:drishti/widgets/scanner/scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

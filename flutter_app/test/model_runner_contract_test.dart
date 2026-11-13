@@ -2,9 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:netra_ai_mobile/services/ml/dr_classifier.dart';
-import 'package:netra_ai_mobile/services/ml/model_runner.dart';
-import 'package:netra_ai_mobile/services/ml/pipeline_schema.dart';
+import 'package:drishti/services/ml/dr_classifier.dart';
+import 'package:drishti/services/ml/model_runner.dart';
+import 'package:drishti/services/ml/pipeline_schema.dart';
 
 /// Fail-closed contracts for the interchangeable grader layer.
 ///

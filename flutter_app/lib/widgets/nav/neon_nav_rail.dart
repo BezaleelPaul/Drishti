@@ -189,24 +189,20 @@ class NeonNavRail extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [
-                      ScannerHUDTheme.primaryCyan,
-                      ScannerHUDTheme.neonCyan,
-                    ],
-                  ),
+                  color: const Color(0xFF0F172A),
+                  border: Border.all(color: ScannerHUDTheme.neonCyan, width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.5),
-                      blurRadius: 16,
+                      color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.4),
+                      blurRadius: 14,
                       spreadRadius: 1,
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.remove_red_eye_outlined,
-                  color: ScannerHUDTheme.background,
-                  size: 22,
+                padding: const EdgeInsets.all(6),
+                child: Image.asset(
+                  'assets/branding/drishti_mark.png',
+                  fit: BoxFit.contain,
                 ),
               )
               .animate(onPlay: (c) => c.repeat(reverse: true))
