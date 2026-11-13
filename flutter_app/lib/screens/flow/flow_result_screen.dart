@@ -97,7 +97,6 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
     widget.state.quality = null;
     widget.state.analysis = null;
     widget.state.markers = null;
-    widget.state.screeningId = null;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => FlowCaptureScreen(state: widget.state),

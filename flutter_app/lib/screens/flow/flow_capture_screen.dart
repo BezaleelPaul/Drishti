@@ -169,11 +169,10 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
   void _rescan() {
     setState(() {
       widget.state.imageBytes = null;
-      widget.state.filename = null;
+      widget.state.filename = '';
       widget.state.quality = null;
       widget.state.analysis = null;
       widget.state.markers = null;
-      widget.state.screeningId = null;
     });
   }
 

@@ -220,7 +220,6 @@ class _FlowAnalysisScreenState extends State<FlowAnalysisScreen> {
               widget.state.quality = null;
               widget.state.analysis = null;
               widget.state.markers = null;
-              widget.state.screeningId = null;
               Navigator.pop(context);
             },
             icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF67E8F9)),
