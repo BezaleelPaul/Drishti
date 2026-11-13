@@ -23,3 +23,8 @@ Thumbs.db
 binaries/*.apk
 binaries/*.zip
 binaries/*.tar.gz
+
+# Datasets
+data/
+*.parquet
+
