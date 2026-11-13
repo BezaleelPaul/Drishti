@@ -595,7 +595,7 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '${context.tr('risk_level')} ${(a.isReferable ?? false) ? context.tr('badge_referral') : context.tr('sev_moderate')}',
+                        '${context.tr('risk_level')} ${(a.isReferable ?? false) ? context.tr('badge_referral') : (idx == 0 ? '${context.tr('sev_no_dr')} (Low Risk)' : (idx == 1 ? '${context.tr('sev_mild_npdr')} (Low Risk)' : context.tr('sev_moderate')))}',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
