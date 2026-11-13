@@ -83,11 +83,11 @@ RetinalMarkers computeRetinalMarkers(Uint8List imageBytes) {
   final odBlurRadius = (minDim ~/ 8).clamp(2, 45);
   final blurredIntensity = _boxBlur(intensity, w, h, odBlurRadius);
 
-  // Exclude outer rim border glare and enforce vertical equatorial band (0.20*h to 0.80*h)
-  final yTopCut = (h * 0.20).round();
-  final yBottomCut = (h * 0.80).round();
-  final xLeftCut = (w * 0.08).round();
-  final xRightCut = (w * 0.92).round();
+  // Exclude outer rim border glare and enforce vertical equatorial band (0.25*h to 0.75*h)
+  final yTopCut = (h * 0.25).round();
+  final yBottomCut = (h * 0.75).round();
+  final xLeftCut = (w * 0.10).round();
+  final xRightCut = (w * 0.90).round();
 
   var odX = 0;
   var odY = 0;

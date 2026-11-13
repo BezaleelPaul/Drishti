@@ -174,11 +174,11 @@ class RetinalStructureSegmenter:
             if np.count_nonzero(eroded_mask) < 100:
                 eroded_mask = retinal_mask.copy()
 
-            # Enforce anatomical equatorial band: human optic disc is never in top 20% or bottom 20%
-            eroded_mask[:int(0.20 * h), :] = 0
-            eroded_mask[int(0.80 * h):, :] = 0
-            eroded_mask[:, :int(0.08 * w)] = 0
-            eroded_mask[:, int(0.92 * w):] = 0
+            # Enforce anatomical equatorial band: human optic disc is in equatorial 50% (0.25*h to 0.75*h)
+            eroded_mask[:int(0.25 * h), :] = 0
+            eroded_mask[int(0.75 * h):, :] = 0
+            eroded_mask[:, :int(0.10 * w)] = 0
+            eroded_mask[:, int(0.90 * w):] = 0
 
             # Smooth with large Gaussian to find global bright region.
             # Bound kernel to image size to avoid cv2.error on small images.
