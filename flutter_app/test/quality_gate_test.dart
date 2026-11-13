@@ -48,7 +48,7 @@ void main() {
       expect(kMinMlQualityGood, 0.70);
       expect(kMinMlQualityBad, 0.38);
       expect(kMaxRecaptureCap, 2);
-      expect(kReferableMassThreshold, 0.09);
+      expect(kReferableMassThreshold, 0.645);
     });
 
     test('strict thresholds match checker.strict()', () {

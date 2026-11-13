@@ -60,7 +60,7 @@ void main() {
     test(
       'backend id matches the screenings-table default and asset README',
       () {
-        expect(DrClassifierDart.backendId, 'tflite-fp32');
+        expect(DrClassifierDart.backendId, 'tflite-int8');
       },
     );
 
@@ -68,14 +68,14 @@ void main() {
       expect(DrClassifierDart.assetSha256, hasLength(64));
       expect(
         DrClassifierDart.assetSha256,
-        startsWith('CEB819EA01D2FFC3F0C89CC92A66540B'),
+        startsWith('1071E2D5BF8F13CCDFAF2077831E9508F1D7E376378EBC7CFE111C0639F65A44'),
       );
     });
 
-    test('default asset path is the parity-gated fp32 artifact', () {
+    test('default asset path is the calibrated int8 artifact', () {
       expect(
         DrClassifierDart.defaultModelAsset,
-        'assets/models/dr_efficientnet_b0_fp32.tflite',
+        'assets/models/dr_efficientnet_b0_tuned_int8.tflite',
       );
     });
   });
@@ -168,17 +168,17 @@ void main() {
     });
 
     test(
-      'referable when mass(p2+p3+p4) >= 0.09 even with non-referable top-1',
+      'referable when mass(p2+p3+p4) >= 0.6450 even with non-referable top-1',
       () {
         expect(
           record(const [
-            0.4,
-            0.5,
-            0.05,
-            0.03,
-            0.02,
+            0.15,
+            0.15,
+            0.35,
+            0.20,
+            0.15,
           ], DrGrade.mildNpdr).referableFlag,
-          isTrue, // 0.05+0.03+0.02 = 0.10 >= 0.09
+          isTrue, // 0.35+0.20+0.15 = 0.70 >= 0.6450
         );
       },
     );

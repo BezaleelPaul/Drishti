@@ -9,12 +9,12 @@ Drishti is a self-contained, offline-first **Clinical Production Package** for a
 
 ```
 Drishti/
-├── binaries/                       # Standalone binaries (distributed via GitHub Releases v1.7.0)
-│   ├── drishti_mobile_v1.7.0.apk  # Android release APK (offline INT8 edge engine)
-│   ├── drishti_windows_v1.7.0.zip # Windows desktop clinic bundle
-│   ├── drishti_linux_v1.7.0.tar.gz# Linux workstation clinic bundle
-│   ├── drishti_macos_v1.7.0.zip   # macOS clinic application bundle
-│   └── drishti_ios_unsigned_v1.7.0.zip # iOS release bundle
+├── binaries/                       # Standalone binaries (distributed via GitHub Releases v1.8.0)
+│   ├── Drishti_mobile_v1.8.0.apk   # Android release APK (offline INT8 edge engine)
+│   ├── Drishti_windows_v1.8.0.zip  # Windows desktop clinic bundle
+│   ├── Drishti_linux_v1.8.0.tar.gz # Linux workstation clinic bundle
+│   ├── Drishti_macos_v1.8.0.zip    # macOS clinic application bundle
+│   └── Drishti_ios_unsigned_v1.8.0.zip # iOS release bundle
 │
 ├── models/                         # Calibrated clinical & edge model weights
 │   ├── dr_efficientnet_b0_tuned_int8.tflite # 5.08 MB INT8 edge model (96.28% recall)
@@ -36,7 +36,8 @@ Drishti/
 │   ├── JUDGES_QA_DEFENSE.md        # Winning defense script for hard technical questions
 │   ├── PITCH_AND_SLIDES_OUTLINE.md # 30-sec pitch, 3-min pitch, and slide notes
 │   ├── final_report.md             # Comprehensive engineering & clinical report
-│   ├── RELEASE_NOTES_v1.7.0.md     # Official v1.7.0 release notes
+│   ├── RELEASE_NOTES_v1.8.0.md     # Official v1.8.0 release notes
+│   ├── RELEASE_NOTES_v1.7.2.md     # Historical v1.7.2 release notes
 │   └── rendered_slides/            # High-res PNG slide previews
 │
 ├── server/                         # Runnable FastAPI screening server & test harness
@@ -99,11 +100,11 @@ Drishti/
 
 ---
 
-## 📱 Cross-Platform Standalone Downloads (Release v1.7.2)
+## 📱 Cross-Platform Standalone Downloads (Release v1.8.0)
 
 Pre-built binaries are packaged and downloadable from [GitHub Releases](https://github.com/BezaleelPaul/Drishti/releases):
-- **Android:** `Drishti_mobile_v1.7.2.apk` — Sideload onto any Android phone or tablet (dual v2/v3 signed, bundled offline INT8 model).
-- **Windows:** `Drishti_windows_v1.7.2.zip` — Extract and run `run_drishti.bat` or `drishti.exe`.
-- **Linux:** `Drishti_linux_v1.7.2.tar.gz` — Extract and run `./run_linux.sh` or `./bundle/drishti`.
-- **macOS:** `Drishti_macos_v1.7.2.zip` — Extract and double-click `run_macos.command` (or drag `Drishti.app` to `/Applications` and run `xattr -cr /Applications/Drishti.app`).
-- **iOS:** `Drishti_ios_unsigned_v1.7.2.zip` — Unsigned iOS release archive for sideloading / TestFlight.
+- **Linux:** `Drishti_linux_v1.8.0.tar.gz` — Extract and run `./run_linux.sh` or `./bundle/drishti`.
+- **Windows:** `Drishti_windows_v1.8.0.zip` — Extract and run `run_drishti.bat` or `drishti.exe`.
+- **macOS:** `Drishti_macos_v1.8.0.zip` — Extract and double-click `run_macos.command` (or drag `Drishti.app` to `/Applications` and run `xattr -cr /Applications/Drishti.app`).
+- **Android:** `Drishti_mobile_v1.8.0.apk` — Sideload onto any Android phone or tablet (dual v2/v3 signed, bundled offline INT8 model).
+- **iOS:** `Drishti_ios_unsigned_v1.8.0.zip` — Unsigned iOS release archive for sideloading / TestFlight.

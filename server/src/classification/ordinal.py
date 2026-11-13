@@ -38,6 +38,41 @@ def decode_grade(score: float, thresholds: Sequence[float]) -> int:
     return int(min(4, max(0, grade)))
 
 
+def normalize_score_to_ordinal_scale(score: float, thresholds: Sequence[float]) -> float:
+    """Maps a continuous score from arbitrary thresholds into normalized [0, 4] scale.
+
+    Preserves exact identity when thresholds are standard [0.5, 1.5, 2.5, 3.5].
+    When using calibrated thresholds (e.g. [0.0035, 0.380, 2.150, 3.100]),
+    maps each interval [t_{c-1}, t_c] linearly to [c - 0.5, c + 0.5] so the
+    probability distribution peak matches the decoded grade.
+    """
+    if len(thresholds) != 4:
+        return float(score)
+    t0, t1, t2, t3 = (float(t) for t in thresholds)
+    if (
+        abs(t0 - 0.5) < 1e-4
+        and abs(t1 - 1.5) < 1e-4
+        and abs(t2 - 2.5) < 1e-4
+        and abs(t3 - 3.5) < 1e-4
+    ):
+        return float(score)
+    if score <= t0:
+        denom = max(t0, 1e-6)
+        return float(max(0.0, 0.5 * (score / denom)))
+    elif score <= t1:
+        denom = max(t1 - t0, 1e-6)
+        return float(0.5 + (score - t0) / denom)
+    elif score <= t2:
+        denom = max(t2 - t1, 1e-6)
+        return float(1.5 + (score - t1) / denom)
+    elif score <= t3:
+        denom = max(t3 - t2, 1e-6)
+        return float(2.5 + (score - t2) / denom)
+    else:
+        span = max(t3 - t2, 0.5)
+        return float(min(4.0, 3.5 + 0.5 * (score - t3) / span))
+
+
 def boundary_uncertainty(score: float, thresholds: Sequence[float]) -> float:
     """Legacy score: proximity to the nearest grade decision boundary."""
     dist = min(abs(score - th) for th in thresholds)

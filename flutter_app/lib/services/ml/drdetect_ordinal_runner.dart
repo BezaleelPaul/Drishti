@@ -37,6 +37,7 @@ class DrDetectOrdinalTfliteRunner implements DrModelRunner {
       'assets/models/drdetect_ordinal_512_fp32.tflite';
 
   static const defaultThresholds = [0.5, 1.5, 2.5, 3.5];
+  static const calibratedThresholds = DrishtiOutputDecoder.calibratedCutPoints;
 
   /// Kernel width of the server's ordinal compatibility distribution.
   static const double kernelSigma = DrishtiOutputDecoder.kernelSigma;

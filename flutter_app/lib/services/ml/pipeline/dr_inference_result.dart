@@ -118,6 +118,43 @@ class DrishtiOutputDecoder {
   /// Strict ordinal cut-points from `classifier.py::_predict_onnx_drdetect`.
   static const List<double> ordinalCutPoints = [0.5, 1.5, 2.5, 3.5];
 
+  /// Calibrated cut-points matching the server's high-sensitivity contract.
+  static const List<double> calibratedCutPoints = [0.0035, 0.380, 2.150, 3.100];
+
+  /// Maps a continuous score from arbitrary thresholds into normalized [0, 4] scale.
+  static double normalizeScoreToOrdinalScale(
+    double score,
+    List<double> thresholds,
+  ) {
+    if (thresholds.length != 4) return score;
+    final t0 = thresholds[0];
+    final t1 = thresholds[1];
+    final t2 = thresholds[2];
+    final t3 = thresholds[3];
+    if ((t0 - 0.5).abs() < 1e-4 &&
+        (t1 - 1.5).abs() < 1e-4 &&
+        (t2 - 2.5).abs() < 1e-4 &&
+        (t3 - 3.5).abs() < 1e-4) {
+      return score;
+    }
+    if (score <= t0) {
+      final denom = t0 <= 0 ? 1e-6 : t0;
+      return math.max(0.0, 0.5 * (score / denom));
+    } else if (score <= t1) {
+      final denom = t1 - t0 <= 0 ? 1e-6 : t1 - t0;
+      return 0.5 + (score - t0) / denom;
+    } else if (score <= t2) {
+      final denom = t2 - t1 <= 0 ? 1e-6 : t2 - t1;
+      return 1.5 + (score - t1) / denom;
+    } else if (score <= t3) {
+      final denom = t3 - t2 <= 0 ? 1e-6 : t3 - t2;
+      return 2.5 + (score - t2) / denom;
+    } else {
+      final span = math.max(t3 - t2, 0.5);
+      return math.min(4.0, 3.5 + 0.5 * (score - t3) / span);
+    }
+  }
+
   /// Gaussian kernel width of the server's ordinal compatibility distribution.
   static const double kernelSigma = 0.65;
 
@@ -136,6 +173,7 @@ class DrishtiOutputDecoder {
     Uint8List? processedImageBytes,
     int processedImageWidth = 0,
     int processedImageHeight = 0,
+    List<double>? thresholds,
   }) {
     final preview = processedImageBytes ?? Uint8List(0);
     if (ordinal) {
@@ -150,7 +188,10 @@ class DrishtiOutputDecoder {
           'Ordinal model returned a non-finite score.',
         );
       }
-      final decoded = decodeOrdinalScore(score);
+      final decoded = decodeOrdinalScore(
+        score,
+        thresholds: thresholds ?? ordinalCutPoints,
+      );
       return DRInferenceResult(
         grade: decoded.grade,
         confidenceScores: decoded.probabilities,
@@ -240,7 +281,8 @@ class DrishtiOutputDecoder {
     }
     gradeValue = gradeValue.clamp(0, 4);
 
-    final probs = compatibilityDistribution(score);
+    final normScore = normalizeScoreToOrdinalScale(score, thresholds);
+    final probs = compatibilityDistribution(normScore);
     var top1Idx = 0;
     var top2Idx = 1;
     for (var i = 0; i < 5; i++) {

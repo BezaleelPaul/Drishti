@@ -18,6 +18,7 @@ from src.classification.classifier import DRClassifier
 from src.classification.ordinal import (
     BASE_SIGMA,
     decode_grade,
+    normalize_score_to_ordinal_scale,
     probabilities_from_score,
     uncertainty_from_scores,
     widened_sigma,
@@ -204,7 +205,8 @@ class TestDRDetectTTAPath(unittest.TestCase):
         self.assertEqual(result.predicted_grade.value, 3)
         self.assertAlmostEqual(result.raw_score, 2.6, places=6)
         # Zero spread -> sigma must equal the legacy fixed kernel width
-        self.assertAlmostEqual(result.confidence, max(probabilities_from_score(2.6, BASE_SIGMA)))
+        norm_s = normalize_score_to_ordinal_scale(2.6, classifier.thresholds)
+        self.assertAlmostEqual(result.confidence, max(probabilities_from_score(norm_s, BASE_SIGMA)))
         nearest_dist = min(abs(2.6 - th) for th in classifier.thresholds)
         self.assertAlmostEqual(result.uncertainty, float(np.exp(-nearest_dist)), places=6)
 
@@ -235,7 +237,8 @@ class TestDRDetectTTAPath(unittest.TestCase):
         self.assertEqual(counter["n"], 1)
         self.assertAlmostEqual(result.raw_score, 2.6, places=6)
         self.assertEqual(result.predicted_grade.value, 3)
-        self.assertAlmostEqual(result.confidence, max(probabilities_from_score(2.6)), places=6)
+        norm_s = normalize_score_to_ordinal_scale(2.6, classifier.thresholds)
+        self.assertAlmostEqual(result.confidence, max(probabilities_from_score(norm_s)), places=6)
 
 
 if __name__ == "__main__":

@@ -29,3 +29,8 @@ linux_app/
 data/
 *.parquet
 
+# Runtime screening data & test audit runs
+server/results/api_screenings/
+server/results/*audit*
+server/results/full_test_execution/
+

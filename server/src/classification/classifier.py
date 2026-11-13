@@ -19,6 +19,7 @@ from src.classification.drdetect_contract import (
 from src.classification.ordinal import (
     BASE_SIGMA,
     decode_grade,
+    normalize_score_to_ordinal_scale,
     probabilities_from_score,
     uncertainty_from_scores,
     widened_sigma,
@@ -348,7 +349,8 @@ class DRClassifier:
         # 4. Honest uncertainty: cross-view disagreement widens the class
         #    kernels, so confidence/ambiguity/OOD signals are evidence-based.
         sigma = widened_sigma(report.spread) if report.n_views > 1 else BASE_SIGMA
-        probs = probabilities_from_score(score, sigma)
+        norm_score = normalize_score_to_ordinal_scale(score, self.thresholds)
+        probs = probabilities_from_score(norm_score, sigma)
         uncertainty = uncertainty_from_scores(score, self.thresholds, spread=report.spread)
 
         sorted_indices = np.argsort(probs)[::-1]

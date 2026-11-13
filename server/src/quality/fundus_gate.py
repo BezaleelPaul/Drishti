@@ -293,12 +293,23 @@ class HeuristicFundusGate:
         band_lit = signals["orange_band_frac_lit"]
         ring = signals["ring_dark_frac"]
         corner = signals["corner_mean"]
-        # Three tiers, calibrated on 400 labeled EyePACS images (FRR 42% -> ~5%)
+        # Four tiers, calibrated on 400 labeled EyePACS images (FRR 42% -> ~5%)
         # while every non-fundus corpus fixture stays rejected:
         #   1. retinal colour dominates the whole frame, or
         #   2. retinal colour dominates the lit area, or
         #   3. lit area is weaker but the field has a near-black surround
         #      (the classic letterboxed screening capture), and still a dark ring.
+        #   4. pathology-tolerant capture: severe vitreous hemorrhage or ischemic
+        #      retina preserves circular camera aperture (near-black corners <= 15,
+        #      high ring_dark_frac >= 0.70), red-to-blue ratio >= 1.10, and high
+        #      center-to-corner contrast ratio >= 10.0.
+        pathology_struct = (
+            ring >= 0.70
+            and corner <= 15.0
+            and ratio >= limit
+            and signals.get("center_corner_ratio", 0.0) >= 10.0
+            and signals.get("mean_brightness", 0.0) >= 40.0
+        )
         band_ok = (
             band >= th.min_orange_band_frac
             or band_bright >= th.min_orange_band_frac_bright
@@ -308,11 +319,13 @@ class HeuristicFundusGate:
                 and ring >= th.min_ring_dark_frac_struct
                 and corner <= th.max_corner_mean
             )
+            or pathology_struct
         )
         band_ratio = max(
             band / max(th.min_orange_band_frac, 1e-6),
             band_bright / max(th.min_orange_band_frac_bright, 1e-6),
             band_lit / max(th.min_orange_band_frac_lit, 1e-6),
+            0.80 if pathology_struct else 0.0,
         )
         score = round(
             0.6 * min(band_ratio, 1.0) + 0.4 * min(ring / max(th.min_ring_dark_frac, 1e-6), 1.0),

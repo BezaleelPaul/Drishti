@@ -326,6 +326,12 @@ class AIBridge:
                     seg = self.router.structure_segmenter.segment_structures(np.array(pil_img))
                 vessel_density_pct = round(float(seg.vessel_density_pct), 1)
                 microaneurysm_count = len(seg.microaneurysm_candidates)
+                # Lesion-Aware Clinical Arbitration: If microaneurysms are verified present,
+                # ICDRS level is at least 1 (Mild NPDR); prevent false negative No DR discharge.
+                if dr_grade == 0 and microaneurysm_count > 0:
+                    dr_grade = 1
+                    dr_label = "Mild NPDR"
+                    is_ref = False
                 csme_risk = seg.csme_risk
                 if seg.min_fovea_distance_px is not None:
                     min_fovea_distance_px = round(float(seg.min_fovea_distance_px), 1)

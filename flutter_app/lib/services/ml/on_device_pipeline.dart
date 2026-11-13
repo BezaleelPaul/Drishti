@@ -65,7 +65,9 @@ class OnDevicePipeline {
       AsyncIsolateOrdinalRunner(),
       // Failover: same model, synchronous, for platforms where the isolate
       // cannot load the LiteRT native library.
-      DrDetectOrdinalTfliteRunner(),
+      DrDetectOrdinalTfliteRunner(
+        thresholds: DrDetectOrdinalTfliteRunner.calibratedThresholds,
+      ),
       LegacyClassifierAdapter(classifier ?? DrClassifierDart()),
     ]);
   }

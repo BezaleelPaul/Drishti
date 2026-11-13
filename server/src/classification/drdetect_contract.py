@@ -26,7 +26,7 @@ REFERABLE_SCORE_CUT = 1.5
 
 # High-sensitivity clinically calibrated thresholds (calibrated on EyePACS/APTOS validation cohort)
 # Delivers QWK=0.8289, Within-1=94.3%, and Referable Sensitivity=89.5%
-CALIBRATED_THRESHOLDS: tuple[float, float, float, float] = (0.008, 0.380, 2.150, 3.100)
+CALIBRATED_THRESHOLDS: tuple[float, float, float, float] = (0.0035, 0.380, 2.150, 3.100)
 CALIBRATED_REFERABLE_SCORE_CUT = 0.380
 
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)

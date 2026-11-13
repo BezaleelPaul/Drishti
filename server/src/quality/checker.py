@@ -438,7 +438,14 @@ class ImageQualityChecker:
         if HAS_OPENCV:
             laplacian = cv2.Laplacian(gray.astype(np.uint8), cv2.CV_64F)
             if fov_ratio > 0.05 and np.any(mask):
-                sharpness_score = float(np.var(laplacian[mask]))
+                lap_vals = np.abs(laplacian[mask])
+                bg_var = float(np.var(laplacian[mask]))
+                # Vessel-edge focus: top 5% edge responses in the retinal field.
+                # Smooth healthy retinas (Grade 0) have uniform background (low global variance)
+                # but sharp blood vessels (p95 >= 5.0). Truly blurred/motion-blurred images have p95 <= 2.0.
+                p95 = float(np.percentile(lap_vals, 95)) if len(lap_vals) > 0 else 0.0
+                vessel_sharpness = p95 * 3.0
+                sharpness_score = max(bg_var, vessel_sharpness)
             else:
                 sharpness_score = float(np.var(laplacian))
         else:
@@ -468,9 +475,9 @@ class ImageQualityChecker:
 
         if ml_score is None:
             # Calibrated Multi-Scale Feature Fusion (EyeQ / MCF-Net inspired)
-            # S_blur: sigmoid mapping around typical clinical sharpness (uses blur_good_threshold from thresholds)
-            blur_threshold = th.blur_good_threshold
-            s_blur = 1.0 / (1.0 + np.exp(-0.05 * (sharpness_score - blur_threshold)))
+            # S_blur: sigmoid mapping centered around median clinical field sharpness (45.0)
+            blur_center = 45.0
+            s_blur = 1.0 / (1.0 + np.exp(-0.06 * (sharpness_score - blur_center)))
             # S_illum: Gaussian centered at optimal clinical illumination (115)
             s_illum = np.exp(-((mean_brightness - 115.0) ** 2) / (2.0 * (55.0**2)))
             # S_contrast: sigmoid mapping for dynamic range

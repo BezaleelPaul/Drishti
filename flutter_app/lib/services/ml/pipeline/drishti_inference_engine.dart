@@ -307,6 +307,7 @@ class DrishtiInferenceEngine {
     img.Image image, {
     bool validate = true,
     bool includePreview = true,
+    List<double>? thresholds,
   }) {
     final preprocessed = RetinalPreprocessor.prepareForModel(
       image,
@@ -329,6 +330,7 @@ class DrishtiInferenceEngine {
       processedImageBytes: preprocessed.previewBytes,
       processedImageWidth: preprocessed.previewWidth,
       processedImageHeight: preprocessed.previewHeight,
+      thresholds: thresholds,
     );
   }
 

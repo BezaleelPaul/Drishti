@@ -80,11 +80,13 @@ class RetinalStructureSegmenter:
         from src.image_io import retinal_mask as _retinal_mask
         retinal_mask = _retinal_mask(gray).astype(np.uint8) * 255
 
-        # 1. Optic Disc and Fovea Localization
-        od_center, od_radius, fovea_center = self._localize_od_and_fovea(img_rgb, green, retinal_mask)
-
-        # 2. Blood Vessel Tree Segmentation
+        # 1. Blood Vessel Tree Segmentation
         vessel_mask = self._segment_vessels(green, retinal_mask)
+
+        # 2. Optic Disc and Fovea Localization (informed by vessel convergence & FAZ)
+        od_center, od_radius, fovea_center = self._localize_od_and_fovea(
+            img_rgb, green, retinal_mask, vessel_mask=vessel_mask
+        )
 
         # 3. Exudate Candidate Segmentation (Bright yellow lesions outside optic disc)
         exudate_mask = self._segment_exudates(img_rgb, od_center, od_radius, retinal_mask)
@@ -144,7 +146,11 @@ class RetinalStructureSegmenter:
         )
 
     def _localize_od_and_fovea(
-        self, img_rgb: np.ndarray, green: np.float32, retinal_mask: np.ndarray
+        self,
+        img_rgb: np.ndarray,
+        green: np.float32,
+        retinal_mask: np.ndarray,
+        vessel_mask: np.ndarray | None = None,
     ) -> tuple[tuple[int, int], int, tuple[int, int]]:
         h, w, _ = img_rgb.shape
         cy, cx = h // 2, w // 2
@@ -160,7 +166,7 @@ class RetinalStructureSegmenter:
                 import logging
                 logging.getLogger(__name__).debug("Fovea/optic-disc model failed: %s", exc)
 
-        # 2. Robust morphological fallback
+        # 2. Robust morphological & vessel-informed fallback
         if HAS_OPENCV:
             # Optic disc has high red + green intensity (yellowish bright area)
             red = img_rgb[:, :, 0].astype(np.float32)
@@ -191,9 +197,21 @@ class RetinalStructureSegmenter:
             ks = max(3, ks)
             blurred = cv2.GaussianBlur(intensity, (ks, ks), 0)
             blurred[eroded_mask == 0] = 0
-            
-            # Find brightest centroid in the interior retina
-            _, _, _, max_l = cv2.minMaxLoc(blurred)
+
+            # Dual-feature: combine brightness with vessel density to resist isolated exudate false-positives
+            if vessel_mask is not None and np.any(vessel_mask > 0):
+                k_dens = max(15, (min(h, w) // 10) | 1)
+                v_dens = cv2.GaussianBlur(vessel_mask.astype(np.float32) / 255.0, (k_dens, k_dens), 0)
+                if v_dens.max() > 0:
+                    v_dens /= v_dens.max()
+                b_max = float(blurred.max())
+                b_norm = (blurred / b_max) if b_max > 0 else blurred
+                # Modest 0.40 vessel weight elevates true optic disc above isolated bright lesions
+                od_map = b_norm * (1.0 + 0.40 * v_dens)
+                od_map[eroded_mask == 0] = 0.0
+                _, _, _, max_l = cv2.minMaxLoc(od_map)
+            else:
+                _, _, _, max_l = cv2.minMaxLoc(blurred)
             od_x, od_y = int(max_l[0]), int(max_l[1])
 
             # Fovea is roughly 2.5-3.0 disc diameters temporal to optic disc
@@ -206,7 +224,7 @@ class RetinalStructureSegmenter:
             expected_fx = int(np.clip(od_x + od_side * approx_radius * 2.8, _m, w - _m))
             expected_fy = int(np.clip(od_y + (cy - od_y) * 0.25, _m, h - _m))
 
-            # Fine-tune fovea around expected region by searching for local minimum (foveal pit)
+            # Fine-tune fovea around expected region by searching for local minimum (foveal pit / FAZ)
             # in smoothed green channel within macula search window
             search_r = approx_radius
             y1 = max(0, expected_fy - search_r)
@@ -218,7 +236,13 @@ class RetinalStructureSegmenter:
             if macula_roi.size > 0:
                 m_k = min(21, max(3, (min(macula_roi.shape) // 2) | 1))
                 smooth_macula = cv2.GaussianBlur(macula_roi, (m_k, m_k), 0)
-                _, _, min_l, _ = cv2.minMaxLoc(smooth_macula)
+                if vessel_mask is not None and np.any(vessel_mask[y1:y2, x1:x2] > 0):
+                    v_roi = cv2.GaussianBlur(vessel_mask[y1:y2, x1:x2].astype(np.float32) / 255.0, (m_k, m_k), 0)
+                    m_norm = smooth_macula / max(float(smooth_macula.max()), 1e-6)
+                    faz_score = m_norm + 0.4 * v_roi
+                    _, _, min_l, _ = cv2.minMaxLoc(faz_score)
+                else:
+                    _, _, min_l, _ = cv2.minMaxLoc(smooth_macula)
                 fx = x1 + int(min_l[0])
                 fy = y1 + int(min_l[1])
             else:

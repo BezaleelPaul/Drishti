@@ -1,9 +1,9 @@
 {
   "run": 1,
   "ok": true,
-  "wall_seconds": 2.76,
-  "patient_id": "PT-DEMO-R1-1794585067",
-  "screening_id": "SCR-DEE61EA7577F",
+  "wall_seconds": 2.82,
+  "patient_id": "PT-DEMO-R1-1794603349",
+  "screening_id": "SCR-6B8CDA9236C9",
   "engine": "Ready (Model 1 Quality + Model 2 DR + Grad-CAM++)",
   "quality": {
     "grade": "GOOD",
@@ -15,7 +15,7 @@
     "error_code": "AI_LOW_CONFIDENCE",
     "model_backend": "onnx_drdetect",
     "is_referable": true,
-    "inference_time_ms": 1101.2,
+    "inference_time_ms": 1194.4,
     "requires_human_review": true
   },
   "adverse_input": {
@@ -23,8 +23,8 @@
     "dr_grade": null
   },
   "deid_uplink": {
-    "pseudonym": "RSV-1F2FFC0A",
-    "pseudo_screening_id": "SCR-D44A0411",
+    "pseudonym": "RSV-66EDF7C5",
+    "pseudo_screening_id": "SCR-8693F7F4",
     "doctor_visible": true,
     "operator_blocked": true,
     "phi_smuggle_rejected": true,
@@ -35,13 +35,13 @@
       "step": "GET /status",
       "ok": true,
       "status": 200,
-      "ms": 10.0
+      "ms": 9.7
     },
     {
       "step": "POST /patients",
       "ok": true,
       "status": 201,
-      "ms": 17.3
+      "ms": 16.7
     },
     {
       "assert": "patient id echoed back",
@@ -51,7 +51,7 @@
       "step": "POST /diabetes-risk",
       "ok": true,
       "status": 200,
-      "ms": 959.2
+      "ms": 960.8
     },
     {
       "assert": "risk level enum",
@@ -61,7 +61,7 @@
       "step": "POST /retinal/quality (real fundus)",
       "ok": true,
       "status": 200,
-      "ms": 67.6
+      "ms": 72.9
     },
     {
       "assert": "GOOD image passes quality gate (got GOOD/None)",
@@ -71,7 +71,7 @@
       "step": "POST /retinal/analyze (real fundus)",
       "ok": true,
       "status": 200,
-      "ms": 1208.2
+      "ms": 1298.2
     },
     {
       "assert": "no hard failure on real fundus (got AI_LOW_CONFIDENCE)",
@@ -86,10 +86,10 @@
       "ok": true
     },
     {
-      "step": "GET /screenings/PT-DEMO-R1-1794585067",
+      "step": "GET /screenings/PT-DEMO-R1-1794603349",
       "ok": true,
       "status": 200,
-      "ms": 19.4
+      "ms": 17.5
     },
     {
       "assert": "screening persisted once",
@@ -103,7 +103,7 @@
       "step": "GET overlay image",
       "ok": true,
       "status": 200,
-      "ms": 16.1
+      "ms": 16.6
     },
     {
       "assert": "overlay is an image",
@@ -113,7 +113,7 @@
       "step": "POST /retinal/analyze (adverse: human face)",
       "ok": true,
       "status": 200,
-      "ms": 344.1
+      "ms": 324.4
     },
     {
       "assert": "face rejected as non-retinal",
@@ -131,7 +131,7 @@
       "step": "GET /review/pending",
       "ok": true,
       "status": 200,
-      "ms": 9.8
+      "ms": 11.0
     },
     {
       "assert": "review queue reachable by doctor key",
@@ -141,7 +141,7 @@
       "step": "POST /sync/v2 (de-identified referral)",
       "ok": true,
       "status": 200,
-      "ms": 22.0
+      "ms": 22.6
     },
     {
       "assert": "de-identified referral stored",
@@ -151,7 +151,7 @@
       "step": "POST /sync/v2 (idempotent replay)",
       "ok": true,
       "status": 200,
-      "ms": 19.0
+      "ms": 17.3
     },
     {
       "assert": "replay accepted without duplicate",
@@ -161,7 +161,7 @@
       "step": "GET /sync/v2/pending (doctor)",
       "ok": true,
       "status": 200,
-      "ms": 5.4
+      "ms": 4.9
     },
     {
       "assert": "doctor sees the referral in the queue",
@@ -191,7 +191,7 @@
       "step": "GET /sync/v2/image (doctor)",
       "ok": true,
       "status": 200,
-      "ms": 4.1
+      "ms": 3.9
     },
     {
       "assert": "de-identified image served to doctor",
