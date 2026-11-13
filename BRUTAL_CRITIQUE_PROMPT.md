@@ -10,7 +10,7 @@ Be ruthless. Be specific. No flattery. No "good effort" nonsense.
 
 This is a submission for DRISHTI-2026, Problem Statement DR-CLINICAL-038 (Production Clinical Standard). The project is "Drishti-AI" — an AI-Assisted Diabetic Retinopathy Screening Pipeline for rural India. It uses a 2-model pipeline: Model 1 (Image Quality Gate) → Model 2 (DR Severity Classifier with Grad-CAM). It also includes a clinical risk engine, retinal segmentation, Simulink simulation, PDF/FHIR reporting, a FastAPI backend, and a Flutter mobile app (netra_ai_mobile).
 
-The project repository is at: `C:\Users\bezal\Downloads\SIH HACKATHON`
+The project repository is at: `/home/bezaleelpaul/Projects/Drishti`
 
 The source code is in `src/`, app in `flutter_app/`, tests in `tests/`, docs in `docs/`, presentation in `presentation/`, Kaggle training notebooks in `kaggle/`, and MATLAB/Simulink in `matlab/`.
 

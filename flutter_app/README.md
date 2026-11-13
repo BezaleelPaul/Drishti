@@ -1,4 +1,4 @@
-# Netra-AI Mobile / Web (Flutter)
+# Drishti Mobile / Web (Flutter)
 
 Figma-themed PHC screening app. Home is the Figma PHC dashboard
 (`lib/screens/figma_dashboard_screen.dart`, 5 languages via the 🌐 menu);

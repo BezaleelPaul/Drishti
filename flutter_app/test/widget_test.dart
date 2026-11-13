@@ -7,7 +7,7 @@ import 'package:netra_ai_mobile/screens/figma_dashboard_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('Netra-AI App Smoke Test', (WidgetTester tester) async {
+  testWidgets('Drishti App Smoke Test', (WidgetTester tester) async {
     // No network or platform channels in widget tests.
     GoogleFonts.config.allowRuntimeFetching = false;
     SharedPreferences.setMockInitialValues(const {});

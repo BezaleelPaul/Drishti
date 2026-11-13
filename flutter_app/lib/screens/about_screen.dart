@@ -87,23 +87,71 @@ class AboutScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'DRISHTI',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 18,
-                                    letterSpacing: 0.3,
-                                  ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'DRISHTI',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 18,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'v2.0.0',
+                                      style: TextStyle(
+                                        color: ScannerHUDTheme.neonCyan,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                                SizedBox(height: 2),
                                 Text(
-                                  'Rural Diabetic Retinopathy Screening',
+                                  'Autonomous Clinical AI Retinal Screening System',
                                   style: TextStyle(
                                     color: Color(0xFF94A3B8),
                                     fontSize: 12,
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Platform Overview Card
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: ScannerHUDTheme.darkSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF1E293B)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'ABOUT THE PLATFORM',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: ScannerHUDTheme.neonCyan,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            'Drishti is an offline-first autonomous clinical AI screening system engineered to eliminate preventable blindness from Diabetic Retinopathy in primary health centres and rural camps.\n\n'
+                            'By combining upstream clinical risk scoring, Model 1 image quality certification (zero-leakage gate), and Model 2 ordinal classification with Grad-CAM++ lesion saliency, Drishti ensures that non-diagnostic fundus captures are rejected and triaged safely rather than misdiagnosed.',
+                            style: TextStyle(
+                              color: Color(0xFFCBD5E1),
+                              fontSize: 12.5,
+                              height: 1.45,
                             ),
                           ),
                         ],

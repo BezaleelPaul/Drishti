@@ -1,5 +1,5 @@
 """
-Netra-AI / Drishti-AI: FastAPI Application Entry Point.
+Drishti-AI: FastAPI Application Entry Point.
 Binds Flutter Mobile/Tablet/Web frontend to the Python AI Screening Pipeline.
 """
 

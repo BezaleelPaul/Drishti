@@ -74,7 +74,7 @@ Drishti-AI consists of four integrated layers designed for rural tele-ophthalmol
 ## 📂 Complete Folder Structure Reference
 
 ```text
-SIH HACKATHON/
+Drishti/
 │
 ├── 🚀 1-Click Launchers
 │   ├── setup_windows.bat       # 1-Click installer for Windows (auto-venv + deps + test)
