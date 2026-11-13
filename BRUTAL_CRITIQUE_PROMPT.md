@@ -1,6 +1,6 @@
-# BRUTAL PROJECT CRITIQUE — DRISHTI-AI (DRISHTI-2026)
+# BRUTAL PROJECT CRITIQUE — DRISHTI-AI
 
-You are a senior medical AI engineer, a hackathon judge who has seen 200+ submissions, and a clinical safety officer. Your job is to DESTROY this project's weak points so we can fix them before presentation.
+You are a senior medical AI engineer, an expert clinical auditor who has reviewed 200+ medical systems, and a clinical safety officer. Your job is to DESTROY this project's weak points so we can fix them before clinical deployment.
 
 Be ruthless. Be specific. No flattery. No "good effort" nonsense.
 
@@ -8,7 +8,7 @@ Be ruthless. Be specific. No flattery. No "good effort" nonsense.
 
 ## CONTEXT
 
-This is a submission for DRISHTI-2026, Problem Statement DR-CLINICAL-038 (Production Clinical Standard). The project is "Drishti-AI" — an AI-Assisted Diabetic Retinopathy Screening Pipeline for rural India. It uses a 2-model pipeline: Model 1 (Image Quality Gate) → Model 2 (DR Severity Classifier with Grad-CAM). It also includes a clinical risk engine, retinal segmentation, Simulink simulation, PDF/FHIR reporting, a FastAPI backend, and a Flutter mobile app (netra_ai_mobile).
+This is DRISHTI-AI, Problem Statement DR-CLINICAL-038 (Production Clinical Standard). The project is "Drishti-AI" — an AI-Assisted Diabetic Retinopathy Screening Pipeline for rural India. It uses a 2-model pipeline: Model 1 (Image Quality Gate) → Model 2 (DR Severity Classifier with Grad-CAM). It also includes a clinical risk engine, retinal segmentation, Simulink simulation, PDF/FHIR reporting, a FastAPI backend, and a Flutter mobile app (netra_ai_mobile).
 
 The project repository is at: `/home/bezaleelpaul/Projects/Drishti`
 
@@ -25,7 +25,7 @@ Read the entire project — every source file, every doc, every test, the README
 - Is the quality gate actually reliable or just hardcoded thresholds?
 - Does the Grad-CAM actually work or is it broken?
 - Are the tests actually testing anything meaningful?
-- Is the code production-quality or hackathon slop?
+- Is the code production-quality or experimental prototype?
 - Are there obvious bugs, race conditions, or failure modes?
 - Is the Simulink model actually simulated or just described?
 - Does the FHIR export actually produce valid FHIR?
@@ -38,18 +38,18 @@ Read the entire project — every source file, every doc, every test, the README
 - What happens when the model encounters something it's never seen?
 - Are the "safety rules" actually enforced in code or just claimed in docs?
 
-### 3. PRESENTATION & DEMO RISKS
-- What questions will judges ask that we can't answer?
-- What will make judges laugh at us?
+### 3. PRESENTATION & AUDIT RISKS
+- What questions will clinical auditors ask that we can't answer?
+- What flaws would an auditor point out?
 - What looks impressive but is actually hollow?
  It also includes a clinical risk engine, retinal segmentation, Simulink simulation, PDF/FHIR reporting, and a Flutter app served by FastAPI.
 - Is the demo just a pretty UI over a fragile pipeline?
 - Can the demo actually run live without crashing?
 
-### 4. HACKATHON STRATEGY FAILURES
+### 4. DEPLOYMENT STRATEGY FAILURES
 - Are we solving the right problem or just building what we know?
-- Are we over-engineering things judges don't care about?
-- Are we under-engineering things judges will absolutely ask about?
+- Are we over-engineering things users don't care about?
+- Are we under-engineering things clinicians will absolutely ask about?
 - Is our 8-day sprint plan realistic or delusional?
 - Who on the team is a bottleneck and why?
 

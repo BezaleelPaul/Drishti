@@ -1,4 +1,4 @@
-"""Tests for the district telemedicine simulation engine (SIH26038 Req 5).
+"""Tests for the district telemedicine simulation engine.
 
 Verifies bandwidth savings math, staffing invariants, queue-stability
 semantics, and the physical-validation fail-closed rules.

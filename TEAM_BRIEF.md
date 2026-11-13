@@ -15,7 +15,7 @@ India has 77+ million diabetic adults. Diabetic retinopathy is the leading cause
 
 ---
 
-## WHAT MAKES US DIFFERENT FROM EVERY OTHER HACKATHON SUBMISSION
+## WHAT MAKES DRISHTI DIFFERENT FROM TRADITIONAL SCREENING SYSTEMS
 
 **This is not just a mobile app.** The Flutter client is one face of a 7-module clinical screening pipeline. Here is what we actually built:
 

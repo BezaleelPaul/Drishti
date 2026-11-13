@@ -3,7 +3,7 @@ Kaggle Notebook Export N4: Optional DRIVE Vessel Segmentation.
 Scope:
 - Optional / Stretch goal module per Section 19 & 21
 - Blood vessel tree segmentation using U-Net or FR-U-Net from fundus_image_toolbox
-- Note: This is an optional exploratory module and not part of the mandatory hackathon core MVP.
+- Note: This is an optional exploratory module and not part of the core screening pipeline.
 """
 
 

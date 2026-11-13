@@ -1,6 +1,6 @@
 # 🌐 Drishti-AI: Universal Developer & Deployment Guide
 
-### Clinical Screening Platform 2026 • Problem Statement DR-CLINICAL-038 (Production Clinical Standard)
+### Autonomous Clinical Screening Platform • Problem Statement DR-CLINICAL-038 (Production Clinical Standard)
 **Complete Clinical Screening Platform (Python AI Pipeline • FastAPI Backend • Flutter Mobile App)**
 
 > **Clinical Architecture Premise:**  

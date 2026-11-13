@@ -1,4 +1,4 @@
-# Drishti-AI Roadmap — DRISHTI-2026 DR-CLINICAL-038
+# Drishti-AI Roadmap — DR-CLINICAL-038 (Production Clinical Platform)
 
 Living plan. Status legend: **Done** · **Now** · **Next** · **Blocked** (needs hardware/data/SDK) · **Ongoing** (never finished, worked in rounds).
 
