@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drishti-AI — Emergency Offline Expo Demo Backup (Level 3)</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #151d30;
+      --border: #23314e;
+      --primary: #0284c7;
+      --primary-light: #38bdf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--border);
+      padding: 24px 30px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--success);
+      color: var(--success);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+    .title { font-size: 28px; font-weight: 800; }
+    .subtitle { color: var(--text-muted); font-size: 15px; }
+    .nav-tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+    .tab-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    .tab-btn.active, .tab-btn:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary-light);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 20px 24px;
+      border-radius: 14px;
+    }
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      color: var(--primary-light);
+    }
+    .metric-big {
+      font-size: 36px;
+      font-weight: 900;
+      font-family: monospace;
+      color: var(--success);
+    }
+    .metric-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .demo-box {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-top: 12px;
+    }
+    .status-pill {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .pill-green { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
+    .pill-red { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+    pre {
+      background: #090d16;
+      border: 1px solid var(--border);
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      overflow-x: auto;
+      color: #38bdf8;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: rgba(2, 132, 199, 0.1); color: var(--primary-light); }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div>
+      <div class="badge">100% Offline Emergency Demo Safety Net (Level 3)</div>
+      <h1 class="title">Drishti-AI Clinical Exhibition Console</h1>
+      <p class="subtitle">Complete Visual Backup for Judging • No Internet Connection Required</p>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-weight: 700; color: #fff;">TechUtsav 2.0 • CMR SOET</div>
+      <div style="color: var(--text-muted); font-size: 13px;">Team Drishti (SIH26038)</div>
+    </div>
+  </header>
+
+  <nav class="nav-tabs">
+    <button class="tab-btn active" onclick="showTab('tab-scenarios')">🎯 Live Demo Scenarios</button>
+    <button class="tab-btn" onclick="showTab('tab-benchmarks')">📊 Empirical Metrics</button>
+    <button class="tab-btn" onclick="showTab('tab-architecture')">⚡ 3-Stage Pipeline</button>
+    <button class="tab-btn" onclick="showTab('tab-abdm')">📄 ABDM FHIR & Reports</button>
+  </nav>
+
+  <!-- TAB 1: SCENARIOS -->
+  <div id="tab-scenarios" class="tab-content active">
+    <div class="grid">
+      
+      <!-- Scenario 1: Clean Retinal Capture -->
+      <div class="card">
+        <div class="card-title">✅ Scenario A: High-Quality Capture (Diagnostic)</div>
+        <div class="demo-box">
+          <div style="font-size: 40px; margin-bottom: 10px;">👁️</div>
+          <div class="status-pill pill-green">PASSED MODEL 1 QUALITY GATE</div>
+          <div style="margin-top: 14px; text-align: left; font-size: 14px;">
+            <p><strong>Blur Laplacian:</strong> 128.4 (Threshold: > 15.0)</p>
+            <p><strong>Illumination:</strong> 142.1 (Good Range: 35–215)</p>
+            <p><strong>FOV Ratio:</strong> 0.44 (Requirement: > 0.32)</p>
+          </div>
+        </div>
+        <div style="margin-top: 16px;">
+          <h4 style="color: #fff; margin-bottom: 8px;">Model 2 AI Grading:</h4>
+          <pre>Grade: Moderate NPDR (Grade 2)
+Continuous Ordinal Score: 2.18
+Referable Classification: TRUE (Refer to Doctor)
+Grad-CAM++ Execution Time: 0.88s (CPU)</pre>
+        </div>
+      </div>
+
+      <!-- Scenario 2: Blurry Capture Rejected -->
+      <div class="card">
+        <div class="card-title">🚫 Scenario B: Blurry / Defocused Capture (Rejected)</div>
+        <div class="demo-box">
+          <div style="font-size: 40px; margin-bottom: 10px;">🌫️</div>
+          <div class="status-pill pill-red">REJECTED: UNGRADABLE SCAN</div>
+          <div style="margin-top: 14px; text-align: left; font-size: 14px;">
+            <p><strong>Blur Score:</strong> 7.2 (CRITICAL: Below 15.0)</p>
+            <p><strong>Diagnosis Suppressed:</strong> 100% Zero-Leakage</p>
+            <p><strong>Biological Feedback:</strong> Suspected camera defocus</p>
+          </div>
+        </div>
+        <div style="margin-top: 16px;">
+          <h4 style="color: #fff; margin-bottom: 8px;">Frontline Worker Action:</h4>
+          <pre>Audio Guide (Hindi): "कृपया लेंस साफ करें और मरीज को स्थिर रखें"
+Action: Bounded Recapture Attempt 1 of 2
+Diagnostic Grade: NONE (Clinically Protected)</pre>
+        </div>
+      </div>
+
+      <!-- Scenario 3: Non-Retinal Photo Rejected -->
+      <div class="card">
+        <div class="card-title">🛡️ Scenario C: Adversarial / Non-Retinal Photo</div>
+        <div class="demo-box">
+          <div style="font-size: 40px; margin-bottom: 10px;">📄</div>
+          <div class="status-pill pill-red">REJECTED BY MODEL 0 (NOT FUNDUS)</div>
+          <div style="margin-top: 14px; text-align: left; font-size: 14px;">
+            <p><strong>Input:</strong> Non-eye photo (paper/room/finger)</p>
+            <p><strong>Domain Gate:</strong> Failed circular mask & spectra</p>
+            <p><strong>Safety Code:</strong> IMG_NOT_FUNDUS</p>
+          </div>
+        </div>
+        <div style="margin-top: 16px;">
+          <h4 style="color: #fff; margin-bottom: 8px;">Safety Guarantee:</h4>
+          <pre>Pipeline Status: REJECTED AT INTAKE
+Adversarial Corpus Rejection: 14 / 14 (100%)
+Zero diagnostic hallucination.</pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB 2: BENCHMARKS -->
+  <div id="tab-benchmarks" class="tab-content">
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">🏆 Primary Server Benchmark (DRDetect)</div>
+        <div class="metric-big">0.8931</div>
+        <div class="metric-sub">Quadratic Weighted Kappa (QWK) on DRDetect Ordinal Regression</div>
+        <div style="margin-top: 16px;">
+          <div class="metric-big" style="color: var(--primary-light);">99.70%</div>
+          <div class="metric-sub">Referable DR Sensitivity (Missing virtually 0 sick patients)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📱 Edge Mobile INT8 Model (v1.7.0 Production)</div>
+        <div class="metric-big" style="color: #10B981;">96.28%</div>
+        <div class="metric-sub">Referable DR Sensitivity (384px + Quad-Loss + 4-View TTA)</div>
+        <div style="margin-top: 16px;">
+          <div class="metric-big" style="color: #6366F1;">5.08 MB</div>
+          <div class="metric-sub">Edge INT8 Quantized Footprint (91.03% Specificity, 0.8739 QWK)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚡ Latency & Efficiency Metrics</div>
+        <table>
+          <tr><th>Stage</th><th>Platform</th><th>Latency</th></tr>
+          <tr><td>Quality Gate</td><td>Core i3 CPU</td><td>&lt; 60 ms</td></tr>
+          <tr><td>DR Inference</td><td>Core i3 CPU</td><td>&lt; 180 ms</td></tr>
+          <tr><td>Grad-CAM++</td><td>Core i3 CPU</td><td>&lt; 1.20 s</td></tr>
+          <tr><td>Full Screening</td><td>End-to-End</td><td>&lt; 1.45 s</td></tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📡 MathWorks 100k Simulink Queuing</div>
+        <table>
+          <tr><th>District Metric</th><th>Standard Cloud</th><th>Drishti-AI Edge</th></tr>
+          <tr><td>District Population</td><td>100,000</td><td>100,000</td></tr>
+          <tr><td>Scans Uploaded</td><td>100,000</td><td>900 (High Risk)</td></tr>
+          <tr><td>Bandwidth Savings</td><td>0%</td><td><strong>99.1%</strong></td></tr>
+          <tr><td>Doctor Workload</td><td>100,000/yr</td><td>16,100/yr (~62/day)</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: PIPELINE -->
+  <div id="tab-architecture" class="tab-content">
+    <div class="card">
+      <div class="card-title">🏗️ End-to-End Clinical Processing Flow</div>
+      <pre>
+   [Frontline Handheld Camera / Web / Mobile]
+                      │
+                      ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │ Stage 0: Fundus Domain Gate (Fundus vs Non-Fundus)      │ ──► [Non-Fundus] ──► Reject (IMG_NOT_FUNDUS)
+ └────────────────────────────┬────────────────────────────┘
+                              │ Valid Fundus
+                              ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │ Stage 1: Model 1 Quality Gate (Blur, Illumination, FOV) │ ──► [Bad Quality] ──► Hindi Voice + Retry (Max 2)
+ └────────────────────────────┬────────────────────────────┘
+                              │ Diagnostic Quality
+                              ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │ Stage 2: DRDetect Ordinal Regression (512px ONNX)       │
+ │          Grades 0 (None) to 4 (Proliferative)           │
+ └────────────────────────────┬────────────────────────────┘
+                              ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │ Stage 3: Grad-CAM++ Backprop Heatmap + CSME Segmentation│
+ └────────────────────────────┬────────────────────────────┘
+                              ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │ Output: ABDM FHIR R4 JSON • Bilingual SMS • Doctor PDF  │
+ └─────────────────────────────────────────────────────────┘
+      </pre>
+    </div>
+  </div>
+
+  <!-- TAB 4: ABDM & REPORTS -->
+  <div id="tab-abdm" class="tab-content">
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">📑 ABDM FHIR R4 JSON Record</div>
+        <pre>{
+  "resourceType": "DiagnosticReport",
+  "status": "final",
+  "category": [{ "coding": [{ "code": "retinal-screening" }] }],
+  "code": { "text": "Diabetic Retinopathy Screening" },
+  "conclusion": "Grade 2 Moderate NPDR",
+  "extension": [{
+    "url": "https://abdm.gov.in/fhir/dr-ordinal-score",
+    "valueDecimal": 2.18
+  }],
+  "reliability": "GOOD",
+  "recommendation": "Ophthalmology consult within 30 days"
+}</pre>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💬 Frontline Patient SMS Referral Slip</div>
+        <pre>प्रिय मरीज,
+दृष्टि-AI जांच परिणाम:
+दाहिनी आंख: Moderate NPDR (ग्रेड 2)
+सुझाव: कृपया 30 दिनों के भीतर जिला नेत्र विशेषज्ञ से परामर्श लें।
+PHC ID: PHC-RURAL-KA-042</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>

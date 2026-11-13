@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drishti-ai"
+version = "2.0.0"
+description = "AI-Assisted Diabetic Retinopathy Screening Pipeline with Model 1 Image Quality Gating, Model 2 EfficientNetB0 Classifier, Grad-CAM++ Explainability, and Telemedicine Simulation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Bezaleel and SIH 2026 Team", email = "sih2026@team.internal" },
+]
+keywords = [
+    "diabetic-retinopathy",
+    "fundus-imaging",
+    "medical-ai",
+    "quality-gate",
+    "explainable-ai",
+    "grad-cam",
+    "smart-india-hackathon",
+    "mathworks",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Healthcare Industry",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "scipy>=1.11.0",
+    "pillow>=10.0.0",
+    "opencv-python-headless>=4.8.0",
+    "scikit-learn>=1.3.0",
+    "joblib>=1.2.0",
+    "reportlab>=4.0.0",
+    "fastapi>=0.109.0",
+    "starlette>=0.48.0,<0.49.0",
+    "anyio>=4.10.0,<5.0.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.0",
+    "python-multipart>=0.0.9",
+    "requests>=2.31.0",
+    "httpx>=0.26.0",
+]
+
+[project.optional-dependencies]
+deeplearning = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "tensorflow>=2.15.0",
+    "keras>=3.0.0",
+]
+docs = [
+    "python-pptx>=0.6.21",
+    "lxml>=4.9.0",
+]
+dev = [
+    "pytest>=7.4.0",
+    "ruff>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*", "api*"]
+
+[tool.pytest.ini_options]
+# Scope pytest to the structured test suite. Root-level test_*.py files are
+# standalone demo scripts (no test_* functions, heavy module imports); they
+# must not be collected — bare `pytest` would otherwise burn ~1 min in
+# collection importing them.
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# FastAPI requires dependency markers such as Depends(...) and File(...) in
+# function defaults; sqlite3.Row exposes keys() but not dict.get().
+ignore = ["B008", "SIM401"]
