@@ -28,15 +28,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
-
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "in.drishtiai.netra_ai_mobile"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -51,11 +44,6 @@ android {
                 storeFile = file(keystoreProperties["storeFile"] as String? ?: "")
                 storePassword = keystoreProperties["storePassword"] as String?
             }
-            // APK Signature Scheme coverage (verified on 2026-09-13 build:
-            // v2 + v3 verify true with the dedicated release cert; v1 JAR
-            // compat and v4 streaming requested — `flutter build apk` does
-            // not emit the v4 .idsig sidecar, Play re-signs on upload).
-            // v3 gives key rotation on Android 9+.
             enableV1Signing = true
             enableV2Signing = true
             enableV3Signing = true
@@ -85,6 +73,12 @@ android {
             // Drop Kotlin coroutines debug-probe metadata left by debug builds.
             excludes += "DebugProbesKt.bin"
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
