@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drishti/screens/about_screen.dart';
+import 'package:drishti/screens/admin/admin_portal_screen.dart';
 import 'package:drishti/screens/figma_dashboard_screen.dart';
 import 'package:drishti/screens/flow/flow_register_screen.dart';
 import 'package:drishti/screens/queue_screen.dart';
@@ -36,6 +37,7 @@ void main() {
         'Screening',
         'Screening',
         'Screening',
+        'Triage & Operations',
         'Triage & Operations',
         'Triage & Operations',
         'Support',
@@ -75,9 +77,11 @@ void main() {
       expect(entries[3].label, 'Specialist Review Queue');
       expect(entries[4].label, 'Offline Queue');
       expect(entries[4].page, isA<QueueScreen>());
-      expect(entries[5].label, 'Help & Guidelines');
-      expect(entries[6].label, 'About / System Info');
-      expect(entries[6].page, isA<AboutScreen>());
+      expect(entries[5].label, 'Admin Portal (SMTP)');
+      expect(entries[5].page, isA<AdminPortalScreen>());
+      expect(entries[6].label, 'Help & Guidelines');
+      expect(entries[7].label, 'About / System Info');
+      expect(entries[7].page, isA<AboutScreen>());
     });
 
     testWidgets('section headers render and collapse group boundaries', (

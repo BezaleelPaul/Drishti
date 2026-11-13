@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../l10n/lang_scope.dart';
+import '../../services/db/screening_persistence_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/scanner/scanner.dart';
 import '../../widgets/workflow_bar.dart';
@@ -19,6 +21,12 @@ class FlowReportScreen extends StatefulWidget {
 
 class _FlowReportScreenState extends State<FlowReportScreen> {
   bool _more = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(ScreeningPersistenceService().saveScreening(widget.state));
+  }
 
   String _summary(BuildContext context) {
     final st = widget.state;

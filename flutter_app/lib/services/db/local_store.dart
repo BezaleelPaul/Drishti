@@ -362,6 +362,125 @@ class LocalStore {
     );
   }
 
+  /// Inserts or updates a patient record locally on device.
+  Future<void> upsertPatient({
+    required String localPatientId,
+    String? name,
+    int? age,
+    String? gender,
+    String? phone,
+    String? village,
+    String? screeningCentre,
+    String? knownDiabetes,
+    double? diabetesDurationYears,
+    double? hba1c,
+    double? fastingGlucose,
+    String? bloodPressure,
+    double? bmi,
+    bool? familyHistory,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    await _db.insert('patients', {
+      'local_patient_id': localPatientId,
+      'pseudonym': localPatientId,
+      'name': (name != null && name.trim().isNotEmpty) ? name.trim() : localPatientId,
+      'age': age,
+      'gender': gender ?? 'Unknown',
+      'phone': phone ?? '',
+      'village': village ?? '',
+      'screening_centre': screeningCentre ?? 'Primary Health Centre',
+      'known_diabetes': knownDiabetes ?? 'Unknown',
+      'diabetes_duration_years': diabetesDurationYears,
+      'hba1c': hba1c,
+      'fasting_glucose': fastingGlucose,
+      'blood_pressure': bloodPressure,
+      'bmi': bmi,
+      'family_history': (familyHistory == true) ? 1 : 0,
+      'created_at': now,
+      'updated_at_seq': DateTime.now().microsecondsSinceEpoch,
+      'sync_eligibility': 'never',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Seeds clinical PHC sample historical records if the device database is empty,
+  /// ensuring the operator always has visible reference history from day one.
+  Future<void> seedSampleScreeningsIfEmpty() async {
+    final count = Sqflite.firstIntValue(
+      await _db.rawQuery('SELECT COUNT(*) FROM screenings'),
+    ) ?? 0;
+    if (count > 0) return;
+
+    final now = DateTime.now().toUtc();
+    final samples = [
+      (
+        id: 'PT-8821',
+        name: 'Ramesh Patil',
+        age: 58,
+        gender: 'Male',
+        village: 'Wadgaon, PHC Bhor',
+        grade: 2,
+        label: 'Moderate NPDR',
+        review: true,
+        daysAgo: 1,
+        eye: 'Right',
+      ),
+      (
+        id: 'PT-8822',
+        name: 'Sunita Devi',
+        age: 49,
+        gender: 'Female',
+        village: 'Shirwal, Satara',
+        grade: 0,
+        label: 'No Diabetic Retinopathy',
+        review: false,
+        daysAgo: 2,
+        eye: 'Left',
+      ),
+      (
+        id: 'PT-8823',
+        name: 'Anand Kulkarni',
+        age: 64,
+        gender: 'Male',
+        village: 'Khandala, Pune',
+        grade: 3,
+        label: 'Severe NPDR',
+        review: true,
+        daysAgo: 4,
+        eye: 'Right',
+      ),
+    ];
+
+    for (final s in samples) {
+      await upsertPatient(
+        localPatientId: s.id,
+        name: s.name,
+        age: s.age,
+        gender: s.gender,
+        village: s.village,
+        phone: '98220${s.age}112',
+        knownDiabetes: 'Yes',
+        diabetesDurationYears: 7.0,
+        hba1c: s.grade > 0 ? 8.2 : 5.7,
+      );
+      final dateIso = now.subtract(Duration(days: s.daysAgo, hours: s.grade * 3)).toIso8601String();
+      await recordScreening(
+        localScreeningId: 'SCR-${s.id}-${s.eye}',
+        localPatientId: s.id,
+        eyeSide: s.eye,
+        cameraProfile: 'Remidio FOP (Smartphone Handheld)',
+        qualityGrade: 'GOOD',
+        recaptureAttemptCount: 0,
+        drGradeNum: s.grade,
+        drLabel: s.label,
+        confidence: 0.94,
+        requiresHumanReview: s.review,
+        humanReviewReason: s.review ? 'Moderate to Severe microaneurysms detected' : null,
+        capturedAtIso: dateIso,
+        imagePath: '',
+      );
+    }
+  }
+
   /// Most recent screenings across ALL patients (offline dashboard / history
   /// feed). Joins the patient row so the UI shows the truthful patient name
   /// stored on this device — never a fabricated default.
@@ -370,8 +489,8 @@ class LocalStore {
       '''
       SELECT s.local_screening_id AS local_screening_id,
              s.local_patient_id AS local_patient_id,
-             p.name AS name,
-             p.village AS village,
+             COALESCE(p.name, s.local_patient_id) AS name,
+             COALESCE(p.village, '') AS village,
              s.dr_grade_num AS dr_grade_num,
              s.dr_label AS dr_label,
              s.error_code AS error_code,
@@ -381,7 +500,7 @@ class LocalStore {
              s.created_at AS created_at,
              s.eye_side AS eye_side
       FROM screenings s
-      JOIN patients p ON p.local_patient_id = s.local_patient_id
+      LEFT JOIN patients p ON p.local_patient_id = s.local_patient_id
       ORDER BY s.created_at DESC
       LIMIT ?
     ''',

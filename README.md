@@ -9,11 +9,12 @@ Drishti is a self-contained, offline-first **Clinical Production Package** for a
 
 ```
 Drishti/
-├── binaries/                       # Standalone binaries (distributed via GitHub Releases v1.9.0)
+├── binaries/                       # Standalone binaries (distributed via GitHub Releases v1.9.1)
+│   ├── drishti_macos_v1.9.1.zip    # macOS clinic application bundle (v1.9.1 latest)
 │   ├── Drishti_mobile_v1.9.0.apk   # Android release APK (offline INT8 edge engine)
 │   ├── Drishti_windows_v1.9.0.zip  # Windows desktop clinic bundle
 │   ├── Drishti_linux_v1.9.0.tar.gz # Linux workstation clinic bundle
-│   ├── Drishti_macos_v1.9.0.zip    # macOS clinic application bundle
+│   ├── Drishti_macos_v1.9.0.zip    # macOS clinic application bundle (v1.9.0)
 │   └── Drishti_ios_unsigned_v1.9.0.zip # iOS release bundle
 │
 ├── models/                         # Calibrated clinical & edge model weights
@@ -101,11 +102,12 @@ Drishti/
 
 ---
 
-## 📱 Cross-Platform Standalone Downloads (Release v1.9.0)
+## 📱 Cross-Platform Standalone Downloads (Release v1.9.1)
 
 Pre-built binaries are packaged and downloadable from [GitHub Releases](https://github.com/BezaleelPaul/Drishti/releases):
+- **macOS (Latest v1.9.1):** `drishti_macos_v1.9.1.zip` — Extract and double-click `run_macos.command` (or open `Drishti.app`). Includes local SQLCipher patient history, automatic specialist SMTP alerts, Admin portal, and complete Drishti rebranding.
 - **Linux:** `Drishti_linux_v1.9.0.tar.gz` — Extract and run `./run_linux.sh` or `./bundle/drishti`.
 - **Windows:** `Drishti_windows_v1.9.0.zip` — Extract and run `run_drishti.bat` or `drishti.exe`.
-- **macOS:** `Drishti_macos_v1.9.0.zip` — Extract and double-click `run_macos.command` (or drag `Drishti.app` to `/Applications` and run `xattr -cr /Applications/Drishti.app`).
+- **macOS (v1.9.0):** `Drishti_macos_v1.9.0.zip` — Extract and double-click `run_macos.command`.
 - **Android:** `Drishti_mobile_v1.9.0.apk` — Sideload onto any Android phone or tablet (dual v2/v3 signed, bundled offline INT8 model).
 - **iOS:** `Drishti_ios_unsigned_v1.9.0.zip` — Unsigned iOS release archive for sideloading / TestFlight.

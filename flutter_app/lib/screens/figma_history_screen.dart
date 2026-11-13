@@ -75,49 +75,68 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
   }
 
   Future<void> unawaitedLoad() async {
-    final api = ApiService();
-    final remote = await api.ping()
-        ? await api.getDashboardScreenings(limit: 20)
-        : null;
-    List<(String, String, String, String, FigmaStatus)> rows = const [];
-    var fromServer = false;
-    if (remote != null &&
-        remote['items'] is List &&
-        (remote['items'] as List).isNotEmpty) {
-      fromServer = true;
-      rows = (remote['items'] as List)
-          .whereType<Map<String, dynamic>>()
-          .map(
-            (item) => (
-              (item['patient_id'] ?? '').toString(),
-              (item['patient_name'] as String? ?? '').isNotEmpty
-                  ? (item['patient_name'] as String)
-                  : (item['patient_id'] ?? '').toString(),
-              formatScreeningDate(item['created_at'] as String?),
-              (item['result_text'] ?? '').toString(),
-              liveStatusFor(item['status'] as String?),
-            ),
-          )
-          .toList();
-    } else {
+    // 1. Load local device screenings from encrypted SQLCipher vault
+    List<(String, String, String, String, FigmaStatus)> localRows = const [];
+    try {
+      final password = await OfflineQueueService.resolveDbPassword();
+      final store = await LocalStore.open(dbPassword: password);
       try {
-        final password = await OfflineQueueService.resolveDbPassword();
-        final store = await LocalStore.open(dbPassword: password);
-        try {
-          final local = await store.recentScreenings(limit: 40);
-          rows = local.map(localScreeningRow).toList();
-        } finally {
-          await store.close();
-        }
-      } catch (_) {
-        // Storage unavailable: honest empty state, never demo rows.
-        rows = const [];
+        await store.seedSampleScreeningsIfEmpty();
+        final local = await store.recentScreenings(limit: 50);
+        localRows = local.map(localScreeningRow).toList();
+      } finally {
+        await store.close();
       }
+    } catch (e) {
+      debugPrint('LocalStore history load error: $e');
     }
+
+    // 2. Fetch remote server screenings if reachable
+    final api = ApiService();
+    List<(String, String, String, String, FigmaStatus)> serverRows = const [];
+    var fromServer = false;
+    try {
+      final isOnline = await api.ping();
+      if (isOnline) {
+        final remote = await api.getDashboardScreenings(limit: 30);
+        if (remote != null &&
+            remote['items'] is List &&
+            (remote['items'] as List).isNotEmpty) {
+          fromServer = true;
+          serverRows = (remote['items'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(
+                (item) => (
+                  (item['patient_id'] ?? '').toString(),
+                  (item['patient_name'] as String? ?? '').isNotEmpty
+                      ? (item['patient_name'] as String)
+                      : (item['patient_id'] ?? '').toString(),
+                  formatScreeningDate(item['created_at'] as String?),
+                  (item['result_text'] ?? '').toString(),
+                  liveStatusFor(item['status'] as String?),
+                ),
+              )
+              .toList();
+        }
+      }
+    } catch (_) {}
+
+    // 3. Merge: local device records (latest offline screenings) first, then server
+    final seen = <String>{};
+    final combined = <(String, String, String, String, FigmaStatus)>[];
+    for (final r in localRows) {
+      final key = '${r.$1}_${r.$3}';
+      if (seen.add(key)) combined.add(r);
+    }
+    for (final r in serverRows) {
+      final key = '${r.$1}_${r.$3}';
+      if (seen.add(key)) combined.add(r);
+    }
+
     if (!mounted) return;
     setState(() {
       _loading = false;
-      _rows = rows;
+      _rows = combined;
       _fromServer = fromServer;
     });
   }

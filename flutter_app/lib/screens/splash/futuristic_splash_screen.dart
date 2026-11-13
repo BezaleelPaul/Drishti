@@ -361,29 +361,16 @@ class _FuturisticSplashScreenState extends State<FuturisticSplashScreen>
   }
 
   Widget _wordmark(double wordIn) {
-    // The DRISHTI wordmark fades up over the brand mark; the tagline
-    // resolves into the three screening outcomes the product actually
-    // returns (GOOD / BORDERLINE / REJECT).
-    //
-    // Width-constrained (not height-constrained): the master logo is 5.6:1,
-    // so sizing by height inside a stretched column made it overflow
-    // sideways and read as off-centre. Constraining the WIDTH keeps the
-    // artwork centred and complete at any screen size.
-    final maxWidth = MediaQuery.sizeOf(context).width - 96;
     return Opacity(
       opacity: wordIn,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxWidth.clamp(120, 240)),
-              child: Image.asset(
-                'assets/branding/drishti_logo_horizontal_no_tagline.png',
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.high,
-              ),
-            ),
+          Image.asset(
+            'assets/branding/drishti_logo_horizontal_no_tagline.png',
+            height: 28,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
           ),
           const SizedBox(height: 10),
           Opacity(

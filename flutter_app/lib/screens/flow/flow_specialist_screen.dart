@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../l10n/lang_scope.dart';
 import '../../services/api_service.dart';
+import '../../services/db/screening_persistence_service.dart';
+import '../../services/smtp/smtp_service.dart';
 import '../../widgets/scanner/scanner.dart';
 import '../../widgets/workflow_bar.dart';
 import 'flow_referral_screen.dart';
@@ -73,6 +75,8 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
       } catch (_) {
         // Local verdict stands; sync covers the rest.
       }
+      unawaited(ScreeningPersistenceService().saveScreening(widget.state));
+      unawaited(SmtpService().handleScreeningCompleted(widget.state));
       if (!mounted) return;
       unawaited(
         Navigator.push(

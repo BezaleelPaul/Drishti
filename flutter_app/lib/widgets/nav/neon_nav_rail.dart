@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../l10n/lang_scope.dart';
 import '../../services/api_service.dart';
 import '../../screens/about_screen.dart';
+import '../../screens/admin/admin_portal_screen.dart';
 import '../../screens/doctor_review_screen.dart';
 import '../../screens/figma_dashboard_screen.dart';
 import '../../screens/figma_help_screen.dart';
@@ -445,6 +446,13 @@ List<NavEntry> buildNavEntries(BuildContext context) {
       section: 'Triage & Operations',
       page: const QueueScreen(),
       accent: const Color(0xFFF59E0B),
+    ),
+    NavEntry(
+      icon: Icons.admin_panel_settings_outlined,
+      label: 'Admin Portal (SMTP)',
+      section: 'Triage & Operations',
+      page: const AdminPortalScreen(),
+      accent: ScannerHUDTheme.neonCyan,
     ),
     // --- Support ---
     NavEntry(

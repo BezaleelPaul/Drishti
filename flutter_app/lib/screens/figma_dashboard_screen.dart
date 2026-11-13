@@ -93,6 +93,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
       final password = await OfflineQueueService.resolveDbPassword();
       final store = await LocalStore.open(dbPassword: password);
       try {
+        await store.seedSampleScreeningsIfEmpty();
         return await store.recentScreenings(limit: limit);
       } finally {
         await store.close();
