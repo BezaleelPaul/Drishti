@@ -1,0 +1,39 @@
+{
+  "model_backend": "onnx_drdetect",
+  "hardware": {
+    "system": "Windows",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 142 Stepping 9, GenuineIntel",
+    "python": "3.12.10"
+  },
+  "note": "Wall-clock on the machine that ran the script; not transferable to field hardware. Re-run on target devices for capacity planning.",
+  "sizes": {
+    "512": {
+      "quality_gate": {
+        "median_ms": 177.7,
+        "min_ms": 172.0,
+        "max_ms": 183.5
+      },
+      "segmentation": {
+        "median_ms": 80.0,
+        "min_ms": 69.1,
+        "max_ms": 90.9
+      },
+      "classifier": {
+        "median_ms": 560.8,
+        "min_ms": 543.5,
+        "max_ms": 578.1
+      },
+      "gradcam": {
+        "median_ms": 100.2,
+        "min_ms": 95.1,
+        "max_ms": 105.3
+      },
+      "full_router": {
+        "median_ms": 1014.2,
+        "min_ms": 945.7,
+        "max_ms": 1082.7
+      }
+    }
+  }
+}

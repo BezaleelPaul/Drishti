@@ -1,0 +1,7 @@
+# SIH 2026: AI-Assisted Diabetic Retinopathy Screening
+# Full pinned environment (proven working combination, venv, Python 3.11).
+# This file is kept for CI / Makefile / setup scripts; it resolves to the
+# exact same pins as before via requirements-dev.txt.
+# For lean installs see: requirements-runtime.txt + requirements-keras.txt
+# (shipped app, no PyTorch) or + requirements-torch.txt (optional backend).
+-r requirements-dev.txt

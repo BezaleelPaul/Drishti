@@ -1,0 +1,236 @@
+{
+  "model": "models\\efficientnet_b0_regression_512px.onnx",
+  "model_backend": "onnx_drdetect",
+  "n_images": 10,
+  "thresholds": [
+    0.5,
+    1.5,
+    2.5,
+    3.5
+  ],
+  "keras_comparison": {
+    "keras_model": "final_model.keras",
+    "top1_agreement": 0.5
+  },
+  "grade_distribution": {
+    "No DR": 5,
+    "Mild NPDR": 3,
+    "Moderate NPDR": 2,
+    "Severe NPDR": 0,
+    "Proliferative DR": 0
+  },
+  "referable_count": 2,
+  "images": [
+    {
+      "image": "external_fundus_circular.jpg",
+      "score": 0.007916,
+      "grade": 0,
+      "label": "No DR",
+      "referable": false,
+      "uncertainty": 0.611351,
+      "probs": [
+        0.756904,
+        0.236167,
+        0.00691,
+        1.9e-05,
+        0.0
+      ],
+      "confidence": 0.756904,
+      "margin": 0.520737,
+      "keras_grade": 0,
+      "keras_label": "No DR",
+      "keras_top1": 0.94454,
+      "agrees_with_keras": true
+    },
+    {
+      "image": "external_fundus_normal.jpg",
+      "score": 0.013002,
+      "grade": 0,
+      "label": "No DR",
+      "referable": false,
+      "uncertainty": 0.614468,
+      "probs": [
+        0.754618,
+        0.238306,
+        0.007057,
+        2e-05,
+        0.0
+      ],
+      "confidence": 0.754618,
+      "margin": 0.516312,
+      "keras_grade": 0,
+      "keras_label": "No DR",
+      "keras_top1": 0.887643,
+      "agrees_with_keras": true
+    },
+    {
+      "image": "external_fundus_right_eye.jpg",
+      "score": 0.019381,
+      "grade": 0,
+      "label": "No DR",
+      "referable": false,
+      "uncertainty": 0.618401,
+      "probs": [
+        0.751729,
+        0.241005,
+        0.007246,
+        2e-05,
+        0.0
+      ],
+      "confidence": 0.751729,
+      "margin": 0.510724,
+      "keras_grade": 0,
+      "keras_label": "No DR",
+      "keras_top1": 0.512509,
+      "agrees_with_keras": true
+    },
+    {
+      "image": "real_clinical_drimdb_sample.jpg",
+      "score": 1.620955,
+      "grade": 2,
+      "label": "Moderate NPDR",
+      "referable": true,
+      "uncertainty": 0.886074,
+      "probs": [
+        0.027403,
+        0.389091,
+        0.518064,
+        0.064684,
+        0.000757
+      ],
+      "confidence": 0.518064,
+      "margin": 0.128973,
+      "keras_grade": 0,
+      "keras_label": "No DR",
+      "keras_top1": 0.53272,
+      "agrees_with_keras": false
+    },
+    {
+      "image": "real_clinical_fundus_patient1.jpg",
+      "score": 1.133569,
+      "grade": 1,
+      "label": "Mild NPDR",
+      "referable": false,
+      "uncertainty": 0.693204,
+      "probs": [
+        0.13448,
+        0.602438,
+        0.253076,
+        0.00997,
+        3.7e-05
+      ],
+      "confidence": 0.602438,
+      "margin": 0.349361,
+      "keras_grade": 0,
+      "keras_label": "No DR",
+      "keras_top1": 0.580993,
+      "agrees_with_keras": false
+    },
+    {
+      "image": "real_clinical_fundus_patient2.jpg",
+      "score": 0.013007,
+      "grade": 0,
+      "label": "No DR",
+      "referable": false,
+      "uncertainty": 0.614471,
+      "probs": [
+        0.754616,
+        0.238308,
+        0.007057,
+        2e-05,
+        0.0
+      ],
+      "confidence": 0.754616,
+      "margin": 0.516308,
+      "keras_grade": 0,
+      "keras_label": "No DR",
+      "keras_top1": 0.906785,
+      "agrees_with_keras": true
+    },
+    {
+      "image": "scenario_1_good.jpg",
+      "score": 1.476388,
+      "grade": 1,
+      "label": "Mild NPDR",
+      "referable": false,
+      "uncertainty": 0.976665,
+      "probs": [
+        0.04657,
+        0.469623,
+        0.444098,
+        0.039381,
+        0.000327
+      ],
+      "confidence": 0.469623,
+      "margin": 0.025525,
+      "keras_grade": 0,
+      "keras_label": "No DR",
+      "keras_top1": 0.663297,
+      "agrees_with_keras": false
+    },
+    {
+      "image": "scenario_2_bad.jpg",
+      "score": 0.010831,
+      "grade": 0,
+      "label": "No DR",
+      "referable": false,
+      "uncertainty": 0.613136,
+      "probs": [
+        0.755595,
+        0.237391,
+        0.006994,
+        1.9e-05,
+        0.0
+      ],
+      "confidence": 0.755595,
+      "margin": 0.518204,
+      "keras_grade": 0,
+      "keras_label": "No DR",
+      "keras_top1": 0.354073,
+      "agrees_with_keras": true
+    },
+    {
+      "image": "scenario_3_borderline.jpg",
+      "score": 0.975991,
+      "grade": 1,
+      "label": "Mild NPDR",
+      "referable": false,
+      "uncertainty": 0.621269,
+      "probs": [
+        0.199919,
+        0.616785,
+        0.178442,
+        0.004841,
+        1.2e-05
+      ],
+      "confidence": 0.616785,
+      "margin": 0.416866,
+      "keras_grade": 0,
+      "keras_label": "No DR",
+      "keras_top1": 0.534613,
+      "agrees_with_keras": false
+    },
+    {
+      "image": "scenario_4_uncertain.jpg",
+      "score": 1.838486,
+      "grade": 2,
+      "label": "Moderate NPDR",
+      "referable": true,
+      "uncertainty": 0.712849,
+      "probs": [
+        0.011239,
+        0.267033,
+        0.594978,
+        0.124314,
+        0.002436
+      ],
+      "confidence": 0.594978,
+      "margin": 0.327945,
+      "keras_grade": 3,
+      "keras_label": "Severe NPDR",
+      "keras_top1": 0.299271,
+      "agrees_with_keras": false
+    }
+  ],
+  "notes": "Unlabeled in-repo clinical images: QWK/sensitivity cannot be computed. Third-party claimed QWK 0.8931 / sens 99.70% remains UNVERIFIED by this repo."
+}

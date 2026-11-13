@@ -1,0 +1,14 @@
+{
+  "tflite": "scripts\\convert\\out\\dr_efficientnet_b0_fp16.tflite",
+  "n_images": 12,
+  "top1_agreement": 0.8333,
+  "max_prob_abs_diff": 0.292831,
+  "keras_warm_ms_median": 469.6,
+  "tflite_warm_ms_median": 144.3,
+  "gates": {
+    "top1_agreement_required": 0.992,
+    "dqwk_required": -0.02,
+    "referable_sens_drop_pp": 1.0
+  },
+  "passed": false
+}

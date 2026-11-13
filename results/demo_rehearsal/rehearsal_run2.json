@@ -1,0 +1,205 @@
+{
+  "run": 2,
+  "ok": true,
+  "wall_seconds": 3.25,
+  "patient_id": "PT-DEMO-R2-1792584899",
+  "screening_id": "SCR-BAA59E98FFC3",
+  "engine": "Degraded (Model 2 runtime backend is onnx_drdetect; clinical weights are unavailable)",
+  "quality": {
+    "grade": "GOOD",
+    "error_code": null
+  },
+  "analysis": {
+    "dr_grade": 1,
+    "dr_label": "Mild NPDR",
+    "error_code": "AI_LOW_CONFIDENCE",
+    "model_backend": "onnx_drdetect",
+    "is_referable": false,
+    "inference_time_ms": 1051.6,
+    "requires_human_review": true
+  },
+  "adverse_input": {
+    "error_code": "IMG_NOT_FUNDUS",
+    "dr_grade": null
+  },
+  "deid_uplink": {
+    "pseudonym": "RSV-0FC005B5",
+    "pseudo_screening_id": "SCR-FE1F3076",
+    "doctor_visible": true,
+    "operator_blocked": true,
+    "phi_smuggle_rejected": true,
+    "image_roundtrip": true
+  },
+  "steps": [
+    {
+      "step": "GET /status",
+      "ok": true,
+      "status": 200,
+      "ms": 60.0
+    },
+    {
+      "step": "POST /patients",
+      "ok": true,
+      "status": 201,
+      "ms": 69.1
+    },
+    {
+      "assert": "patient id echoed back",
+      "ok": true
+    },
+    {
+      "step": "POST /diabetes-risk",
+      "ok": true,
+      "status": 200,
+      "ms": 5.0
+    },
+    {
+      "assert": "risk level enum",
+      "ok": true
+    },
+    {
+      "step": "POST /retinal/quality (real fundus)",
+      "ok": true,
+      "status": 200,
+      "ms": 155.6
+    },
+    {
+      "assert": "GOOD image passes quality gate (got GOOD/None)",
+      "ok": true
+    },
+    {
+      "step": "POST /retinal/analyze (real fundus)",
+      "ok": true,
+      "status": 200,
+      "ms": 1348.1
+    },
+    {
+      "assert": "no hard failure on real fundus (got AI_LOW_CONFIDENCE)",
+      "ok": true
+    },
+    {
+      "assert": "real model backend used, not simulated (got onnx_drdetect)",
+      "ok": true
+    },
+    {
+      "assert": "inference time recorded",
+      "ok": true
+    },
+    {
+      "step": "GET /screenings/PT-DEMO-R2-1792584899",
+      "ok": true,
+      "status": 200,
+      "ms": 120.1
+    },
+    {
+      "assert": "screening persisted once",
+      "ok": true
+    },
+    {
+      "assert": "history exposes error_code contract",
+      "ok": true
+    },
+    {
+      "step": "GET overlay image",
+      "ok": true,
+      "status": 200,
+      "ms": 74.6
+    },
+    {
+      "assert": "overlay is an image",
+      "ok": true
+    },
+    {
+      "step": "POST /retinal/analyze (adverse: human face)",
+      "ok": true,
+      "status": 200,
+      "ms": 909.0
+    },
+    {
+      "assert": "face rejected as non-retinal",
+      "ok": true
+    },
+    {
+      "assert": "no DR grade invented for a face",
+      "ok": true
+    },
+    {
+      "assert": "no referral fabricated for a face",
+      "ok": true
+    },
+    {
+      "step": "GET /review/pending",
+      "ok": true,
+      "status": 200,
+      "ms": 74.0
+    },
+    {
+      "assert": "review queue reachable by doctor key",
+      "ok": true
+    },
+    {
+      "step": "POST /sync/v2 (de-identified referral)",
+      "ok": true,
+      "status": 200,
+      "ms": 96.5
+    },
+    {
+      "assert": "de-identified referral stored",
+      "ok": true
+    },
+    {
+      "step": "POST /sync/v2 (idempotent replay)",
+      "ok": true,
+      "status": 200,
+      "ms": 71.5
+    },
+    {
+      "assert": "replay accepted without duplicate",
+      "ok": true
+    },
+    {
+      "step": "GET /sync/v2/pending (doctor)",
+      "ok": true,
+      "status": 200,
+      "ms": 63.0
+    },
+    {
+      "assert": "doctor sees the referral in the queue",
+      "ok": true
+    },
+    {
+      "assert": "referral image available to doctor",
+      "ok": true
+    },
+    {
+      "assert": "referral queue exposes no PHI fields",
+      "ok": true
+    },
+    {
+      "assert": "operator blocked from referral queue (got 403)",
+      "ok": true
+    },
+    {
+      "assert": "PHI smuggle rejected (422)",
+      "ok": true
+    },
+    {
+      "assert": "rejection names the field, never the value",
+      "ok": true
+    },
+    {
+      "step": "GET /sync/v2/image (doctor)",
+      "ok": true,
+      "status": 200,
+      "ms": 75.5
+    },
+    {
+      "assert": "de-identified image served to doctor",
+      "ok": true
+    },
+    {
+      "assert": "image bytes round-trip",
+      "ok": true
+    }
+  ]
+}

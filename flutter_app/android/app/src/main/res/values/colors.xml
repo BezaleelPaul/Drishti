@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#0B132B</color>
+    <!-- Cold-boot window background: the app's HUD slate-950. -->
+    <color name="launch_background">#020617</color>
+</resources>

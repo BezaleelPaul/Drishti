@@ -1,0 +1,12 @@
+# Release signing keystore — NEVER commit this file or the .jks to git.
+# 1. Generate once (JDK bundled with Android Studio):
+#    keytool -genkeypair -v -keystore netra-release.jks -alias netra \
+#      -keyalg RSA -keysize 2048 -validity 10000
+# 2. Copy this template to `key.properties` and fill in real passwords.
+# 3. Keep `netra-release.jks` + `key.properties` local / in CI secrets only.
+# CI: inject these four values as secret env vars / protected files instead
+# of committing them.
+storeFile=netra-release.jks
+storePassword=REPLACE_WITH_STRONG_STORE_PASSWORD
+keyAlias=netra
+keyPassword=REPLACE_WITH_STRONG_KEY_PASSWORD

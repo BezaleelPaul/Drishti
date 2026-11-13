@@ -1,0 +1,89 @@
+{
+  "n": 2810,
+  "shipped_argmax": {
+    "threshold": "argmax(=shipped)",
+    "sens": 0.2127,
+    "spec": 0.9695,
+    "ppv": 0.629,
+    "npv": 0.835,
+    "bal_acc": 0.5911,
+    "binary_acc": 0.8214,
+    "tp": 117,
+    "fp": 69,
+    "tn": 2191,
+    "fn": 433
+  },
+  "youden": {
+    "threshold": 0.1,
+    "sens": 0.5691,
+    "spec": 0.7912,
+    "ppv": 0.3987,
+    "npv": 0.883,
+    "bal_acc": 0.6801,
+    "binary_acc": 0.7477,
+    "tp": 313,
+    "fp": 472,
+    "tn": 1788,
+    "fn": 237,
+    "note": "youden_J_optimum"
+  },
+  "sensitivity_targets": [
+    {
+      "target_sens": 0.7,
+      "threshold": 0.05,
+      "sens": 0.7182,
+      "spec": 0.6279,
+      "ppv": 0.3196,
+      "bal_acc": 0.673
+    },
+    {
+      "target_sens": 0.8,
+      "threshold": 0.03,
+      "sens": 0.8382,
+      "spec": 0.4562,
+      "ppv": 0.2728,
+      "bal_acc": 0.6472
+    },
+    {
+      "target_sens": 0.9,
+      "threshold": 0.0,
+      "sens": 1.0,
+      "spec": 0.0,
+      "ppv": 0.1957,
+      "bal_acc": 0.5
+    },
+    {
+      "target_sens": 0.95,
+      "threshold": 0.0,
+      "sens": 1.0,
+      "spec": 0.0,
+      "ppv": 0.1957,
+      "bal_acc": 0.5
+    }
+  ],
+  "holdout": {
+    "split": "stratified 50/50, seed 42+label",
+    "calibration_n": 1403,
+    "test_n": 1407,
+    "t_star_calibrated_on_calib": 0.09,
+    "test_at_t_star": {
+      "threshold": 0.09,
+      "sens": 0.6232,
+      "spec": 0.7754,
+      "ppv": 0.4038,
+      "npv": 0.894,
+      "bal_acc": 0.6993,
+      "binary_acc": 0.7456,
+      "n": 1407
+    },
+    "test_shipped_argmax": {
+      "threshold": "argmax",
+      "sens": 0.25,
+      "spec": 0.9708,
+      "ppv": 0.6765,
+      "npv": 0.8414,
+      "bal_acc": 0.6104,
+      "binary_acc": 0.8294
+    }
+  }
+}

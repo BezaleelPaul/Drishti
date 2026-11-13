@@ -1,0 +1,105 @@
+{
+  "onnx": "models\\efficientnet_b0_regression_512px.onnx",
+  "tflite": "scripts\\convert\\out\\drdetect_tflite\\efficientnet_b0_regression_512px_float32.tflite",
+  "input_layout": "NHWC",
+  "n_images": 10,
+  "top1_grade_agreement": 1.0,
+  "max_score_abs_diff": 3.2e-05,
+  "gates": {
+    "top1_agreement_min": 0.992,
+    "max_score_diff_max": 0.05
+  },
+  "passed": true,
+  "images": [
+    {
+      "image": "external_fundus_circular.jpg",
+      "onnx_score": 0.007916,
+      "tflite_score": 0.007916,
+      "abs_diff": 0.0,
+      "onnx_grade": 0,
+      "tflite_grade": 0,
+      "grade_agrees": true
+    },
+    {
+      "image": "external_fundus_normal.jpg",
+      "onnx_score": 0.013002,
+      "tflite_score": 0.013003,
+      "abs_diff": 0.0,
+      "onnx_grade": 0,
+      "tflite_grade": 0,
+      "grade_agrees": true
+    },
+    {
+      "image": "external_fundus_right_eye.jpg",
+      "onnx_score": 0.019381,
+      "tflite_score": 0.019381,
+      "abs_diff": 0.0,
+      "onnx_grade": 0,
+      "tflite_grade": 0,
+      "grade_agrees": true
+    },
+    {
+      "image": "real_clinical_drimdb_sample.jpg",
+      "onnx_score": 1.620955,
+      "tflite_score": 1.620955,
+      "abs_diff": 0.0,
+      "onnx_grade": 2,
+      "tflite_grade": 2,
+      "grade_agrees": true
+    },
+    {
+      "image": "real_clinical_fundus_patient1.jpg",
+      "onnx_score": 1.133569,
+      "tflite_score": 1.133536,
+      "abs_diff": 3.2e-05,
+      "onnx_grade": 1,
+      "tflite_grade": 1,
+      "grade_agrees": true
+    },
+    {
+      "image": "real_clinical_fundus_patient2.jpg",
+      "onnx_score": 0.013007,
+      "tflite_score": 0.013007,
+      "abs_diff": 0.0,
+      "onnx_grade": 0,
+      "tflite_grade": 0,
+      "grade_agrees": true
+    },
+    {
+      "image": "scenario_1_good.jpg",
+      "onnx_score": 1.476388,
+      "tflite_score": 1.476391,
+      "abs_diff": 2e-06,
+      "onnx_grade": 1,
+      "tflite_grade": 1,
+      "grade_agrees": true
+    },
+    {
+      "image": "scenario_2_bad.jpg",
+      "onnx_score": 0.010831,
+      "tflite_score": 0.010832,
+      "abs_diff": 1e-06,
+      "onnx_grade": 0,
+      "tflite_grade": 0,
+      "grade_agrees": true
+    },
+    {
+      "image": "scenario_3_borderline.jpg",
+      "onnx_score": 0.975991,
+      "tflite_score": 0.975984,
+      "abs_diff": 7e-06,
+      "onnx_grade": 1,
+      "tflite_grade": 1,
+      "grade_agrees": true
+    },
+    {
+      "image": "scenario_4_uncertain.jpg",
+      "onnx_score": 1.838486,
+      "tflite_score": 1.838486,
+      "abs_diff": 0.0,
+      "onnx_grade": 2,
+      "tflite_grade": 2,
+      "grade_agrees": true
+    }
+  ]
+}

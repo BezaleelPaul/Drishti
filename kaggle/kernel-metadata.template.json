@@ -1,0 +1,13 @@
+{
+  "id": "YOUR_KAGGLE_USERNAME/drishti-high-recall-retrain",
+  "title": "Drishti High Recall Retrain",
+  "code_file": "AUTONOMOUS_HIGH_RECALL_RETRAIN.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "competition_sources": [
+    "aptos2019-blindness-detection"
+  ]
+}

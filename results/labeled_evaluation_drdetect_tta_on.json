@@ -1,0 +1,308 @@
+{
+  "dataset": {
+    "repo": "youssefedweqd/Diabetic_Retinopathy_Detection",
+    "split": "data/validation-00000-of-00001.parquet",
+    "n_images": 2810,
+    "label_distribution": {
+      "0": 2065,
+      "1": 195,
+      "2": 423,
+      "3": 70,
+      "4": 57
+    },
+    "mode": "model",
+    "model_backend": "onnx_drdetect",
+    "wall_seconds": 3142.8
+  },
+  "domain_gate": {
+    "FUNDUS": 2552,
+    "NOT_FUNDUS": 195,
+    "UNDETERMINED": 63,
+    "coverage": 0.9306,
+    "false_reject_rate": 0.0694,
+    "reject_reasons": {
+      "Color profile does not match retinal fundus": 39,
+      "Saturated retinal-orange band absent": 156
+    }
+  },
+  "model_all_images": {
+    "n": 2810,
+    "accuracy": 0.6801,
+    "within_one_accuracy": 0.8836,
+    "balanced_accuracy": 0.3839,
+    "macro_f1": 0.3953,
+    "weighted_f1": 0.6814,
+    "quadratic_weighted_kappa": 0.5338,
+    "referable_dr": {
+      "tp": 206,
+      "tn": 2148,
+      "fp": 112,
+      "fn": 344,
+      "sensitivity": 0.3745,
+      "specificity": 0.9504,
+      "ppv": 0.6478,
+      "npv": 0.862,
+      "accuracy": 0.8377,
+      "n_positive": 550,
+      "n_negative": 2260
+    },
+    "per_class": {
+      "grade_0": {
+        "support": 2065,
+        "precision": 0.8334,
+        "recall": 0.8504,
+        "f1": 0.8418
+      },
+      "grade_1": {
+        "support": 195,
+        "precision": 0.0753,
+        "recall": 0.1487,
+        "f1": 0.1
+      },
+      "grade_2": {
+        "support": 423,
+        "precision": 0.3961,
+        "recall": 0.1939,
+        "f1": 0.2603
+      },
+      "grade_3": {
+        "support": 70,
+        "precision": 0.2295,
+        "recall": 0.2,
+        "f1": 0.2137
+      },
+      "grade_4": {
+        "support": 57,
+        "precision": 0.6,
+        "recall": 0.5263,
+        "f1": 0.5607
+      }
+    },
+    "confusion_matrix": [
+      [
+        1756,
+        209,
+        73,
+        15,
+        12
+      ],
+      [
+        154,
+        29,
+        11,
+        0,
+        1
+      ],
+      [
+        183,
+        132,
+        82,
+        22,
+        4
+      ],
+      [
+        12,
+        10,
+        31,
+        14,
+        3
+      ],
+      [
+        2,
+        5,
+        10,
+        10,
+        30
+      ]
+    ],
+    "ece": 0.1193
+  },
+  "end_to_end_gated": {
+    "n": 2615,
+    "accuracy": 0.6807,
+    "within_one_accuracy": 0.8857,
+    "balanced_accuracy": 0.3754,
+    "macro_f1": 0.3933,
+    "weighted_f1": 0.6814,
+    "quadratic_weighted_kappa": 0.5289,
+    "referable_dr": {
+      "tp": 185,
+      "tn": 2010,
+      "fp": 98,
+      "fn": 322,
+      "sensitivity": 0.3649,
+      "specificity": 0.9535,
+      "ppv": 0.6537,
+      "npv": 0.8619,
+      "accuracy": 0.8394,
+      "n_positive": 507,
+      "n_negative": 2108
+    },
+    "per_class": {
+      "grade_0": {
+        "support": 1922,
+        "precision": 0.8323,
+        "recall": 0.8522,
+        "f1": 0.8422
+      },
+      "grade_1": {
+        "support": 186,
+        "precision": 0.0797,
+        "recall": 0.1559,
+        "f1": 0.1055
+      },
+      "grade_2": {
+        "support": 390,
+        "precision": 0.3958,
+        "recall": 0.1949,
+        "f1": 0.2612
+      },
+      "grade_3": {
+        "support": 67,
+        "precision": 0.25,
+        "recall": 0.194,
+        "f1": 0.2185
+      },
+      "grade_4": {
+        "support": 50,
+        "precision": 0.6154,
+        "recall": 0.48,
+        "f1": 0.5393
+      }
+    },
+    "confusion_matrix": [
+      [
+        1638,
+        198,
+        66,
+        11,
+        9
+      ],
+      [
+        145,
+        29,
+        11,
+        0,
+        1
+      ],
+      [
+        171,
+        122,
+        76,
+        19,
+        2
+      ],
+      [
+        12,
+        10,
+        29,
+        13,
+        3
+      ],
+      [
+        2,
+        5,
+        10,
+        9,
+        24
+      ]
+    ],
+    "ece": 0.1182,
+    "coverage": 0.9306
+  },
+  "uncertainty_gate_released": {
+    "n": 1785,
+    "accuracy": 0.8538,
+    "within_one_accuracy": 0.9244,
+    "balanced_accuracy": 0.376,
+    "macro_f1": 0.5636,
+    "weighted_f1": 0.8508,
+    "quadratic_weighted_kappa": 0.4043,
+    "referable_dr": {
+      "tp": 18,
+      "tn": 1633,
+      "fp": 4,
+      "fn": 130,
+      "sensitivity": 0.1216,
+      "specificity": 0.9976,
+      "ppv": 0.8182,
+      "npv": 0.9263,
+      "accuracy": 0.9249,
+      "n_positive": 148,
+      "n_negative": 1637
+    },
+    "per_class": {
+      "grade_0": {
+        "support": 1513,
+        "precision": 0.8564,
+        "recall": 0.9974,
+        "f1": 0.9215
+      },
+      "grade_1": {
+        "support": 124,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "grade_2": {
+        "support": 126,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "grade_3": {
+        "support": 5,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "grade_4": {
+        "support": 17,
+        "precision": 0.6818,
+        "recall": 0.8824,
+        "f1": 0.7692
+      }
+    },
+    "confusion_matrix": [
+      [
+        1509,
+        1,
+        0,
+        0,
+        3
+      ],
+      [
+        123,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        125,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        3,
+        0,
+        0,
+        0,
+        2
+      ],
+      [
+        2,
+        0,
+        0,
+        0,
+        15
+      ]
+    ],
+    "ece": 0.1102,
+    "released_fraction": 0.6352,
+    "abstained_fraction": 0.3648
+  },
+  "note": "Research benchmark on a public dataset; not a clinical claim. Referable = grade >= 2 (moderate NPDR and above). Uncertainty-gate 'released' = confident and unambiguous at 0.60/0.15 thresholds."
+}

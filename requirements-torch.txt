@@ -1,0 +1,11 @@
+# OPTIONAL alternate backends: native PyTorch classifier + Grad-CAM++.
+# NOT installed by default. The shipped app runs on requirements-keras.txt and
+# only touches torch if a .pt/.pth checkpoint is configured.
+# CPU-only wheels: edge deployment is CPU-only (i3/4GB), so torch resolves
+# from the PyTorch CPU index (~200MB instead of ~2GB CUDA bundle).
+# macOS installs fall back to PyPI automatically (same pinned versions).
+# Install: pip install -r requirements-runtime.txt -r requirements-torch.txt
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.14.0
+torchvision==0.29.0

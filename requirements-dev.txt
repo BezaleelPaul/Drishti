@@ -1,0 +1,10 @@
+# Full development environment: runtime + BOTH DL backends + test/docs tooling.
+# This reproduces the proven venv exactly. CI installs this file.
+-r requirements-runtime.txt
+-r requirements-keras.txt
+-r requirements-torch.txt
+
+# Testing & Presentation Tooling
+pytest==9.1.1
+python-pptx==1.0.2
+lxml==6.1.3

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Configuration — MitM hardening.
+
+  - Cleartext (http://) traffic is denied globally.
+  - Only HTTPS is permitted. Debug overlays for emulator loopback
+    live in res/xml/network_security_config_debug.xml (debug source-set
+    only) and are NEVER merged into release builds.
+  - Certificate pinning: add your production leaf/intermediate SHA-256
+    pins before Play release. Build fails closed (no fallback) once pins
+    are present — replace the placeholder pin below.
+
+  See: https://developer.android.com/training/articles/security-config
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Production API: HTTPS only + pinning (replace placeholder). -->
+    <!--
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.drishti-ai.in</domain>
+        <pin-set expiration="2027-12-31">
+            <pin digest="SHA-256">REPLACE_WITH_PROD_SPKI_PIN==</pin>
+            <pin digest="SHA-256">REPLACE_WITH_BACKUP_SPKI_PIN==</pin>
+        </pin-set>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+    -->
+</network-security-config>

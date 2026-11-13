@@ -1,0 +1,29 @@
+{
+  "model_name": "Drishti_EfficientNetB0_v7_384px_QuadLoss_TTA",
+  "timestamp": "2026-11-13 11:16:44",
+  "input_resolution": [
+    384,
+    384,
+    3
+  ],
+  "dataset": "APTOS-2019 Blindness Detection",
+  "preprocessing": "Ben Graham Illumination Subtraction + Circular Mask",
+  "validation_samples": 731,
+  "referable_threshold_t_star": 0.6450387596899225,
+  "metrics": {
+    "referable_sensitivity_recall": 0.9628378378378378,
+    "referable_specificity": 0.9103448275862069,
+    "negative_predictive_value_npv": 0.972972972972973,
+    "positive_predictive_value_ppv": 0.8796296296296297,
+    "quadratic_weighted_kappa": 0.8738685341328707,
+    "top1_accuracy": 0.8002735978112175,
+    "false_negatives": 11,
+    "false_positives": 39
+  },
+  "hospital_safety_pass": true,
+  "shipped_artifacts": [
+    "final_model_focal_tuned.keras",
+    "dr_efficientnet_b0_tuned_fp32.tflite",
+    "dr_efficientnet_b0_tuned_int8.tflite"
+  ]
+}

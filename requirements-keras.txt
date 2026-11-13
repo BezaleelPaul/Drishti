@@ -1,0 +1,5 @@
+# Model 2 DR classifier backend (SHIPPED DEFAULT): loads final_model.keras.
+# Verified: TF 2.21 + Keras 3 + NumPy 2.x load the model correctly.
+# Install: pip install -r requirements-runtime.txt -r requirements-keras.txt
+tensorflow==2.21.0
+keras==3.15.1

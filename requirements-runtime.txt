@@ -1,0 +1,23 @@
+# Drishti-AI lean runtime: everything the shipped app needs EXCEPT a DL backend.
+# Pinned to the proven working combination (venv, Python 3.11, macOS arm64).
+# Pair with requirements-keras.txt (shipped default) or requirements-torch.txt.
+numpy==2.4.6
+pandas==3.0.5
+scikit-learn==1.9.0
+scipy==1.17.1
+Pillow==12.3.0
+opencv-python-headless==5.0.0.93
+joblib==1.6.0
+
+# Clinical Reporting
+reportlab==5.0.1
+
+# FastAPI Backend Bridge for Flutter & Multi-Device Deployment
+fastapi==0.141.1
+starlette==0.48.0
+anyio==4.10.0
+uvicorn==0.52.4
+python-multipart==0.0.32
+pydantic==2.13.5
+httpx==0.28.1
+requests==2.34.2

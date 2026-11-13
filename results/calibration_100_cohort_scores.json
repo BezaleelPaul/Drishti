@@ -1,0 +1,702 @@
+[
+  {
+    "path": "10022_left.jpeg",
+    "true_label": 0,
+    "raw_score": 0.0015461770271940622,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10029_left.jpeg",
+    "true_label": 0,
+    "raw_score": 0.16989230131730437,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10042_left.jpeg",
+    "true_label": 0,
+    "raw_score": 1.6119281947612762,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "10069_right.jpeg",
+    "true_label": 0,
+    "raw_score": 0.005258863267954439,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10078_left.jpeg",
+    "true_label": 0,
+    "raw_score": 0.00529474625363946,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10099_right.jpeg",
+    "true_label": 0,
+    "raw_score": 0.007646617596037686,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10112_right.jpeg",
+    "true_label": 0,
+    "raw_score": 0.37466573528945446,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "1012_left.jpeg",
+    "true_label": 0,
+    "raw_score": 0.004612923599779606,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10134_left.jpeg",
+    "true_label": 0,
+    "raw_score": 0.00830897653941065,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10141_right.jpeg",
+    "true_label": 0,
+    "raw_score": 0.007993403356522322,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10155_left.jpeg",
+    "true_label": 0,
+    "raw_score": 0.003990737546700984,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10155_right.jpeg",
+    "true_label": 0,
+    "raw_score": 0.0038714914699085057,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10161_right.jpeg",
+    "true_label": 0,
+    "raw_score": 0.010900416411459446,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10163_left.jpeg",
+    "true_label": 0,
+    "raw_score": 0.007628123392350972,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10175_left.jpeg",
+    "true_label": 0,
+    "raw_score": 2.428487181663513,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "10183_right.jpeg",
+    "true_label": 0,
+    "raw_score": 0.006891580764204264,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10187_left.jpeg",
+    "true_label": 0,
+    "raw_score": 0.008697131415829062,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10260_right.jpeg",
+    "true_label": 0,
+    "raw_score": 0.008809356251731515,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10265_left.jpeg",
+    "true_label": 0,
+    "raw_score": 0.008446305175311863,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10265_right.jpeg",
+    "true_label": 0,
+    "raw_score": 0.03537706867791712,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10221_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.006040450476575643,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10233_left.jpeg",
+    "true_label": 1,
+    "raw_score": 0.20691410033032298,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10234_left.jpeg",
+    "true_label": 1,
+    "raw_score": 0.33488713949918747,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "1027_left.jpeg",
+    "true_label": 1,
+    "raw_score": 0.0054458106169477105,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "1077_left.jpeg",
+    "true_label": 1,
+    "raw_score": 0.14143437193706632,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10787_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.00383329059695825,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "1098_left.jpeg",
+    "true_label": 1,
+    "raw_score": 1.884419858455658,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "10996_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.012252835789695382,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "11183_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.006449195323511958,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "11443_left.jpeg",
+    "true_label": 1,
+    "raw_score": 0.004852955578826368,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "11505_left.jpeg",
+    "true_label": 1,
+    "raw_score": 2.0253651440143585,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "11758_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.00852552941069007,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "11815_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.011582471430301666,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "11929_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.007904934929683805,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "12614_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.007445430150255561,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "1283_left.jpeg",
+    "true_label": 1,
+    "raw_score": 0.008554676314815879,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "13031_left.jpeg",
+    "true_label": 1,
+    "raw_score": 0.030204610058717662,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "13209_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.0051098555559292436,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "13376_right.jpeg",
+    "true_label": 1,
+    "raw_score": 0.007941312622278929,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "13770_left.jpeg",
+    "true_label": 1,
+    "raw_score": 0.00896854093298316,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10150_left.jpeg",
+    "true_label": 2,
+    "raw_score": 1.304533988237381,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "10306_right.jpeg",
+    "true_label": 2,
+    "raw_score": -0.0038285242626443505,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "1030_left.jpeg",
+    "true_label": 2,
+    "raw_score": 0.03200760227628052,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10325_left.jpeg",
+    "true_label": 2,
+    "raw_score": 1.234744518995285,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "10415_left.jpeg",
+    "true_label": 2,
+    "raw_score": 0.006626010523177683,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10658_right.jpeg",
+    "true_label": 2,
+    "raw_score": 0.009644267265684903,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "10688_left.jpeg",
+    "true_label": 2,
+    "raw_score": 0.7419325523078442,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "10694_left.jpeg",
+    "true_label": 2,
+    "raw_score": 0.6213210970163345,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "10831_left.jpeg",
+    "true_label": 2,
+    "raw_score": 1.1661987006664276,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "10924_right.jpeg",
+    "true_label": 2,
+    "raw_score": 2.1282893419265747,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "11054_left.jpeg",
+    "true_label": 2,
+    "raw_score": 1.7525092661380768,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "11098_right.jpeg",
+    "true_label": 2,
+    "raw_score": 1.9463530778884888,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "11125_left.jpeg",
+    "true_label": 2,
+    "raw_score": 2.8325891494750977,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "11270_right.jpeg",
+    "true_label": 2,
+    "raw_score": 1.416329562664032,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "11387_left.jpeg",
+    "true_label": 2,
+    "raw_score": 0.10867360793054104,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "11417_left.jpeg",
+    "true_label": 2,
+    "raw_score": 0.03220156626775861,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "11455_right.jpeg",
+    "true_label": 2,
+    "raw_score": 0.24191833194345236,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "11648_right.jpeg",
+    "true_label": 2,
+    "raw_score": 1.727180004119873,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "11651_right.jpeg",
+    "true_label": 2,
+    "raw_score": 0.4021771289408207,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "12257_right.jpeg",
+    "true_label": 2,
+    "raw_score": 0.8194683343172073,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "10606_left.jpeg",
+    "true_label": 3,
+    "raw_score": 2.177929699420929,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "11292_right.jpeg",
+    "true_label": 3,
+    "raw_score": 2.921788811683655,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "11529_right.jpeg",
+    "true_label": 3,
+    "raw_score": 2.354921042919159,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "1177_right.jpeg",
+    "true_label": 3,
+    "raw_score": 4.685210943222046,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "11871_left.jpeg",
+    "true_label": 3,
+    "raw_score": 1.74211984872818,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "13684_right.jpeg",
+    "true_label": 3,
+    "raw_score": 1.0627500116825104,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "14129_left.jpeg",
+    "true_label": 3,
+    "raw_score": 2.6290892362594604,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "1420_left.jpeg",
+    "true_label": 3,
+    "raw_score": 3.486862897872925,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "14224_left.jpeg",
+    "true_label": 3,
+    "raw_score": 1.0852396190166473,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "14297_left.jpeg",
+    "true_label": 3,
+    "raw_score": 2.982727348804474,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "14482_right.jpeg",
+    "true_label": 3,
+    "raw_score": 0.015182663919404149,
+    "default_pred_grade": 0,
+    "default_is_referable": false
+  },
+  {
+    "path": "15631_right.jpeg",
+    "true_label": 3,
+    "raw_score": 3.0133376121520996,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "16633_left.jpeg",
+    "true_label": 3,
+    "raw_score": 1.9477594196796417,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "16727_left.jpeg",
+    "true_label": 3,
+    "raw_score": 2.961520195007324,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "17992_right.jpeg",
+    "true_label": 3,
+    "raw_score": 2.4413381218910217,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "18363_right.jpeg",
+    "true_label": 3,
+    "raw_score": 2.0079972743988037,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "18450_right.jpeg",
+    "true_label": 3,
+    "raw_score": 2.2599998116493225,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "18487_left.jpeg",
+    "true_label": 3,
+    "raw_score": 2.6070756912231445,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "18968_left.jpeg",
+    "true_label": 3,
+    "raw_score": 1.803995132446289,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "19018_right.jpeg",
+    "true_label": 3,
+    "raw_score": 1.457172453403473,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "10570_left.jpeg",
+    "true_label": 4,
+    "raw_score": 3.5994088649749756,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "10570_right.jpeg",
+    "true_label": 4,
+    "raw_score": 3.902020812034607,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "11032_left.jpeg",
+    "true_label": 4,
+    "raw_score": 4.166831851005554,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "11492_right.jpeg",
+    "true_label": 4,
+    "raw_score": 3.2685017585754395,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "12861_right.jpeg",
+    "true_label": 4,
+    "raw_score": 4.028945088386536,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "13811_left.jpeg",
+    "true_label": 4,
+    "raw_score": 3.9199745655059814,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "1430_right.jpeg",
+    "true_label": 4,
+    "raw_score": 2.510577440261841,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "1663_right.jpeg",
+    "true_label": 4,
+    "raw_score": 2.31495064496994,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "16920_left.jpeg",
+    "true_label": 4,
+    "raw_score": 3.59425550699234,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "17453_left.jpeg",
+    "true_label": 4,
+    "raw_score": 2.6480478048324585,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "18030_right.jpeg",
+    "true_label": 4,
+    "raw_score": 3.381443738937378,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "18567_right.jpeg",
+    "true_label": 4,
+    "raw_score": 3.9141055941581726,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "18798_left.jpeg",
+    "true_label": 4,
+    "raw_score": 2.276130050420761,
+    "default_pred_grade": 2,
+    "default_is_referable": true
+  },
+  {
+    "path": "19600_left.jpeg",
+    "true_label": 4,
+    "raw_score": 3.5474621653556824,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "2031_right.jpeg",
+    "true_label": 4,
+    "raw_score": 1.1112234443426132,
+    "default_pred_grade": 1,
+    "default_is_referable": false
+  },
+  {
+    "path": "22801_right.jpeg",
+    "true_label": 4,
+    "raw_score": 2.543192446231842,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  },
+  {
+    "path": "23433_left.jpeg",
+    "true_label": 4,
+    "raw_score": 3.643208920955658,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "23831_right.jpeg",
+    "true_label": 4,
+    "raw_score": 4.231818795204163,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "24773_right.jpeg",
+    "true_label": 4,
+    "raw_score": 3.79462206363678,
+    "default_pred_grade": 4,
+    "default_is_referable": true
+  },
+  {
+    "path": "2496_left.jpeg",
+    "true_label": 4,
+    "raw_score": 2.777419686317444,
+    "default_pred_grade": 3,
+    "default_is_referable": true
+  }
+]

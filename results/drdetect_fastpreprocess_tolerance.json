@@ -1,0 +1,89 @@
+{
+  "working_size": 768,
+  "n_images": 10,
+  "max_score_drift": 0.058955,
+  "grade_agreement": 1.0,
+  "recommended_dart_tolerance": 0.1179,
+  "images": [
+    {
+      "image": "external_fundus_circular.jpg",
+      "native_side": 912,
+      "score_exact": 0.007916,
+      "score_fast": 0.008443,
+      "drift": 0.000528,
+      "grade_agrees": true
+    },
+    {
+      "image": "external_fundus_normal.jpg",
+      "native_side": 630,
+      "score_exact": 0.013002,
+      "score_fast": 0.013002,
+      "drift": 0.0,
+      "grade_agrees": true
+    },
+    {
+      "image": "external_fundus_right_eye.jpg",
+      "native_side": 624,
+      "score_exact": 0.019381,
+      "score_fast": 0.019381,
+      "drift": 0.0,
+      "grade_agrees": true
+    },
+    {
+      "image": "real_clinical_drimdb_sample.jpg",
+      "native_side": 570,
+      "score_exact": 1.620955,
+      "score_fast": 1.620955,
+      "drift": 0.0,
+      "grade_agrees": true
+    },
+    {
+      "image": "real_clinical_fundus_patient1.jpg",
+      "native_side": 1658,
+      "score_exact": 1.133569,
+      "score_fast": 1.192523,
+      "drift": 0.058955,
+      "grade_agrees": true
+    },
+    {
+      "image": "real_clinical_fundus_patient2.jpg",
+      "native_side": 1658,
+      "score_exact": 0.013007,
+      "score_fast": 0.012996,
+      "drift": 1.1e-05,
+      "grade_agrees": true
+    },
+    {
+      "image": "scenario_1_good.jpg",
+      "native_side": 430,
+      "score_exact": 1.476388,
+      "score_fast": 1.476388,
+      "drift": 0.0,
+      "grade_agrees": true
+    },
+    {
+      "image": "scenario_2_bad.jpg",
+      "native_side": 426,
+      "score_exact": 0.010831,
+      "score_fast": 0.010831,
+      "drift": 0.0,
+      "grade_agrees": true
+    },
+    {
+      "image": "scenario_3_borderline.jpg",
+      "native_side": 434,
+      "score_exact": 0.975991,
+      "score_fast": 0.975991,
+      "drift": 0.0,
+      "grade_agrees": true
+    },
+    {
+      "image": "scenario_4_uncertain.jpg",
+      "native_side": 430,
+      "score_exact": 1.838486,
+      "score_fast": 1.838486,
+      "drift": 0.0,
+      "grade_agrees": true
+    }
+  ]
+}

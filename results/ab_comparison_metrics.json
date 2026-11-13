@@ -1,0 +1,11 @@
+{
+  "total_samples": 150,
+  "model2_backend": "keras",
+  "note": "Synthetic-gradient cohort; sensitivity/specificity are cohort-behavior metrics, not clinical accuracy claims.",
+  "forced_pred_rate_baseline": 100.0,
+  "forced_pred_rate_proposed": 0.0,
+  "sensitivity_referable_dr": 0.0,
+  "specificity_referable_dr": 100.0,
+  "recapture_rate": 20.666666666666668,
+  "human_review_rate": 79.33333333333333
+}
