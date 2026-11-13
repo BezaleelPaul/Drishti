@@ -99,11 +99,11 @@ Drishti/
 
 ---
 
-## 📱 Cross-Platform Standalone Downloads (Release v1.7.1)
+## 📱 Cross-Platform Standalone Downloads (Release v1.7.2)
 
 Pre-built binaries are packaged and downloadable from [GitHub Releases](https://github.com/BezaleelPaul/Drishti/releases):
-- **Android:** `drishti_mobile_v1.7.1.apk` — Sideload onto any Android phone or tablet (dual v2/v3 signed, bundled offline INT8 model).
-- **Windows:** `drishti_windows_v1.7.1.zip` — Extract and run `drishti.exe`.
-- **Linux:** `drishti_linux_v1.7.1.tar.gz` — Extract and run `./bundle/drishti`.
-- **macOS:** `drishti_macos_v1.7.1.zip` — Extract and drag `Drishti.app` to `/Applications`. Run `xattr -cr /Applications/Drishti.app` to clear browser quarantine.
-- **iOS:** `drishti_ios_unsigned_v1.7.1.zip` — Unsigned iOS release archive for sideloading / TestFlight.
+- **Android:** `Drishti_mobile_v1.7.2.apk` — Sideload onto any Android phone or tablet (dual v2/v3 signed, bundled offline INT8 model).
+- **Windows:** `Drishti_windows_v1.7.2.zip` — Extract and run `run_drishti.bat` or `drishti.exe`.
+- **Linux:** `Drishti_linux_v1.7.2.tar.gz` — Extract and run `./run_linux.sh` or `./bundle/drishti`.
+- **macOS:** `Drishti_macos_v1.7.2.zip` — Extract and double-click `run_macos.command` (or drag `Drishti.app` to `/Applications` and run `xattr -cr /Applications/Drishti.app`).
+- **iOS:** `Drishti_ios_unsigned_v1.7.2.zip` — Unsigned iOS release archive for sideloading / TestFlight.
