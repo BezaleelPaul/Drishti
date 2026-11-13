@@ -1,4 +1,4 @@
-# Netra AI Retinal Scanner Component
+# Drishti Retinal Scanner Component
 
 A real-time, hardware-accelerated animated retinal scanner built using **Flame**'s game loop and Flutter's canvas drawing APIs. No pre-rendered GIFs, MP4s, or heavy Lottie dependencies are used.
 
@@ -54,7 +54,7 @@ The scanner transitions deterministically based on clinical model events:
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:netra_ai_mobile/widgets/scanner/scanner.dart';
+import 'package:drishti/widgets/scanner/scanner.dart';
 
 class RetinalScreeningPage extends StatelessWidget {
   final Uint8List fundusBytes;

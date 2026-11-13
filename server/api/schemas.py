@@ -1,5 +1,5 @@
 """
-Pydantic Schemas for Netra-AI FastAPI REST API.
+Pydantic Schemas for Drishti FastAPI REST API.
 Complies with clinical guidelines, plain-language patient summaries,
 and ABDM tele-ophthalmology requirements.
 """

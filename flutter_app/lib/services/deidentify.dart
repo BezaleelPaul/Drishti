@@ -18,7 +18,7 @@ import 'package:image/image.dart' as img;
 class DeidentificationService {
   const DeidentificationService({required this.deviceSalt});
 
-  static const _saltKey = 'netra_deid_device_salt';
+  static const _saltKey = 'drishti_deid_device_salt';
 
   /// App factory: loads (or creates) the device salt from secure storage.
   /// Falls back to a non-persistent salt ONLY when the platform channel is

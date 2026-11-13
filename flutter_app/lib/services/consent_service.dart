@@ -12,7 +12,7 @@ class ConsentService {
   ConsentService({SharedPreferences? prefs}) : _prefs = prefs;
 
   static const consentVersion = 'v1-2026-09';
-  static const _storeKey = 'netra_consent_records';
+  static const _storeKey = 'drishti_consent_records';
 
   SharedPreferences? _prefs;
 

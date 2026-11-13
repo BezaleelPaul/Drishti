@@ -1,4 +1,4 @@
-# Drishti / Netra-AI — Privacy & Access-Control Matrix
+# Drishti — Privacy & Access-Control Matrix
 
 > Health screening data (fundus photos, demographics, ABHA/phone) is sensitive
 > personal data under India's DPDP Act (and HIPAA/GDPR equivalents where
@@ -43,7 +43,7 @@ so — the app can never display a forged clinical approval.
     TFLite classifier + confidence gate run in the app sandbox; the original
     fundus photo never has to leave the device to be graded.
   - **Offline queue is durably persisted** (`lib/services/offline_queue_service.dart`):
-    SQLCipher database (`netra_queue.db`, key generated on-device and held in
+    SQLCipher database (`drishti_queue.db`, key generated on-device and held in
     the Android Keystore via flutter_secure_storage), write-through on every
     enqueue, rehydrated at boot — field-camp captures survive process kills.
     If secure storage is unavailable the service degrades to memory-only and

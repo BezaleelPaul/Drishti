@@ -110,7 +110,7 @@ class GradCAMExplainer:
             attention_map = self._compute_synthetic_attention_map(orig_np, target_grade)
             layer_name = self.FALLBACK_LAYER_NAME
             disclaimer = self.EXPLAINABILITY_DISCLAIMER + self.FALLBACK_NOTE
-            logging.getLogger("NetraAI.GradCAM").warning(
+            logging.getLogger("Drishti.GradCAM").warning(
                 "Gradient-based explainability unavailable; using multi-scale vascular "
                 "saliency fallback. Output is NOT gradient backpropagation."
             )
@@ -140,7 +140,7 @@ class GradCAMExplainer:
             import tensorflow as tf
         except ImportError:
             import logging
-            logging.getLogger("NetraAI.GradCAM").warning(
+            logging.getLogger("Drishti.GradCAM").warning(
                 "TensorFlow is required for Keras Grad-CAM++ gradient calculation. "
                 "Falling back to multi-scale anatomical vascular saliency."
             )

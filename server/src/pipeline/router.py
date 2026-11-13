@@ -21,7 +21,7 @@ from src.pipeline.schema import (
 from src.quality.checker import ImageQualityChecker
 from src.segmentation.structure_segmenter import RetinalStructureSegmenter
 
-_logger = logging.getLogger("NetraAI.PipelineRouter")
+_logger = logging.getLogger("Drishti.PipelineRouter")
 
 
 class ScreeningPipelineRouter:

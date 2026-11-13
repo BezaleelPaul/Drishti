@@ -82,7 +82,7 @@ def _is_loopback(host: str) -> bool:
 
 
 app = FastAPI(
-    title="Netra-AI Clinical Screening API",
+    title="Drishti Clinical Screening API",
     description=(
         "Production-oriented REST API connecting Flutter applications to the "
         "Diabetic Retinopathy Screening Pipeline (Model 1 Quality Gate, "
@@ -226,7 +226,7 @@ app.include_router(results_router)
 @app.get("/")
 def root():
     return {
-        "platform": "Netra-AI Rural Health Screening Engine",
+        "platform": "Drishti Rural Health Screening Engine",
         "api_version": "2.0.0",
         "status": "up",
         "auth": "X-API-Key header required (except /, /cameras, /samples)",

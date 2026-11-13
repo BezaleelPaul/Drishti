@@ -1,5 +1,5 @@
 """
-Lightweight SQLite persistence layer for Netra-AI.
+Lightweight SQLite persistence layer for Drishti.
 Stores patients, screening records, and doctor review actions.
 Fully offline-first and portable across platforms.
 """

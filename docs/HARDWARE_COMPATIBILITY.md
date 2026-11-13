@@ -1,6 +1,6 @@
 # Hardware Portability, Edge Compatibility & Offline Guarantees
 
-### Drishti / Netra-AI Screening System
+### Drishti Screening System
 **Architecture Defense for Autonomous Clinical Screening**
 
 ---
@@ -64,7 +64,7 @@ Unlike naive pipelines that apply identical thresholds across all optical instru
 ### 1. 100% Zero-Telemetry Offline Operation
 - **No Remote Model Downloads**: Pre-trained weights (`final_model.keras`, `diabetes_ml_model.joblib`) are packaged locally within the repository.
 - **No Web Font or CDN Dependencies**: Offline styling and bundled assets in `flutter_app/assets/images`.
-- **Local SQLite Audit Trail**: Screening records, doctor review queues, and patient demographics are persisted in `netra_ai.db`.
+- **Local SQLite Audit Trail**: Screening records, doctor review queues, and patient demographics are persisted in `drishti_ai.db`.
 
 ### 2. Lightweight Memory Footprint
 - Peak RAM consumption during concurrent end-to-end inference (Quality Gate + EfficientNetB0 + Grad-CAM++ + Retinal Segmentation): **620 MB**.

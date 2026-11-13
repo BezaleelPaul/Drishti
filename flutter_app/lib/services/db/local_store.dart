@@ -16,7 +16,7 @@ class LocalStore {
   LocalStore._(this._db);
 
   static const int _schemaVersion = 1;
-  static const String _dbName = 'netra_ai.db';
+  static const String _dbName = 'drishti_ai.db';
 
   final Database _db;
   static LocalStore? _instance;

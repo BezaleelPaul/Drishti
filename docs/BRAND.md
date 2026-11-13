@@ -75,7 +75,7 @@ referral slip, the Android launcher label and the iOS display name — all
 UI languages rebranded.
 
 **Technical Constants:**
-- Dart package id `netra_ai_mobile` and Android application id `in.drishtiai.netra_ai_mobile`
+- Application id `in.drishtiai.drishti` and product name `Drishti`
 - Deployment environment variables: `DRISHTI_BASE_URL` / `DRISHTI_API_KEY` / `DRISHTI_ALLOW_HTTP_LOOPBACK`
 - LiteRT inference path: `drishti_inference_engine.dart`, `drishti_analysis_controller.dart`
 - Documentation and presentation deck: unified under **DRISHTI**.

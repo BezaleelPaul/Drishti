@@ -69,7 +69,7 @@ class MemoryQueuePersistence implements QueuePersistence {
 class SqliteQueuePersistence implements QueuePersistence {
   SqliteQueuePersistence._(this._db);
 
-  static const _dbName = 'netra_queue.db';
+  static const _dbName = 'drishti_queue.db';
   final Database _db;
 
   static Future<SqliteQueuePersistence> open(String password) async {
@@ -185,7 +185,7 @@ class OfflineQueueService {
     return entries.where((e) => e.kind == kind).toList();
   }
 
-  static const _dbPasswordKey = 'netra_db_password';
+  static const _dbPasswordKey = 'drishti_db_password';
 
   /// Resolves (or creates) the shared device DB password from secure
   /// storage. Used by BOTH SQLCipher stores (offline queue + screening

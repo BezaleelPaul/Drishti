@@ -40,17 +40,17 @@ The app's Online badge goes green when `/status` answers with the key.
 
 | Platform | File (in `release/archives/`) | How |
 |---|---|---|
-| Android | `netra_ai_mobile-release.apk` | Uninstall any old debug build first (signature changed), tap APK, allow unknown apps |
-| Windows | `netra_ai_windows_app.zip` | Extract, run `netra_ai_mobile.exe`, no install |
-| macOS | `drishti_macos_v1.7.1.zip` (also `drishti_macos_v1.7.0.zip`) | Unzip, move `Drishti.app` to `/Applications`. Run `xattr -cr /Applications/Drishti.app` (or Right-Click → Open) to clear browser quarantine |
-| Linux | `netra_ai_linux.tar.gz` | `tar -xzf netra_ai_linux.tar.gz && ./bundle/netra_ai_mobile` |
+| Android | `drishti_mobile_v1.7.1.apk` | Sideload APK, allow unknown apps |
+| Windows | `drishti_windows_v1.7.1.zip` | Extract, run `drishti.exe`, no install |
+| macOS | `drishti_macos_v1.7.1.zip` | Unzip, move `Drishti.app` to `/Applications`. Run `xattr -cr /Applications/Drishti.app` to clear browser quarantine |
+| Linux | `drishti_linux_v1.7.1.tar.gz` | `tar -xzf drishti_linux_v1.7.1.tar.gz && ./bundle/drishti` |
 | iOS | — (unsigned CI build only) | Needs Apple Developer account ($99/yr); see CI artifacts |
 
 ## 5. Keys & secrets (never commit)
 
 - `DRISHTI_API_KEYS` (Render env) and repo secret of the same name hold
   `operator,doctor,admin` keys. Release builds embed the **operator** key.
-- Android `key.properties` + `netra-release.jks` live only on the release
+- Android `key.properties` + `drishti-release.jks` live only on the release
   machine and in CI secrets — losing the keystore ends Play update continuity.
 - Rotate any key that ever appears in chat/logs: regenerate, update Render +
   repo secret, rebuild.

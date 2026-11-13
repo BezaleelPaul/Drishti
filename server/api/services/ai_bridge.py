@@ -36,7 +36,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 _RESULTS_DIR = os.path.join(_PROJECT_ROOT, "results", "api_screenings")
 os.makedirs(_RESULTS_DIR, exist_ok=True)
 
-_logger = logging.getLogger("NetraAI.AIBridge")
+_logger = logging.getLogger("Drishti.AIBridge")
 
 
 def _confidence_flags_with_ood(base_flags, probs) -> list:

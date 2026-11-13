@@ -29,10 +29,10 @@ find "$APP_PATH" -name ".DS_Store" -delete 2>/dev/null || true
 # 2. Normalize POSIX permissions
 echo "🔒 2/6: Normalizing bundle file permissions..."
 chmod -R u=rwX,go=rX "$APP_PATH"
-if [ -f "$APP_PATH/Contents/MacOS/netra_ai_mobile" ]; then
-    chmod +x "$APP_PATH/Contents/MacOS/netra_ai_mobile"
-fi
 if [ -f "$APP_PATH/Contents/MacOS/Drishti" ]; then
+    chmod +x "$APP_PATH/Contents/MacOS/Drishti"
+elif [ -f "$APP_PATH/Contents/MacOS/netra_ai_mobile" ]; then
+    mv "$APP_PATH/Contents/MacOS/netra_ai_mobile" "$APP_PATH/Contents/MacOS/Drishti"
     chmod +x "$APP_PATH/Contents/MacOS/Drishti"
 fi
 
@@ -75,10 +75,10 @@ if [ -d "$APP_PATH/Contents/Frameworks" ]; then
 fi
 
 # Sign main executable
-if [ -f "$APP_PATH/Contents/MacOS/netra_ai_mobile" ]; then
-    codesign --force --sign - --timestamp=none "$APP_PATH/Contents/MacOS/netra_ai_mobile"
-elif [ -f "$APP_PATH/Contents/MacOS/Drishti" ]; then
+if [ -f "$APP_PATH/Contents/MacOS/Drishti" ]; then
     codesign --force --sign - --timestamp=none "$APP_PATH/Contents/MacOS/Drishti"
+elif [ -f "$APP_PATH/Contents/MacOS/netra_ai_mobile" ]; then
+    codesign --force --sign - --timestamp=none "$APP_PATH/Contents/MacOS/netra_ai_mobile"
 fi
 
 # Sign outer app bundle
