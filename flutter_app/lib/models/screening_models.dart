@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'result_status.dart';
 import 'retinal_markers.dart';
 
@@ -163,7 +165,10 @@ class ScreeningAnalysisModel {
   final String? humanReviewReason;
   final String originalImageUrl;
   final String? gradcamOverlayUrl;
+  final Uint8List? gradcamOverlayBytes;
   final String? gradcamTargetLayer;
+  final String? aiExplanationSummary;
+  final String? secondOpinionPrompt;
   final String? modelBackend;
   final String actionRecommendation;
   final String plainLanguageAdvice;
@@ -221,7 +226,10 @@ class ScreeningAnalysisModel {
     this.humanReviewReason,
     required this.originalImageUrl,
     this.gradcamOverlayUrl,
+    this.gradcamOverlayBytes,
     this.gradcamTargetLayer,
+    this.aiExplanationSummary,
+    this.secondOpinionPrompt,
     this.modelBackend,
     required this.actionRecommendation,
     required this.plainLanguageAdvice,

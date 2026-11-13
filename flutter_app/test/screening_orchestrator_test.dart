@@ -200,19 +200,25 @@ void main() {
     });
 
     test(
-      'BORDERLINE image never reaches the grader and demands review',
+      'BORDERLINE image proceeds to grader with advisory warning and clinician review',
       () async {
-        final runner = _FakeRunner(outputWith());
+        final runner = _FakeRunner(
+          outputWith(
+            probabilities: const [0.85, 0.08, 0.04, 0.02, 0.01],
+            top2Margin: 0.77,
+          ),
+        );
         final orch = ScreeningOrchestrator(
           modelRunner: runner,
           qualityGate: gateReturning(QualityGrade.BORDERLINE),
         );
         final rec = await orch.processImage(png1x1);
 
-        expect(runner.predictCalls, 0);
-        expect(rec.drPrediction, isNull);
+        expect(runner.predictCalls, 1);
+        expect(rec.drPrediction, isNotNull);
         expect(rec.humanReviewRequired, isTrue);
-        expect(rec.action, contains('does NOT proceed'));
+        expect(rec.qualityGrade, QualityGrade.BORDERLINE);
+        expect(rec.qualityStatus, contains('Sub-Optimal Quality'));
       },
     );
 

@@ -183,49 +183,13 @@ class ScreeningOrchestrator {
       );
     }
 
-    // Node 3b: BORDERLINE path.
-    if (quality.grade == QualityGrade.BORDERLINE) {
-      if (attempt >= kMaxRecaptureCap) {
-        return ScreeningRecordDart(
-          imagePath: 'capture',
-          qualityGrade: QualityGrade.BORDERLINE,
-          qualityStatus: 'Unreliable (Retry limit reached)',
-          rejectionReasons: quality.reasons.map((r) => r.display).toList(),
-          recaptureAttemptCount: attempt,
-          reassessmentOutcome: ReassessmentOutcome.FAILED,
-          humanReviewRequired: true,
-          humanReviewType: HumanReviewType.OPERATOR_LEVEL,
-          humanReviewReason:
-              'Borderline image after $kMaxRecaptureCap recapture attempts: '
-              'escalate to supervising clinician.',
-          action:
-              'Recapture cap reached ($attempt/$kMaxRecaptureCap). '
-              'Image remains borderline; escalate to clinician.',
-          qualityMetrics: quality.metrics,
-          errorCode: PipelineErrorCode.imgUntgradable,
-        );
-      }
-      return ScreeningRecordDart(
-        imagePath: 'capture',
-        qualityGrade: QualityGrade.BORDERLINE,
-        qualityStatus: 'Unreliable (Failed Reassessment)',
-        rejectionReasons: quality.reasons.map((r) => r.display).toList(),
-        recaptureAttemptCount: attempt + 1,
-        reassessmentOutcome: ReassessmentOutcome.FAILED,
-        humanReviewRequired: true,
-        humanReviewType: HumanReviewType.OPERATOR_LEVEL,
-        humanReviewReason:
-            'Borderline image requires recapture (on-device conservative mode).',
-        action:
-            'Reassessment pending. Recapture attempt '
-            '#${attempt + 1}/$kMaxRecaptureCap. Image does NOT proceed to '
-            'DR Classification.',
-        qualityMetrics: quality.metrics,
-        errorCode: PipelineErrorCode.imgUntgradable,
-      );
-    }
+    // Node 3b: BORDERLINE path:
+    // Minimum viable quality requirements are met. Do not block or halt the scan;
+    // proceed to DR classification so the user and clinician receive diagnostic guidance,
+    // Grad-CAM attention heatmap, and lesion markers, flagged with an honest advisory warning.
+    final isBorderline = quality.grade == QualityGrade.BORDERLINE;
 
-    // Node 6→7: reliable image — Primary DR Grader (Model 2, TFLite fp32
+    // Node 6→7: Primary DR Grader (Model 2, TFLite fp32
     // classifier by default). On any failure the orchestrator returns
     // AI_UNAVAILABLE and mandatory review — never a substitute grade.
     final DrModelOutput modelOutput;
@@ -300,11 +264,17 @@ class ScreeningOrchestrator {
     final confidence = const ConfidenceEvaluatorDart().evaluate(drResult);
 
     final isReferable = modelOutput.referable ?? modelOutput.grade.isReferable;
-    final humanReviewRequired = confidence.requiresHumanReview || isReferable;
+    final humanReviewRequired =
+        confidence.requiresHumanReview || isReferable || isBorderline;
     final reviewType = humanReviewRequired
         ? HumanReviewType.CLINICAL_LEVEL
         : HumanReviewType.NONE;
     final flags = List<String>.from(confidence.flags);
+    if (isBorderline) {
+      flags.add(
+        'Sub-optimal capture quality: automated grade is advisory and requires clinician review',
+      );
+    }
     if (isReferable && !confidence.requiresHumanReview) {
       flags.add(
         'Referable ${drResult.predictedGrade.label} requires clinician confirmation per triage protocol',
@@ -328,14 +298,21 @@ class ScreeningOrchestrator {
       actionText =
           'Non-referable (${drResult.predictedGrade.label}). Routine annual screening.';
     }
+    if (isBorderline) {
+      actionText = 'Sub-optimal quality: $actionText (Advisory result; consider recapture if ambiguous)';
+    }
 
     return ScreeningRecordDart(
       imagePath: 'capture',
       qualityGrade: quality.grade,
-      qualityStatus: quality.isReliable ? 'Certified Reliable' : 'Marginal',
+      qualityStatus: isBorderline
+          ? 'Sub-Optimal Quality (Advisory)'
+          : (quality.isReliable ? 'Certified Reliable' : 'Marginal'),
       rejectionReasons: const [],
       recaptureAttemptCount: attempt,
-      reassessmentOutcome: ReassessmentOutcome.NOT_APPLICABLE,
+      reassessmentOutcome: isBorderline
+          ? ReassessmentOutcome.CLEARED
+          : ReassessmentOutcome.NOT_APPLICABLE,
       drPrediction: drResult,
       confidence: confidence,
       humanReviewRequired: humanReviewRequired,

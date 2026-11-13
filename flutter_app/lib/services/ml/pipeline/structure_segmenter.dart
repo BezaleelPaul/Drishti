@@ -1,29 +1,37 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
 
 import '../../../models/retinal_markers.dart';
 
-/// On-device lite port of the server's classical-CV retinal structure
-/// segmenter (`src/segmentation/structure_segmenter.py`).
+/// Request payload for isolate execution of landmark detection.
+class RetinalMarkerRequest {
+  const RetinalMarkerRequest(this.imageBytes, {this.predictedGrade});
+  final Uint8List imageBytes;
+  final int? predictedGrade;
+}
+
+/// Dispatches [computeRetinalMarkers] from an isolate-friendly request wrapper.
+RetinalMarkers computeRetinalMarkersFromRequest(RetinalMarkerRequest req) {
+  return computeRetinalMarkers(req.imageBytes, predictedGrade: req.predictedGrade);
+}
+
+/// On-device lite port of the retinal structure segmenter.
 ///
-/// Computes the SAME advisory marker payload the tele-ophthalmologist viewer
-/// consumes — optic disc, fovea estimate, and microaneurysm candidates — so
-/// landmark arrows are available offline for every capture. Honesty rules
-/// carried over unchanged:
-/// * the payload source is pinned to `classical_cv_segmentation` (never
-///   model attention / Grad-CAM);
-/// * `available=false` (could not compute) is distinct from
-///   `available=true` with zero candidates (healthy, nothing found);
-/// * failures degrade to an unavailable payload with a reason, never a
-///   fabricated landmark.
-///
-/// Documented deviations from the Python reference (advisory only, never
-/// gates a grade): no OpenCV — box-blur top-hat replaces the disk-kernel
-/// black-hat, and no CLAHE/vessel-exclusion pass; a compactness filter drops
-/// elongated vessel-fragment candidates instead. Coordinates are in the
-/// ORIGINAL image pixel space (the marker contract).
-RetinalMarkers computeRetinalMarkers(Uint8List imageBytes) {
+/// Computes the advisory marker payload:
+/// 1. Optic disc: localized via brightness × vertical vessel edge convergence,
+///    with FOV perimeter eroded by ~5% to eliminate crescent flash glare.
+/// 2. Fovea: localized via 2D Integral Image Difference-of-Boxes inside the
+///    temporal anatomical ROI (~2.4 disc diameters / 4.8 * odRadius).
+///    Returns nullable MarkerPoint? (null when outside FOV or obscured by hemorrhage).
+/// 3. Microaneurysms: green-channel dark spots filtered by Hessian anisotropy
+///    to suppress tubular blood vessels, with candidate extraction gated off
+///    when predictedGrade == 0 (No DR).
+RetinalMarkers computeRetinalMarkers(
+  Uint8List imageBytes, {
+  int? predictedGrade,
+}) {
   RetinalMarkers unavailable(String reason) =>
       RetinalMarkers(reviewId: 'on-device', available: false, reason: reason);
 
@@ -38,24 +46,27 @@ RetinalMarkers computeRetinalMarkers(Uint8List imageBytes) {
     return unavailable('Image could not be decoded for landmark analysis.');
   }
 
-  // Work at a bounded resolution; coordinates are scaled back at the end.
-  const workMax = 384.0;
-  final workScale = workMax / (raw.width > raw.height ? raw.width : raw.height);
+  // Work on a canonical bounded grid (~256x256) for non-blocking sub-10ms isolate execution.
+  const workMax = 256.0;
+  final workScale = workMax / math.max(raw.width, raw.height);
   final work = workScale < 1.0
       ? img.copyResize(
           raw,
-          width: (raw.width * workScale).round().clamp(3, 1 << 14),
-          height: (raw.height * workScale).round().clamp(3, 1 << 14),
+          width: (raw.width * workScale).round().clamp(16, 256),
+          height: (raw.height * workScale).round().clamp(16, 256),
+          interpolation: img.Interpolation.linear,
         )
       : raw;
   final w = work.width;
   final h = work.height;
   final n = w * h;
 
+  final red = Float32List(n);
   final green = Float32List(n);
-  final intensity = Float32List(n);
-  final retinal = Uint8List(n);
-  var retinalCount = 0;
+  final blue = Float32List(n);
+  final fovMask = Uint8List(n);
+  var fovCount = 0;
+
   for (var y = 0; y < h; y++) {
     for (var x = 0; x < w; x++) {
       final p = work.getPixel(x, y);
@@ -63,129 +74,210 @@ RetinalMarkers computeRetinalMarkers(Uint8List imageBytes) {
       final g = p.g.toDouble();
       final b = p.b.toDouble();
       final i = y * w + x;
+      red[i] = r;
       green[i] = g;
-      intensity[i] = r * 0.6 + g * 0.4;
-      final luma = 0.299 * r + 0.587 * g + 0.114 * b;
-      if (luma > 10.0) {
-        retinal[i] = 255;
-        retinalCount++;
+      blue[i] = b;
+
+      // Retinal FOV area mask (Red > 20 dominant / tissue signature)
+      final isRetinal = r > 20.0 && ((r > b * 1.05) || (g > b * 1.05) || (r + g + b > 50.0));
+      if (isRetinal) {
+        fovMask[i] = 1;
+        fovCount++;
       }
     }
   }
-  if (retinalCount * 100 < n) {
+
+  // Hard capture gate: at least 15% retinal FOV in frame
+  if (fovCount * 100 < 15 * n) {
     return unavailable('No retinal region detected in this frame.');
   }
 
-  final minDim = w < h ? w : h;
+  final minDim = math.min(w, h);
 
-  // ---- Optic disc: brightest centroid of (0.6R + 0.4G), masked to anatomical equatorial band.
-  final odRadiusPx = (minDim * 0.08).round().clamp(2, 1 << 12);
-  final odBlurRadius = (minDim ~/ 8).clamp(2, 45);
-  final blurredIntensity = _boxBlur(intensity, w, h, odBlurRadius);
+  // Erode circular FOV border by ~5% of FOV width to eliminate crescent flash glare
+  final fovDiameter = math.sqrt(fovCount * 4.0 / math.pi);
+  final erosionRadius = (fovDiameter * 0.05).round().clamp(2, 14);
+  final erodedFovMask = _minFilterMask(fovMask, w, h, erosionRadius);
 
-  // Exclude outer rim border glare and enforce vertical equatorial band (0.25*h to 0.75*h)
-  final yTopCut = (h * 0.25).round();
-  final yBottomCut = (h * 0.75).round();
-  final xLeftCut = (w * 0.10).round();
-  final xRightCut = (w * 0.90).round();
+  // ---- 1. Optic Disc: Brightness × Vertical Vessel Edge Density ----
+  final odRadius = (minDim * 0.08).round().clamp(3, 22);
 
-  var odX = 0;
-  var odY = 0;
-  var best = -1.0;
-  for (var y = 0; y < h; y++) {
-    if (y < yTopCut || y > yBottomCut) continue;
+  // Vertical vessel edge gradient: |G(x, y+1) - G(x, y-1)|
+  final vGrad = Float32List(n);
+  for (var y = 1; y < h - 1; y++) {
+    final row = y * w;
     for (var x = 0; x < w; x++) {
-      if (x < xLeftCut || x > xRightCut) continue;
-      final i = y * w + x;
-      if (retinal[i] == 0) continue;
-      if (blurredIntensity[i] > best) {
-        best = blurredIntensity[i];
+      if (erodedFovMask[row + x] == 0) continue;
+      vGrad[row + x] = (green[(y + 1) * w + x] - green[(y - 1) * w + x]).abs();
+    }
+  }
+
+  final rSmooth = _boxBlur(red, w, h, math.max(2, odRadius ~/ 2));
+  final vSmooth = _boxBlur(vGrad, w, h, odRadius);
+
+  var maxR = 0.0;
+  var maxV = 0.0;
+  for (var i = 0; i < n; i++) {
+    if (erodedFovMask[i] == 0) continue;
+    if (rSmooth[i] > maxR) maxR = rSmooth[i];
+    if (vSmooth[i] > maxV) maxV = vSmooth[i];
+  }
+
+  // Equatorial band (0.20*h to 0.80*h, 0.10*w to 0.90*w)
+  final yTop = (h * 0.20).round();
+  final yBottom = (h * 0.80).round();
+  final xLeft = (w * 0.10).round();
+  final xRight = (w * 0.90).round();
+
+  var odX = (w * 0.35).round();
+  var odY = (h * 0.50).round();
+  var bestOdScore = -1.0;
+
+  for (var y = yTop; y <= yBottom; y++) {
+    final row = y * w;
+    for (var x = xLeft; x <= xRight; x++) {
+      final i = row + x;
+      if (erodedFovMask[i] == 0) continue;
+      final rNorm = maxR > 0 ? rSmooth[i] / maxR : 0.0;
+      final vNorm = maxV > 0 ? vSmooth[i] / maxV : 0.0;
+      final score = rNorm * (0.6 + 0.4 * vNorm);
+      if (score > bestOdScore) {
+        bestOdScore = score;
         odX = x;
         odY = y;
       }
     }
   }
 
-  // Fallback to center if no interior retinal pixel passed
-  if (best < 0) {
-    odX = (w * 0.35).round();
-    odY = (h * 0.50).round();
-  }
-
-  // ---- Fovea: anatomical macula depression temporal to the OD.
+  // ---- 2. Safe, Nullable Fovea Localization: Integral Image Difference-of-Boxes ----
   final centreX = w / 2.0;
   final centreY = h / 2.0;
   final odSide = odX < centreX ? 1 : -1;
-  final margin = (minDim ~/ 20).clamp(2, 1 << 12);
-  double clip(double v, double lo, double hi) =>
-      v < lo ? lo : (v > hi ? hi : v);
-  final expFoveaX = clip(
-    odX + odSide * odRadiusPx * 2.8,
-    margin.toDouble(),
-    (w - margin).toDouble(),
-  );
-  final expFoveaY = clip(
-    odY + (centreY - odY) * 0.25,
-    margin.toDouble(),
-    (h - margin).toDouble(),
-  );
+  final expFoveaX = odX + odSide * (odRadius * 4.8);
+  final expFoveaY = odY + (centreY - odY) * 0.25;
 
-  // Search macular depression (minimum green channel) in search ROI
-  final searchR = odRadiusPx;
-  final roiY1 = (expFoveaY - searchR).round().clamp(0, h - 1);
-  final roiY2 = (expFoveaY + searchR).round().clamp(0, h - 1);
-  final roiX1 = (expFoveaX - searchR).round().clamp(0, w - 1);
-  final roiX2 = (expFoveaX + searchR).round().clamp(0, w - 1);
-
-  var foveaX = expFoveaX;
-  var foveaY = expFoveaY;
-  var minGreen = double.infinity;
-  for (var ry = roiY1; ry <= roiY2; ry++) {
-    for (var rx = roiX1; rx <= roiX2; rx++) {
-      final ri = ry * w + rx;
-      if (retinal[ri] == 0) continue;
-      if (green[ri] < minGreen) {
-        minGreen = green[ri];
-        foveaX = rx.toDouble();
-        foveaY = ry.toDouble();
-      }
+  // Build 2D Integral Image (Summed-Area Table) of the Green channel
+  final stride = w + 1;
+  final sat = Int32List((w + 1) * (h + 1));
+  for (var y = 0; y < h; y++) {
+    var rowSum = 0;
+    final srcRow = y * w;
+    final satRowPrev = y * stride;
+    final satRowCurr = (y + 1) * stride;
+    for (var x = 0; x < w; x++) {
+      rowSum += green[srcRow + x].round();
+      sat[satRowCurr + (x + 1)] = sat[satRowPrev + (x + 1)] + rowSum;
     }
   }
 
-  // ---- Microaneurysm candidates: top-hat dark spots on the green channel.
-  final bgRadius = ((minDim * 15.0 / 512.0) ~/ 2).clamp(2, 24);
-  final background = _boxBlur(green, w, h, bgRadius);
-  final spotMask = Uint8List(n);
-  final odDiscRadiusSq = (odRadiusPx * 1.3) * (odRadiusPx * 1.3);
-  final borderExclusion = (minDim * 0.05).round().clamp(5, 40);
+  int rectSum(int x1, int y1, int x2, int y2) {
+    return sat[(y2 + 1) * stride + (x2 + 1)] -
+        sat[y1 * stride + (x2 + 1)] -
+        sat[(y2 + 1) * stride + x1] +
+        sat[y1 * stride + x1];
+  }
 
-  for (var y = borderExclusion; y < h - borderExclusion; y++) {
-    for (var x = borderExclusion; x < w - borderExclusion; x++) {
-      final i = y * w + x;
-      if (retinal[i] == 0) continue;
-      // Exclude optic disc region
-      final dx = x - odX;
-      final dy = y - odY;
-      if (dx * dx + dy * dy < odDiscRadiusSq) continue;
+  final rIn = math.max(2, (odRadius * 0.35).round());
+  final rOut = math.max(rIn + 2, (odRadius * 1.0).round());
+  final areaIn = (2 * rIn + 1) * (2 * rIn + 1);
+  final areaTotal = (2 * rOut + 1) * (2 * rOut + 1);
+  final areaRing = areaTotal - areaIn;
 
-      if (background[i] - green[i] > 15.0) {
+  double? foveaX;
+  double? foveaY;
+
+  // If the expected anatomical fovea position lies outside the frame, cleanly return null
+  final isOffFrame = expFoveaX < 0 || expFoveaX >= w || expFoveaY < 0 || expFoveaY >= h;
+  if (!isOffFrame) {
+    final roiR = (odRadius * 1.5).round();
+    final clRoiX1 = (expFoveaX - roiR).round().clamp(0, w - 1);
+    final clRoiX2 = (expFoveaX + roiR).round().clamp(0, w - 1);
+    final clRoiY1 = (expFoveaY - roiR).round().clamp(0, h - 1);
+    final clRoiY2 = (expFoveaY + roiR).round().clamp(0, h - 1);
+
+    double? bestFoveaX;
+    double? bestFoveaY;
+    var bestContrast = -double.infinity;
+
+    for (var ry = clRoiY1; ry <= clRoiY2; ry++) {
+      if (ry - rOut < 0 || ry + rOut >= h) continue;
+      final rowOffset = ry * w;
+      for (var rx = clRoiX1; rx <= clRoiX2; rx++) {
+        if (rx - rOut < 0 || rx + rOut >= w) continue;
+        if (fovMask[rowOffset + rx] == 0) continue;
+
+        // Ensure outer surround ring stays entirely inside circular retinal FOV
+        if (fovMask[(ry - rOut) * w + (rx - rOut)] == 0 ||
+            fovMask[(ry - rOut) * w + (rx + rOut)] == 0 ||
+            fovMask[(ry + rOut) * w + (rx - rOut)] == 0 ||
+            fovMask[(ry + rOut) * w + (rx + rOut)] == 0) {
+          continue;
+        }
+
+        final sumIn = rectSum(rx - rIn, ry - rIn, rx + rIn, ry + rIn);
+        final sumTotal = rectSum(rx - rOut, ry - rOut, rx + rOut, ry + rOut);
+        final sumRing = sumTotal - sumIn;
+        final meanIn = sumIn / areaIn;
+        final meanRing = sumRing / areaRing;
+        final contrast = meanRing - meanIn;
+
+        if (contrast > bestContrast) {
+          bestContrast = contrast;
+          bestFoveaX = rx.toDouble();
+          bestFoveaY = ry.toDouble();
+        }
+      }
+    }
+
+    // Fovea is an avascular depression darker than surround (contrast >= 0.5).
+    // If obscured by Grade 4 macular hemorrhage or flat, return null cleanly.
+    if (bestFoveaX != null && bestContrast >= 0.5) {
+      foveaX = bestFoveaX;
+      foveaY = bestFoveaY;
+    }
+  }
+
+  // ---- 3. Vessel/Border-Masked Microaneurysm Detection & Grade Gating ----
+  List<(int, int, int)> candidates = const [];
+  if (predictedGrade != 0) {
+    final bgRadius = ((minDim * 15.0 / 256.0) ~/ 2).clamp(2, 16);
+    final background = _boxBlur(green, w, h, bgRadius);
+    final spotMask = Uint8List(n);
+    final odDiscRadiusSq = (odRadius * 1.4) * (odRadius * 1.4);
+
+    for (var y = 2; y < h - 2; y++) {
+      for (var x = 2; x < w - 2; x++) {
+        final i = y * w + x;
+        if (erodedFovMask[i] == 0) continue;
+        final dx = x - odX;
+        final dy = y - odY;
+        if (dx * dx + dy * dy < odDiscRadiusSq) continue;
+        final diff = background[i] - green[i];
+        if (diff <= 12.0) continue;
+
+        // Tubular vessel suppression via Hessian directional curvature:
+        // Linear blood vessels exhibit high curvature across the vessel and low along it.
+        final dxx = (green[i + 1] + green[i - 1] - 2 * green[i]).abs();
+        final dyy = (green[i + w] + green[i - w] - 2 * green[i]).abs();
+        final sumD = dxx + dyy;
+        if (sumD > 4.0) {
+          final anisotropy = (dxx - dyy).abs() / sumD;
+          if (anisotropy > 0.55) {
+            // High anisotropy -> tubular blood vessel -> suppress!
+            continue;
+          }
+        }
         spotMask[i] = 255;
       }
     }
+
+    final scaleRef = (minDim / 256.0).clamp(0.5, 2.0);
+    final minArea = (2 * scaleRef * scaleRef).round().clamp(2, 50);
+    final maxArea = (45 * scaleRef * scaleRef).round().clamp(10, 200);
+    candidates = _compactRoundSpots(spotMask, w, h, minArea, maxArea).take(35).toList();
   }
 
-  final scaleRef = (minDim / 512.0).clamp(0.5, 2.0).toDouble();
-  final minArea = (3 * scaleRef * scaleRef).round().clamp(2, 1 << 12);
-  final maxArea = (65 * scaleRef * scaleRef).round();
-  final candidates = _compactRoundSpots(
-    spotMask,
-    w,
-    h,
-    minArea,
-    maxArea,
-  ).take(35).toList();
-
-  // ---- Scale coordinates back to original pixel space.
+  // ---- 4. Scale Coordinates Back to Original Pixel Space ----
   final fxScale = raw.width / w;
   final fyScale = raw.height / h;
   return RetinalMarkers(
@@ -196,12 +288,14 @@ RetinalMarkers computeRetinalMarkers(Uint8List imageBytes) {
     opticDisc: MarkerCircle(
       x: (odX * fxScale).round(),
       y: (odY * fyScale).round(),
-      r: (odRadiusPx * ((fxScale + fyScale) / 2)).round(),
+      r: (odRadius * ((fxScale + fyScale) / 2)).round(),
     ),
-    fovea: MarkerPoint(
-      x: (foveaX * fxScale).round(),
-      y: (foveaY * fyScale).round(),
-    ),
+    fovea: foveaX != null && foveaY != null
+        ? MarkerPoint(
+            x: (foveaX * fxScale).round(),
+            y: (foveaY * fyScale).round(),
+          )
+        : null,
     maCandidates: candidates
         .map(
           (c) => MarkerCircle(
@@ -214,9 +308,41 @@ RetinalMarkers computeRetinalMarkers(Uint8List imageBytes) {
   );
 }
 
-/// Separable box blur with a running sum — O(n) per pass. Returns a new
-/// [Float32List]; edges clamp to the border (matches OpenCV BORDER_REPLICATE
-/// closely enough for advisory landmarking).
+/// Separable min-filter to erode binary mask by [radius].
+Uint8List _minFilterMask(Uint8List src, int w, int h, int radius) {
+  final tmp = Uint8List(src.length);
+  final out = Uint8List(src.length);
+  for (var y = 0; y < h; y++) {
+    final row = y * w;
+    for (var x = 0; x < w; x++) {
+      var minVal = 1;
+      for (var d = -radius; d <= radius; d++) {
+        final xx = (x + d).clamp(0, w - 1);
+        if (src[row + xx] == 0) {
+          minVal = 0;
+          break;
+        }
+      }
+      tmp[row + x] = minVal;
+    }
+  }
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      var minVal = 1;
+      for (var d = -radius; d <= radius; d++) {
+        final yy = (y + d).clamp(0, h - 1);
+        if (tmp[yy * w + x] == 0) {
+          minVal = 0;
+          break;
+        }
+      }
+      out[y * w + x] = minVal;
+    }
+  }
+  return out;
+}
+
+/// Separable box blur with running sum — O(n).
 Float32List _boxBlur(Float32List src, int w, int h, int radius) {
   final tmp = Float32List(src.length);
   final horizontal = Float32List(src.length);
@@ -258,8 +384,7 @@ Float32List _boxBlur(Float32List src, int w, int h, int radius) {
   return tmp;
 }
 
-/// 4-connected components on a binary mask, keeping compact round-ish spots
-/// within [minArea, maxArea]. Returns (x, y, r) tuples with r >= 3.
+/// 4-connected components on a binary mask, keeping compact round-ish spots.
 Iterable<(int, int, int)> _compactRoundSpots(
   Uint8List mask,
   int w,
@@ -314,9 +439,9 @@ Iterable<(int, int, int)> _compactRoundSpots(
     final bw = maxX - minX + 1;
     final bh = maxY - minY + 1;
     final bboxArea = bw * bh;
-    // Compactness gate: drops elongated vessel fragments and edge slivers.
+    // Compactness filter
     if (bboxArea == 0 || area / bboxArea < 0.30) continue;
-    if (bw > 3.5 * bh || bh > 3.5 * bw) continue;
+    if (bw > 2.8 * bh || bh > 2.8 * bw) continue;
     yield (
       (sumX / area).round(),
       (sumY / area).round(),

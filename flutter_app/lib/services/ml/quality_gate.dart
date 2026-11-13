@@ -38,38 +38,43 @@ class QualityGateDart {
 
     final metrics = _calculateMetrics(rgbBytes, width, height);
 
+    // DECOUPLED SENSOR CAPTURE QUALITY GATE:
+    // Strictly evaluates true sensor/capture failures:
+    // 1. Insufficient Retinal FOV (< 15% of frame).
+    // 2. Severe exposure clipping (> 85% blowout R>252 & G>252 or blackout G<8).
+    // 3. True lens defocus / motion blur via 2D Laplacian variance (< 15.0) inside eroded FOV.
+    // Never fails due to anatomical lesions, vitreous hemorrhages, or missing fovea.
     final reasons = <QualityReason>[];
     var isBad = false;
-    if (metrics.sharpnessScore < _blurBad(strictMode)) {
-      reasons.add(QualityReason.severeBlur);
-      isBad = true;
-    }
-    if (metrics.meanBrightness < _minBrightnessBad(strictMode)) {
-      reasons.add(QualityReason.inadequateIllumination);
-      isBad = true;
-    } else if (metrics.meanBrightness > _maxBrightnessBad(strictMode)) {
-      reasons.add(QualityReason.overexposure);
-      isBad = true;
-    }
-    if (metrics.contrastScore < _minContrastBad(strictMode)) {
-      reasons.add(QualityReason.lowContrast);
-      isBad = true;
-    }
-    if (metrics.fovRatio < _minFovBad(strictMode)) {
+
+    // 1. Retinal FOV Area Gate
+    if (metrics.fovRatio < (strictMode ? 0.20 : 0.15)) {
       reasons.add(QualityReason.insufficientFieldOfView);
       isBad = true;
     }
-    if (metrics.mlQualityScore < _minMlBad(strictMode)) {
-      reasons.add(QualityReason.lowMlQuality);
+
+    // 2. Severe Exposure Clipping Gate
+    if (metrics.meanBrightness < (strictMode ? 18.0 : 12.0) || metrics.blackoutRatio > 0.85) {
+      reasons.add(QualityReason.inadequateIllumination);
+      isBad = true;
+    } else if (metrics.meanBrightness > (strictMode ? 242.0 : 248.0) || metrics.blowoutRatio > 0.85) {
+      reasons.add(QualityReason.overexposure);
       isBad = true;
     }
+
+    // 3. True Lens Defocus / Motion Blur Gate
+    if (metrics.sharpnessScore < (strictMode ? 25.0 : 15.0)) {
+      reasons.add(QualityReason.severeBlur);
+      isBad = true;
+    }
+
     if (isBad) {
       return QualityAssessmentResult(
         grade: QualityGrade.BAD,
         isReliable: false,
         reasons: reasons,
         metrics: metrics,
-        details: 'Fails reliability gate',
+        details: 'Fails sensor reliability gate',
         errorCode: PipelineErrorCode.imgUntgradable,
       );
     }
@@ -84,15 +89,14 @@ class QualityGateDart {
       isBorderline = true;
     }
     if (metrics.fovRatio < _minFovGood(strictMode)) isBorderline = true;
-    if (metrics.mlQualityScore < _minMlGood(strictMode)) isBorderline = true;
 
     if (isBorderline) {
       return QualityAssessmentResult(
         grade: QualityGrade.BORDERLINE,
-        isReliable: false,
+        isReliable: true,
         reasons: const [QualityReason.borderlineMarginal],
         metrics: metrics,
-        details: 'Borderline image',
+        details: 'Borderline quality: gradable with advisory caution',
         errorCode: PipelineErrorCode.imgUntgradable,
       );
     }
@@ -106,20 +110,20 @@ class QualityGateDart {
     );
   }
 
-  double _blurGood(bool s) => s ? kStrictBlurGood : kBlurGoodThreshold;
+  double _blurGood(bool s) => s ? kStrictBlurGood : kClinicalBlurGood;
   double _blurBad(bool s) => s ? kStrictBlurBad : kBlurBadThreshold;
   double _minBrightnessGood(bool s) =>
-      s ? kStrictMinBrightnessGood : kMinBrightnessGood;
+      s ? kStrictMinBrightnessGood : kClinicalMinBrightnessGood;
   double _minBrightnessBad(bool s) =>
       s ? kStrictMinBrightnessBad : kMinBrightnessBad;
   double _maxBrightnessGood(bool s) =>
-      s ? kStrictMaxBrightnessGood : kMaxBrightnessGood;
+      s ? kStrictMaxBrightnessGood : kClinicalMaxBrightnessGood;
   double _maxBrightnessBad(bool s) =>
       s ? kStrictMaxBrightnessBad : kMaxBrightnessBad;
   double _minContrastGood(bool s) =>
-      s ? kStrictMinContrastGood : kMinContrastGood;
+      s ? kStrictMinContrastGood : kClinicalMinContrastGood;
   double _minContrastBad(bool s) => s ? kStrictMinContrastBad : kMinContrastBad;
-  double _minFovGood(bool s) => s ? kStrictMinFovGood : kMinFovRatioGood;
+  double _minFovGood(bool s) => s ? kStrictMinFovGood : kClinicalMinFovGood;
   double _minFovBad(bool s) => s ? kStrictMinFovBad : kMinFovRatioBad;
   double _minMlGood(bool s) => s ? kStrictMinMlGood : kMinMlQualityGood;
   double _minMlBad(bool s) => s ? kStrictMinMlBad : kMinMlQualityBad;
@@ -150,13 +154,20 @@ class QualityGateDart {
       );
     }
 
+    final isSeverePathologyOrYellowCandidate =
+        s.redBlueRatio >= 1.10 &&
+        (s.orangeBandFrac >= 0.15 || s.orangeBandFracLit >= 0.20) &&
+        s.ringDarkFrac >= 0.35 &&
+        s.cornerMean <= 30.0;
+
     final bandOk =
         s.orangeBandFrac >= kMinOrangeBandFrac ||
         s.orangeBandFracBright >= kMinOrangeBandFracBright ||
         s.orangeBandFracLit >= kMinOrangeBandFracLit ||
         (s.orangeBandFracLit >= kMinOrangeBandFracLitWeak &&
             s.ringDarkFrac >= kMinRingDarkFracStruct &&
-            s.cornerMean <= kMaxCornerMean);
+            s.cornerMean <= kMaxCornerMean) ||
+        isSeverePathologyOrYellowCandidate;
 
     if (!bandOk) {
       return const _DomainDecision(
@@ -164,7 +175,8 @@ class QualityGateDart {
         'Saturated retinal-orange band absent',
       );
     }
-    if (s.ringDarkFrac < kMinRingDarkFrac) {
+    final ringDarkMin = isSeverePathologyOrYellowCandidate ? 0.30 : kMinRingDarkFrac;
+    if (s.ringDarkFrac < ringDarkMin) {
       return const _DomainDecision(
         _Verdict.notFundus,
         'Circular retinal field with dark border not detected',
@@ -282,41 +294,70 @@ class QualityGateDart {
 
   QualityMetrics _calculateMetrics(Uint8List rgb, int w, int h) {
     final gray = _toGray(rgb, w, h);
+    final green = _extractGreen(rgb, w, h);
     final maskFov = _extractRetinalMask(gray, w, h);
     final mask = maskFov.mask;
     final fovRatio = maskFov.fovRatio;
-    final lap = _laplacian(gray, w, h);
+
+    // Erode the circular FOV mask by ~5% of diameter to eliminate crescent flash glare on borders
+    final fovCountApprox = (fovRatio * w * h).toInt();
+    final fovDiameter = math.sqrt(fovCountApprox * 4.0 / math.pi);
+    final erosionRadius = (fovDiameter * 0.05).round().clamp(2, 16);
+    final erodedMask = _minFilter(mask, w, h, radius: erosionRadius);
+
+    // Compute 2D Laplacian on the green channel inside the eroded FOV mask
+    final lap = _laplacian(green, w, h);
 
     double meanBrightness;
     double contrastScore;
     double sharpnessScore;
+    double blackoutRatio = 0.0;
+    double blowoutRatio = 0.0;
 
-    if (fovRatio > 0.05) {
-      var sum = 0.0;
-      var sumSq = 0.0;
-      var lapSum = 0.0;
-      var lapSqSum = 0.0;
-      var count = 0;
-      for (var i = 0; i < gray.length; i++) {
-        if (mask[i] == 0) continue;
-        final v = gray[i];
-        sum += v;
-        sumSq += v * v;
+    var sum = 0.0;
+    var sumSq = 0.0;
+    var lapSum = 0.0;
+    var lapSqSum = 0.0;
+    var fovCount = 0;
+    var erodedCount = 0;
+    var blackoutCount = 0;
+    var blowoutCount = 0;
+
+    for (var i = 0; i < gray.length; i++) {
+      if (mask[i] == 0) continue;
+      fovCount++;
+      final r = rgb[i * 3];
+      final g = rgb[i * 3 + 1];
+
+      // Exposure clipping: blackout G < 8, blowout R > 252 & G > 252
+      if (g < 8) blackoutCount++;
+      if (r > 252 && g > 252) blowoutCount++;
+
+      final v = gray[i];
+      sum += v;
+      sumSq += v * v;
+
+      // Blur calculation strictly on eroded mask to avoid circular border artifact bias
+      if (erodedMask[i] != 0) {
         final lv = lap[i];
         lapSum += lv;
         lapSqSum += lv * lv;
-        count++;
+        erodedCount++;
       }
-      if (count > 0) {
-        meanBrightness = sum / count;
-        contrastScore = math.sqrt(
-          math.max(0.0, sumSq / count - meanBrightness * meanBrightness),
-        );
-        final lapMean = lapSum / count;
-        sharpnessScore = math.max(0.0, lapSqSum / count - lapMean * lapMean);
+    }
+
+    if (fovCount > 0) {
+      meanBrightness = sum / fovCount;
+      contrastScore = math.sqrt(
+        math.max(0.0, sumSq / fovCount - meanBrightness * meanBrightness),
+      );
+      blackoutRatio = blackoutCount / fovCount;
+      blowoutRatio = blowoutCount / fovCount;
+
+      if (erodedCount > 0) {
+        final lapMean = lapSum / erodedCount;
+        sharpnessScore = math.max(0.0, lapSqSum / erodedCount - lapMean * lapMean);
       } else {
-        meanBrightness = _meanAll(gray);
-        contrastScore = _stdAll(gray);
         sharpnessScore = _varAll(lap);
       }
     } else {
@@ -347,7 +388,17 @@ class QualityGateDart {
       contrastScore: contrastScore,
       fovRatio: fovRatio,
       mlQualityScore: mlScore,
+      blackoutRatio: blackoutRatio,
+      blowoutRatio: blowoutRatio,
     );
+  }
+
+  Float64List _extractGreen(Uint8List rgb, int w, int h) {
+    final g = Float64List(w * h);
+    for (var i = 0, j = 0; i < rgb.length; i += 3, j++) {
+      g[j] = rgb[i + 1].toDouble();
+    }
+    return g;
   }
 
   Float64List _toGray(Uint8List rgb, int w, int h) {
@@ -508,10 +559,10 @@ class QualityGateDart {
     return out;
   }
 
-  Uint8List _minFilter(Uint8List src, int w, int h) {
+  Uint8List _minFilter(Uint8List src, int w, int h, {int radius = 5}) {
     final tmp = Uint8List(src.length);
     final out = Uint8List(src.length);
-    const r = 5;
+    final r = radius;
     for (var y = 0; y < h; y++) {
       for (var x = 0; x < w; x++) {
         var m = 255;

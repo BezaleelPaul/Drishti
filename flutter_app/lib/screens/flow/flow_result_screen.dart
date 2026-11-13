@@ -65,8 +65,12 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
     final bytes = widget.state.imageBytes;
     if (bytes == null) return;
     setState(() => _markersLoading = true);
+    final predictedGrade = widget.state.analysis?.drGrade;
     try {
-      final markers = await compute(computeRetinalMarkers, bytes);
+      final markers = await compute(
+        computeRetinalMarkersFromRequest,
+        RetinalMarkerRequest(bytes, predictedGrade: predictedGrade),
+      );
       if (!mounted) return;
       widget.state.markers = markers;
       setState(() => _markers = markers);
@@ -151,17 +155,55 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
         );
       } else {
         final count = markers.maCandidates.length;
+        final hasOd = markers.opticDisc != null;
+        final hasFovea = markers.fovea != null;
+        final String landmarkDesc;
+        if (hasOd && hasFovea) {
+          landmarkDesc = count == 0
+              ? 'Optic disc & fovea located. No lesion candidates found '
+                  '(classical CV — a clear frame can be healthy).'
+              : 'Optic disc, fovea and $count lesion candidate${count == 1 ? '' : 's'} '
+                  'located (classical CV segmentation).';
+        } else if (hasOd && !hasFovea) {
+          landmarkDesc = count == 0
+              ? 'Optic disc located · Fovea obscured or outside field of view. '
+                  'No lesion candidates found.'
+              : 'Optic disc located · Fovea obscured or outside field of view. '
+                  '$count lesion candidate${count == 1 ? '' : 's'} located.';
+        } else {
+          landmarkDesc = count == 0
+              ? 'Retinal landmarks partially visible. No lesion candidates found.'
+              : '$count lesion candidate${count == 1 ? '' : 's'} located.';
+        }
+
         body = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              count == 0
-                  ? 'Optic disc & fovea located. No lesion candidates found '
-                        '(classical CV — a clear frame can be healthy).'
-                  : 'Optic disc, fovea and $count lesion candidate${count == 1 ? '' : 's'} '
-                        'located (classical CV segmentation).',
+              landmarkDesc,
               style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
+            if (hasOd && !hasFovea) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF332A15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                  ),
+                ),
+                child: const Text(
+                  'Fovea obscured or outside FOV (non-blocking)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFFFBBF24),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerLeft,
@@ -485,6 +527,11 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
                               label: 'PRELIMINARY',
                               color: Color(0xFFA855F7),
                             ),
+                          if (a.qualityGrade.toUpperCase() == 'BORDERLINE')
+                            const OrbitChip(
+                              label: 'SUB-OPTIMAL QUALITY (ADVISORY)',
+                              color: Color(0xFFF59E0B),
+                            ),
                           if (a.isOffline)
                             const OrbitChip(
                               label: 'OFFLINE — PENDING SYNC',
@@ -514,6 +561,52 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
                           color: Color(0xFF94A3B8),
                         ),
                       ),
+                      if (a.qualityGrade.toUpperCase() == 'BORDERLINE') ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2E1C07),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFF59E0B)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                color: Color(0xFFFBBF24),
+                                size: 18,
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Sub-Optimal Capture Quality · Proceeded with Caution',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFFDE68A),
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Illumination or clarity is borderline. AI classification and landmark detections are advisory — consider recapture if presentation is ambiguous.',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFFFEF3C7),
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       // Rejection transparency: when the gate refuses an
                       // image the operator must see WHY (reason codes are
                       // the contract — a bare "pending" reads like a bug).

@@ -108,6 +108,8 @@ class QualityMetrics {
     this.contrastScore = 0,
     this.fovRatio = 0,
     this.mlQualityScore = 0,
+    this.blackoutRatio = 0,
+    this.blowoutRatio = 0,
     this.qualityEngine = 'MultiScale_Adaptive_Fusion',
     Map<String, double>? extraScores,
   }) : extraScores = extraScores ?? const {};
@@ -117,6 +119,8 @@ class QualityMetrics {
   final double contrastScore; // std of luma within retinal mask
   final double fovRatio; // retinal circle area / frame area
   final double mlQualityScore; // multi-scale fusion [0,1]
+  final double blackoutRatio; // fraction of FOV pixels blacked out (G < 8)
+  final double blowoutRatio; // fraction of FOV pixels blown out (R > 252 & G > 252)
   final String qualityEngine;
   final Map<String, double> extraScores;
 }

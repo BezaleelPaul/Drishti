@@ -125,4 +125,50 @@ void main() {
     expect(od.x, closeTo(0.35 * 2048, 0.11 * 2048));
     expect(od.y, closeTo(0.5 * 2048, 0.11 * 2048));
   });
+
+  test('suppresses MA candidates when predictedGrade is 0 (No DR)', () {
+    final markers = computeRetinalMarkers(
+      _encode(_fundus(size: 512)),
+      predictedGrade: 0,
+    );
+    expect(markers.available, isTrue);
+    expect(markers.maCandidates, isEmpty);
+  });
+
+  test('returns null fovea cleanly when fovea is outside circular FOV or obscured', () {
+    // Nasal-centered crop: retina only on the left side (0 to 45% width).
+    // The anatomical fovea position (temporal to OD) falls completely in black/off-frame space.
+    final image = img.Image(width: 512, height: 512);
+    img.fill(image, color: img.ColorRgb8(0, 0, 0));
+    img.fillCircle(
+      image,
+      x: 100,
+      y: 256,
+      radius: 180,
+      color: img.ColorRgb8(120, 30, 30),
+    );
+    // Optic disc at x=80, y=256
+    img.fillCircle(
+      image,
+      x: 80,
+      y: 256,
+      radius: 35,
+      color: img.ColorRgb8(220, 190, 120),
+    );
+
+    final markers = computeRetinalMarkers(_encode(image));
+    expect(markers.available, isTrue);
+    expect(markers.opticDisc, isNotNull);
+    expect(markers.fovea, isNull);
+  });
+
+  test('supports isolate request dispatch via computeRetinalMarkersFromRequest', () {
+    final req = RetinalMarkerRequest(
+      _encode(_fundus(size: 256)),
+      predictedGrade: 1,
+    );
+    final markers = computeRetinalMarkersFromRequest(req);
+    expect(markers.available, isTrue);
+    expect(markers.opticDisc, isNotNull);
+  });
 }

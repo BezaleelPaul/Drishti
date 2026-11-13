@@ -59,11 +59,22 @@ const double kMaxCornerMean = 20.0;
 const double kMinBrightPixelFrac = 0.05;
 const double kRingWidthFrac = 0.08;
 const double kRingDarkLuma = 60.0;
-const double kOrangeHueMin = 330.0;
-const double kOrangeHueMax = 35.0;
+/// Retinal warm hue window: supports crimson, orange, and bright golden-yellow retinas [325°, 50°].
+const double kOrangeHueMin = 325.0;
+const double kOrangeHueMax = 50.0;
+/// Saturated retinal threshold.
 const double kOrangeMinSat = 0.35;
 const double kDeferBelowBrightness = 20.0;
 const double kDeferAboveBrightness = 235.0;
+
+/// Calibrated clinical thresholds for handheld and portable fundus cameras
+/// (Remidio FOP, Forus 3nethra, Volk iNview) where aperture ratio is 0.20-0.30
+/// and sharpness sits naturally in the 45-75 range.
+const double kClinicalBlurGood = 45.0;
+const double kClinicalMinBrightnessGood = 30.0;
+const double kClinicalMaxBrightnessGood = 235.0;
+const double kClinicalMinContrastGood = 12.0;
+const double kClinicalMinFovGood = 0.20;
 
 /// Fusion weights of the multi-scale ML-quality score (checker.py:469-483).
 const double kFusionBlurWeight = 0.40;

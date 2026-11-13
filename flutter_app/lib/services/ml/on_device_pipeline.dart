@@ -7,6 +7,7 @@ import 'dr_classifier.dart';
 import 'drdetect_ordinal_runner.dart';
 import 'model_runner.dart';
 import 'pipeline/async_isolate_ordinal_runner.dart';
+import 'pipeline/local_explanation_generator.dart';
 import 'pipeline_schema.dart';
 import 'quality_gate.dart';
 import 'quality_thresholds.dart';
@@ -144,7 +145,7 @@ class OnDevicePipeline {
           ? 'Recapture the image. Do not display a DR grade for an image '
                 'that fails the reliability gate.'
           : res.grade == QualityGrade.BORDERLINE
-          ? 'Recapture recommended for a borderline image.'
+          ? 'Sub-optimal quality capture: scan proceeds with advisory warning.'
           : 'Image certified as reliable. Proceed to analysis.',
       recaptureTips: tips,
       audioGuidanceHindi: 'कृपया पुनः प्रयास करें।',
@@ -164,7 +165,42 @@ class OnDevicePipeline {
       imageBytes,
       recaptureAttemptCount: recaptureAttemptCount,
     );
-    return _toAnalysisModel(record, patientId, eyeSide, cameraProfile);
+
+    Uint8List? overlayBytes;
+    String? explanationSummary;
+    String? secondOpinionPrompt;
+    String? targetLayer;
+
+    if (record.drPrediction != null) {
+      try {
+        final explainRes = await compute(
+          generateLocalExplanationWorker,
+          LocalExplanationRequest(
+            imageBytes: imageBytes,
+            predictedGrade: record.drPrediction!.predictedGrade.value,
+            confidence: record.drPrediction!.confidence,
+            probabilities: record.drPrediction!.probabilities,
+          ),
+        );
+        overlayBytes = explainRes.overlayBytes;
+        explanationSummary = explainRes.explanationSummary;
+        secondOpinionPrompt = explainRes.secondOpinionPrompt;
+        targetLayer = explainRes.targetLayer;
+      } catch (_) {
+        // Non-blocking degradation
+      }
+    }
+
+    return _toAnalysisModel(
+      record,
+      patientId,
+      eyeSide,
+      cameraProfile,
+      gradcamOverlayBytes: overlayBytes,
+      aiExplanationSummary: explanationSummary,
+      secondOpinionPrompt: secondOpinionPrompt,
+      gradcamTargetLayer: targetLayer,
+    );
   }
 
   /// Maps ScreeningRecordDart -> ScreeningAnalysisModel.
@@ -172,8 +208,12 @@ class OnDevicePipeline {
     ScreeningRecordDart record,
     String patientId,
     String eyeSide,
-    String cameraProfile,
-  ) {
+    String cameraProfile, {
+    Uint8List? gradcamOverlayBytes,
+    String? aiExplanationSummary,
+    String? secondOpinionPrompt,
+    String? gradcamTargetLayer,
+  }) {
     final dr = record.drPrediction;
     final conf = record.confidence;
     final metrics = record.qualityMetrics;
@@ -193,7 +233,7 @@ class OnDevicePipeline {
       cameraProfile: cameraProfile,
       qualityGrade: record.qualityGrade.name,
       qualityScore: metrics?.mlQualityScore ?? 0.0,
-      qualityPassed: record.qualityGrade == QualityGrade.GOOD,
+      qualityPassed: record.qualityGrade != QualityGrade.BAD,
       rejectionReasons: record.rejectionReasons,
       drGrade: dr?.predictedGrade.value,
       drLabel: dr?.predictedGrade.label,
@@ -206,7 +246,10 @@ class OnDevicePipeline {
       humanReviewReason: record.humanReviewReason,
       originalImageUrl: '',
       gradcamOverlayUrl: null,
-      gradcamTargetLayer: null,
+      gradcamOverlayBytes: gradcamOverlayBytes,
+      gradcamTargetLayer: gradcamTargetLayer,
+      aiExplanationSummary: aiExplanationSummary,
+      secondOpinionPrompt: secondOpinionPrompt,
       modelBackend: record.modelBackend,
       actionRecommendation: record.action,
       plainLanguageAdvice: record.action,

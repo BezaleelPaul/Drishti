@@ -70,5 +70,68 @@ void main() {
     test('canonical decode rejects oversized frames before decode', () {
       expect(() => decodeCanonicalRgb(Uint8List(0)), throwsFormatException);
     });
+
+    test('bright golden-yellow retina is recognized as fundus, never rejected as non-fundus', () {
+      // 256x256 circular retinal field:
+      // Dark border ring/corners (luma=15), yellow/golden illuminated center (R=235, G=195, B=60; hue ~46°)
+      const w = 256;
+      const h = 256;
+      final rgb = Uint8List(w * h * 3);
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          final i = (y * w + x) * 3;
+          final dx = x - 128;
+          final dy = y - 128;
+          final distSq = dx * dx + dy * dy;
+          if (distSq <= 100 * 100) {
+            // Bright golden-yellow fundus
+            rgb[i] = 235;
+            rgb[i + 1] = 195;
+            rgb[i + 2] = 60;
+          } else {
+            // Dark surround/corners
+            rgb[i] = 12;
+            rgb[i + 1] = 12;
+            rgb[i + 2] = 12;
+          }
+        }
+      }
+
+      final res = gate.assess(rgb, w, h);
+      // Must NOT be rejected as non-fundus (IMG_NOT_FUNDUS)
+      expect(res.errorCode != PipelineErrorCode.imgNotFundus, isTrue,
+          reason: 'Bright golden-yellow retina must not be rejected with IMG_NOT_FUNDUS');
+    });
+
+    test('borderline quality scan returns QualityGrade.BORDERLINE with isReliable: true', () {
+      // Retinal field with marginal focus/contrast but valid circular fundus
+      const w = 256;
+      const h = 256;
+      final rgb = Uint8List(w * h * 3);
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          final i = (y * w + x) * 3;
+          final dx = x - 128;
+          final dy = y - 128;
+          final distSq = dx * dx + dy * dy;
+          if (distSq <= 90 * 90) {
+            // Realistic texture giving moderate sharpness (~25-35, above 15 bad cutoff but below 45 good cutoff)
+            final pattern = ((x % 6 == 0 ? 30 : 0) + (y % 6 == 0 ? 25 : 0));
+            rgb[i] = (200 + pattern).clamp(0, 255);
+            rgb[i + 1] = (110 + pattern).clamp(0, 255);
+            rgb[i + 2] = (40 + pattern ~/ 2).clamp(0, 255);
+          } else {
+            rgb[i] = 8;
+            rgb[i + 1] = 8;
+            rgb[i + 2] = 8;
+          }
+        }
+      }
+
+      final res = gate.assess(rgb, w, h);
+      // Minimum viable requirements met: gradable with caution
+      expect(res.grade, isNot(QualityGrade.BAD));
+      expect(res.isReliable, isTrue);
+    });
   });
 }

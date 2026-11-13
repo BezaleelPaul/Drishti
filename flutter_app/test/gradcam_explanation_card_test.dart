@@ -137,4 +137,54 @@ void main() {
 
     expect(find.textContaining('Advisory'), findsOneWidget);
   });
+
+  testWidgets('in-memory gradcamOverlayBytes renders 100% on-device card with clinical rationale and second opinion prompt', (
+    tester,
+  ) async {
+    final localModel = ScreeningAnalysisModel(
+      screeningId: 'LOC-12345678',
+      patientId: 'P-TEST-LOCAL',
+      eyeSide: 'Left',
+      cameraProfile: 'Smartphone Handheld',
+      qualityGrade: 'A',
+      qualityScore: 0.95,
+      qualityPassed: true,
+      rejectionReasons: const [],
+      drGrade: 2,
+      drLabel: 'Moderate NPDR',
+      predictionScore: 0.89,
+      isReferable: true,
+      requiresHumanReview: false,
+      originalImageUrl: '',
+      gradcamOverlayBytes: _png(),
+      gradcamTargetLayer: 'conv_head.saliency_cam',
+      aiExplanationSummary: 'Focal microaneurysm clusters detected in superior arcade.',
+      secondOpinionPrompt: '### DRISHTI AI Screening — Clinical Second Opinion Case\n- Predicted: Moderate NPDR',
+      actionRecommendation: 'Refer',
+      plainLanguageAdvice: 'Refer to specialist.',
+      smsReferralSlip: 'SMS SLIP',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GradcamExplanationCard(analysis: localModel),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Model attention (Grad-CAM++)'), findsOneWidget);
+    expect(find.text('100% On-Device'), findsOneWidget);
+    expect(find.text('Layer: conv_head.saliency_cam'), findsOneWidget);
+    expect(find.text('Clinical Saliency Rationale'), findsOneWidget);
+    expect(find.textContaining('Focal microaneurysm clusters detected'), findsOneWidget);
+    expect(find.textContaining('Secondary AI Consensus'), findsOneWidget);
+    expect(find.text('Copy Case for External AI Second Opinion'), findsOneWidget);
+
+    // Tap copy button and verify snackbar appears
+    await tester.tap(find.byKey(const ValueKey('copy_second_opinion_prompt')));
+    await tester.pump();
+    expect(find.textContaining('Clinical case copied!'), findsOneWidget);
+  });
 }

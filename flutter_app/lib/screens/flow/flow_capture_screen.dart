@@ -206,6 +206,7 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
     final st = widget.state;
     final q = st.quality;
     final good = q != null && q.qualityGrade == 'GOOD';
+    final borderline = q != null && q.qualityGrade == 'BORDERLINE';
     final bad = q != null && q.qualityGrade == 'BAD';
     return Scaffold(
       backgroundColor: ScannerHUDTheme.background,
@@ -273,7 +274,7 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
                       child: OrbitScanner(
                         state: _checking
                             ? OrbitScannerState.qualityCheck
-                            : (st.quality != null && !st.quality!.isReliable)
+                            : (st.quality != null && st.quality!.qualityGrade == 'BAD')
                             ? OrbitScannerState.failure
                             : OrbitScannerState.idle,
                         imageBytes: st.imageBytes,
@@ -281,8 +282,10 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
                             ? 'RETINAL VIEWFINDER READY'
                             : _checking
                             ? 'CALIBRATING OPTICS'
-                            : (st.quality != null && !st.quality!.isReliable)
+                            : (st.quality != null && st.quality!.qualityGrade == 'BAD')
                             ? 'QUALITY REJECTED'
+                            : (st.quality != null && st.quality!.qualityGrade == 'BORDERLINE')
+                            ? 'MARGINAL QUALITY (ADVISORY)'
                             : 'IMAGE ALIGNED',
                       ),
                     ),
@@ -425,6 +428,8 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
                     border: Border.all(
                       color: good
                           ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                          : borderline
+                          ? const Color(0xFFF59E0B).withValues(alpha: 0.35)
                           : bad
                           ? const Color(0xFFEF4444).withValues(alpha: 0.35)
                           : const Color(0xFF1E2D4A),
@@ -511,8 +516,8 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            _checkRow(context.tr('retina_visible'), good),
-                            _checkRow(context.tr('focus_ok'), good),
+                            _checkRow(context.tr('retina_visible'), good || borderline),
+                            _checkRow(context.tr('focus_ok'), good || borderline),
                             _checkRow(context.tr('brightness_ok'), good),
                             const SizedBox(height: 8),
                             Text(
@@ -524,6 +529,33 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
                                     : const Color(0xFFF59E0B),
                               ),
                             ),
+                            if (borderline) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2E1C07),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFF59E0B)),
+                                ),
+                                child: Row(
+                                  children: const [
+                                    Icon(Icons.warning_amber_rounded, color: Color(0xFFFBBF24), size: 16),
+                                    SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Sub-optimal illumination or sharpness. Scan can proceed with advisory warning, but consider recapture if feasible.',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFFFDE68A),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                             if (bad) ...[
                               const SizedBox(height: 6),
                               Container(
