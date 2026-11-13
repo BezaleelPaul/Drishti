@@ -104,6 +104,33 @@ class GradCAMExplainer:
                 except Exception:  # noqa: BLE001 - try saliency fallback
                     attention_map = None
 
+            # 1c. ONNX Class Activation Mapping (CAM) from Convolutional Backbone
+            if attention_map is None:
+                onnx_session = getattr(active_classifier, "_onnx_session", None)
+                if onnx_session is None and getattr(active_classifier, "_consensus_classifier", None) is not None:
+                    onnx_session = getattr(
+                        getattr(active_classifier._consensus_classifier, "drdetect_classifier", None),
+                        "_onnx_session",
+                        None,
+                    )
+                if onnx_session is not None:
+                    try:
+                        attention_map, layer_name = self._compute_onnx_cam(
+                            active_classifier, orig_np, target_grade
+                        )
+                    except Exception as exc:  # noqa: BLE001 - try saliency fallback
+                        logging.getLogger("Drishti.GradCAM").warning("ONNX CAM failed: %s", exc)
+                        attention_map = None
+
+        # 1d. If no active classifier or failed above, attempt standalone ONNX CAM if model weights exist on disk
+        if attention_map is None:
+            try:
+                attention_map, layer_name = self._compute_onnx_cam(
+                    active_classifier, orig_np, target_grade
+                )
+            except Exception:
+                attention_map = None
+
         # 2. Fallback to Multi-Scale Morphological & Vascular Saliency if no DL weights loaded
         disclaimer = self.EXPLAINABILITY_DISCLAIMER
         if attention_map is None:
@@ -313,6 +340,94 @@ class GradCAMExplainer:
             cam_full = np.array(Image.fromarray((cam_norm * 255).astype(np.uint8)).resize((w_orig, h_orig))) / 255.0
 
         return cam_full, target_name
+
+    def _compute_onnx_cam(
+        self,
+        classifier: Any,
+        img_rgb: np.ndarray,
+        target_grade: DRGrade | int,
+    ) -> tuple[np.ndarray, str]:
+        """
+        Computes exact Class Activation Mapping (CAM) from the deep convolutional backbone
+        of the production ONNX model (EfficientNet-B0 conv_head).
+        Extracts feature maps before GlobalAveragePool and weights them by the classifier weights.
+        """
+        import onnx
+        import onnxruntime as ort
+        from src.classification.drdetect_contract import preprocess_fundus_to_nchw
+        from src.image_io import rgb_to_gray
+
+        h_orig, w_orig = img_rgb.shape[:2]
+
+        # Resolve ONNX model path
+        onnx_path = getattr(classifier, "onnx_model_path", None)
+        if (
+            not onnx_path
+            and hasattr(classifier, "_consensus_classifier")
+            and classifier._consensus_classifier is not None
+        ):
+            sub = getattr(classifier._consensus_classifier, "drdetect_classifier", None)
+            if sub is not None:
+                onnx_path = getattr(sub, "onnx_model_path", None)
+
+        if not onnx_path or not os.path.exists(onnx_path):
+            repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            candidates = [
+                os.path.join(repo_root, "models", "efficientnet_b0_regression_512px.onnx"),
+                os.path.join(repo_root, "server", "models", "efficientnet_b0_regression_512px.onnx"),
+                os.path.join(
+                    repo_root, "flutter_app", "assets", "models", "efficientnet_b0_regression_512px.onnx"
+                ),
+            ]
+            for c in candidates:
+                if os.path.exists(c):
+                    onnx_path = c
+                    break
+
+        if not onnx_path or not os.path.exists(onnx_path):
+            raise ValueError(f"ONNX model file not found for CAM extraction: {onnx_path}")
+
+        # Initialize and cache CAM session once
+        if getattr(self, "_onnx_cam_sess", None) is None:
+            model = onnx.load(onnx_path)
+            target_node = "/backbone/bn2/act/Mul_output_0"
+            val_info = onnx.helper.make_tensor_value_info(target_node, onnx.TensorProto.FLOAT, None)
+            model.graph.output.append(val_info)
+            self._onnx_cam_sess = ort.InferenceSession(
+                model.SerializeToString(), providers=["CPUExecutionProvider"]
+            )
+            weights = {t.name: onnx.numpy_helper.to_array(t) for t in model.graph.initializer}
+            self._onnx_cam_weights = weights["backbone.classifier.weight"][0]  # (1280,)
+            self._onnx_target_node = target_node
+
+        nchw = preprocess_fundus_to_nchw(Image.fromarray(img_rgb))
+        outputs = self._onnx_cam_sess.run([self._onnx_target_node, "logits"], {"image": nchw})
+        feat = outputs[0][0]  # (1280, 16, 16)
+
+        # Spatial class activation mapping weighted by classifier weights
+        cam = np.tensordot(self._onnx_cam_weights, feat, axes=(0, 0))  # (16, 16)
+        cam = np.maximum(cam, 0)  # ReLU (positive activations contributing to DR score)
+
+        if cam.max() > cam.min():
+            cam = (cam - cam.min()) / (cam.max() - cam.min())
+        else:
+            cam = np.zeros_like(cam)
+
+        if HAS_OPENCV:
+            cam_full = cv2.resize(cam, (w_orig, h_orig))
+            gray = rgb_to_gray(img_rgb)
+            mask = gray > self._bg_threshold()
+            cam_smooth = cv2.GaussianBlur(cam_full, (31, 31), 0)
+            cam_smooth[~mask] = 0.0
+            if cam_smooth.max() > cam_smooth.min():
+                cam_smooth = (cam_smooth - cam_smooth.min()) / (cam_smooth.max() - cam_smooth.min())
+            return cam_smooth, "backbone.conv_head (Class Activation Map)"
+        else:
+            cam_full = (
+                np.array(Image.fromarray((cam * 255).astype(np.uint8)).resize((w_orig, h_orig)))
+                / 255.0
+            )
+            return cam_full, "backbone.conv_head (Class Activation Map)"
 
     def _compute_synthetic_attention_map(self, img_np: np.ndarray, target_grade: DRGrade) -> np.ndarray:
         """

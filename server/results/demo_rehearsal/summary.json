@@ -4,11 +4,11 @@
   "runs_detail": [
     {
       "run": 1,
-      "wall_seconds": 2.39,
-      "screening_id": "SCR-78122DE2F139",
+      "wall_seconds": 2.76,
+      "screening_id": "SCR-DEE61EA7577F",
       "dr_grade": 2,
       "error_code": "AI_LOW_CONFIDENCE",
-      "inference_time_ms": 773.6,
+      "inference_time_ms": 1101.2,
       "adverse_error_code": "IMG_NOT_FUNDUS",
       "assertions_passed": 23,
       "steps": 13

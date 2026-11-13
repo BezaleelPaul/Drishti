@@ -1,0 +1,33 @@
+{
+  "metadata_csv": "data/mbrset/metadata.csv",
+  "image_root": "data/mbrset/images",
+  "image_column": "image_path",
+  "patient_column": "patient_id",
+  "grade_column": "dr_grade",
+  "numerical_columns": [
+    "age",
+    "diabetes_duration",
+    "hba1c",
+    "systolic_bp"
+  ],
+  "categorical_columns": [
+    "sex",
+    "insulin_treatment"
+  ],
+  "clinical_columns": [
+    "age",
+    "diabetes_duration",
+    "hba1c",
+    "systolic_bp"
+  ],
+  "image_size": 224,
+  "backbone": "efficientnet_b0",
+  "epochs": 15,
+  "batch_size": 16,
+  "seed": 42,
+  "learning_rate": 0.0001,
+  "min_patients_train": 10,
+  "min_patients_val": 30,
+  "min_patients_test": 30,
+  "output_dir": "artifacts/local/mbrset_fusion"
+}

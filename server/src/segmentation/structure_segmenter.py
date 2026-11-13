@@ -90,7 +90,9 @@ class RetinalStructureSegmenter:
         exudate_mask = self._segment_exudates(img_rgb, od_center, od_radius, retinal_mask)
 
         # 4. Microaneurysm Candidate Detection (Small dark red dots in green channel)
-        ma_candidates = self._detect_microaneurysm_candidates(green, vessel_mask, retinal_mask)
+        ma_candidates = self._detect_microaneurysm_candidates(
+            green, vessel_mask, retinal_mask, od_center=od_center, od_radius=od_radius
+        )
 
         # 5. Composite Annotated Clinical Overlay (<30s specialist review)
         annotated_overlay = self._create_annotated_overlay(
@@ -163,6 +165,15 @@ class RetinalStructureSegmenter:
             # Optic disc has high red + green intensity (yellowish bright area)
             red = img_rgb[:, :, 0].astype(np.float32)
             intensity = (red * 0.6 + green * 0.4)
+
+            # Erode retinal mask to exclude lens aperture border glare and halo
+            border_margin = max(15, int(min(h, w) * 0.07))
+            er_k = min(border_margin * 2 + 1, max(3, (min(h, w) // 10) | 1))
+            er_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (er_k, er_k))
+            eroded_mask = cv2.erode(retinal_mask, er_kernel)
+            if np.count_nonzero(eroded_mask) < 100:
+                eroded_mask = retinal_mask
+
             # Smooth with large Gaussian to find global bright region.
             # Bound kernel to image size to avoid cv2.error on small images.
             min_dim = min(h, w)
@@ -173,21 +184,40 @@ class RetinalStructureSegmenter:
                 ks = ks + 1 if ks % 2 == 0 else ks  # Ensure odd kernel size
             ks = max(3, ks)
             blurred = cv2.GaussianBlur(intensity, (ks, ks), 0)
-            blurred[retinal_mask == 0] = 0
+            blurred[eroded_mask == 0] = 0
             
-            # Find brightest centroid
+            # Find brightest centroid in the interior retina
             _, _, _, max_l = cv2.minMaxLoc(blurred)
             od_x, od_y = int(max_l[0]), int(max_l[1])
 
-            # Fovea is roughly 2.5 disc diameters temporal to optic disc
+            # Fovea is roughly 2.5-3.0 disc diameters temporal to optic disc
             # If OD is on left half of retina, fovea is to the right (+X), and vice versa
             od_side = 1 if od_x < cx else -1
             # Clip margin scales with resolution: fixed 50px is degenerate
             # below 100px (np.clip returns max when min>max -> edge/negative
             # landmarks that still pass `>0` checks downstream).
             _m = max(2, min(w, h) // 20)
-            fx = int(np.clip(od_x + od_side * approx_radius * 3.2, _m, w - _m))
-            fy = int(np.clip(od_y + (cy - od_y) * 0.3, _m, h - _m))
+            expected_fx = int(np.clip(od_x + od_side * approx_radius * 2.8, _m, w - _m))
+            expected_fy = int(np.clip(od_y + (cy - od_y) * 0.25, _m, h - _m))
+
+            # Fine-tune fovea around expected region by searching for local minimum (foveal pit)
+            # in smoothed green channel within macula search window
+            search_r = approx_radius
+            y1 = max(0, expected_fy - search_r)
+            y2 = min(h, expected_fy + search_r)
+            x1 = max(0, expected_fx - search_r)
+            x2 = min(w, expected_fx + search_r)
+
+            macula_roi = green[y1:y2, x1:x2]
+            if macula_roi.size > 0:
+                m_k = min(21, max(3, (min(macula_roi.shape) // 2) | 1))
+                smooth_macula = cv2.GaussianBlur(macula_roi, (m_k, m_k), 0)
+                _, _, min_l, _ = cv2.minMaxLoc(smooth_macula)
+                fx = x1 + int(min_l[0])
+                fy = y1 + int(min_l[1])
+            else:
+                fx, fy = expected_fx, expected_fy
+
             return (od_x, od_y), approx_radius, (fx, fy)
 
         # Default geometric center estimate
@@ -264,10 +294,16 @@ class RetinalStructureSegmenter:
         return np.zeros((h, w), dtype=np.uint8)
 
     def _detect_microaneurysm_candidates(
-        self, green: np.float32, vessel_mask: np.ndarray, retinal_mask: np.ndarray
+        self,
+        green: np.float32,
+        vessel_mask: np.ndarray,
+        retinal_mask: np.ndarray,
+        od_center: tuple[int, int] | None = None,
+        od_radius: int = 0,
     ) -> list[tuple[int, int, int]]:
         """
         Microaneurysms: Small isolated focal dark spots (< 15 px diameter).
+        Filters out vessel bifurcations, optic disc cup shadows, and camera border artifacts.
         """
         if not HAS_OPENCV:
             return []
@@ -288,10 +324,22 @@ class RetinalStructureSegmenter:
         blackhat = cv2.morphologyEx(g_u8, cv2.MORPH_BLACKHAT, kernel)
 
         # Mask out main vessels (MAs are adjacent to or isolated from major arcades)
-        dil_k = _odd(3 * scale)
+        dil_k = _odd(4 * scale)
         dilated_vessels = cv2.dilate(vessel_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dil_k, dil_k)))
         blackhat[dilated_vessels == 255] = 0
-        blackhat[retinal_mask == 0] = 0
+
+        # Mask out optic disc (OD cup shadows are not microaneurysms)
+        if od_center is not None and od_radius > 0:
+            cv2.circle(blackhat, od_center, int(od_radius * 1.3), 0, -1)
+
+        # Erode retinal boundary to reject aperture halo and outer edge artifacts
+        border_m = max(5, round(min(h, w) * 0.02))
+        er_k = min(border_m * 2 + 1, max(3, (min(h, w) // 12) | 1))
+        er_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (er_k, er_k))
+        valid_retina = cv2.erode(retinal_mask, er_kernel)
+        if np.count_nonzero(valid_retina) < 50:
+            valid_retina = retinal_mask
+        blackhat[valid_retina == 0] = 0
 
         # Threshold candidate spots
         _, ma_thresh = cv2.threshold(blackhat, 15, 255, cv2.THRESH_BINARY)
@@ -304,6 +352,11 @@ class RetinalStructureSegmenter:
         for cnt in contours:
             area = cv2.contourArea(cnt)
             if ma_min_area <= area <= ma_max_area:  # sub-pixel/small lesion range
+                perimeter = cv2.arcLength(cnt, True)
+                if perimeter > 0:
+                    circularity = 4 * np.pi * (area / (perimeter * perimeter))
+                    if circularity < 0.25:  # reject linear vessel fragments
+                        continue
                 (x, y), radius = cv2.minEnclosingCircle(cnt)
                 candidates.append((int(x), int(y), max(int(radius), 3)))
 

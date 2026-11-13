@@ -1,0 +1,21 @@
+{
+  "release_identifier": "mBRSET v1.0",
+  "source_doi_or_url": "https://physionet.org/content/mbrset/1.0.0/",
+  "metadata_csv_sha256": "TO_BE_POPULATED_FROM_DOWNLOADED_CSV_HASH",
+  "column_mapping": {
+    "patient_id": "patient_id",
+    "image_path": "image_path",
+    "dr_grade": "dr_grade",
+    "numerical_clinical_features": [
+      "age",
+      "diabetes_duration",
+      "hba1c",
+      "systolic_bp"
+    ],
+    "categorical_clinical_features": [
+      "sex",
+      "insulin_treatment"
+    ]
+  },
+  "privacy_note": "Contains non-identifying column names and file hashes only; no patient-level rows or identifiers per Privacy Contract §1b."
+}

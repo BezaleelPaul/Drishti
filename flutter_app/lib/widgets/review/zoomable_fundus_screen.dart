@@ -142,8 +142,10 @@ class _ZoomableFundusScreenState extends State<ZoomableFundusScreen>
   }
 
   /// Maps a tap (local widget position) to SOURCE-image pixel coordinates,
-  /// accounting for the InteractiveViewer transform and the fitted-image
-  /// letterbox. Returns null when markers/evidence are unavailable or the
+  /// accounting for the fitted-image letterbox. Because the GestureDetector
+  /// is the child of the InteractiveViewer, details.localPosition is already
+  /// in the child's local coordinate space (the transformation is already inverted
+  /// by the framework). Returns null when markers/evidence are unavailable or the
   /// tap falls outside the displayed image.
   (double, double)? _tapToSource(Offset localPosition) {
     final m = widget.markers;
@@ -153,12 +155,10 @@ class _ZoomableFundusScreenState extends State<ZoomableFundusScreen>
         _imageScale <= 0) {
       return null;
     }
-    final inverse = Matrix4.inverted(_transform.value);
-    final world = MatrixUtils.transformPoint(inverse, localPosition);
-    if (!_imageRect.contains(world)) return null;
+    if (!_imageRect.contains(localPosition)) return null;
     return (
-      (world.dx - _imageRect.left) / _imageScale,
-      (world.dy - _imageRect.top) / _imageScale,
+      (localPosition.dx - _imageRect.left) / _imageScale,
+      (localPosition.dy - _imageRect.top) / _imageScale,
     );
   }
 

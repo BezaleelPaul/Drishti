@@ -205,7 +205,8 @@ class TestDRDetectTTAPath(unittest.TestCase):
         self.assertAlmostEqual(result.raw_score, 2.6, places=6)
         # Zero spread -> sigma must equal the legacy fixed kernel width
         self.assertAlmostEqual(result.confidence, max(probabilities_from_score(2.6, BASE_SIGMA)))
-        self.assertAlmostEqual(result.uncertainty, float(np.exp(-abs(2.6 - 2.5))), places=6)
+        nearest_dist = min(abs(2.6 - th) for th in classifier.thresholds)
+        self.assertAlmostEqual(result.uncertainty, float(np.exp(-nearest_dist)), places=6)
 
     def test_asymmetric_views_raise_uncertainty_and_widen_probs(self):
         def score_fn(tensor):

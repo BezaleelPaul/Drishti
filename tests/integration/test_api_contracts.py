@@ -107,8 +107,9 @@ def test_role_hierarchy_allows_higher_roles_for_lower_minimums():
 
 
 def test_empty_db_path_falls_back_to_default_location():
+    import api.database as db_mod
     expected = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        os.path.dirname(os.path.dirname(os.path.abspath(db_mod.__file__))),
         "data",
         "screening_platform.db",
     )
