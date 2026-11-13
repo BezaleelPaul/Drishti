@@ -78,15 +78,24 @@ RetinalMarkers computeRetinalMarkers(Uint8List imageBytes) {
 
   final minDim = w < h ? w : h;
 
-  // ---- Optic disc: brightest centroid of (0.6R + 0.4G), large blur, masked.
+  // ---- Optic disc: brightest centroid of (0.6R + 0.4G), masked to anatomical equatorial band.
   final odRadiusPx = (minDim * 0.08).round().clamp(2, 1 << 12);
   final odBlurRadius = (minDim ~/ 8).clamp(2, 45);
   final blurredIntensity = _boxBlur(intensity, w, h, odBlurRadius);
+
+  // Exclude outer rim border glare and enforce vertical equatorial band (0.20*h to 0.80*h)
+  final yTopCut = (h * 0.20).round();
+  final yBottomCut = (h * 0.80).round();
+  final xLeftCut = (w * 0.08).round();
+  final xRightCut = (w * 0.92).round();
+
   var odX = 0;
   var odY = 0;
   var best = -1.0;
   for (var y = 0; y < h; y++) {
+    if (y < yTopCut || y > yBottomCut) continue;
     for (var x = 0; x < w; x++) {
+      if (x < xLeftCut || x > xRightCut) continue;
       final i = y * w + x;
       if (retinal[i] == 0) continue;
       if (blurredIntensity[i] > best) {
@@ -97,31 +106,71 @@ RetinalMarkers computeRetinalMarkers(Uint8List imageBytes) {
     }
   }
 
-  // ---- Fovea: geometric estimate temporal to the OD (Python reference rule).
+  // Fallback to center if no interior retinal pixel passed
+  if (best < 0) {
+    odX = (w * 0.35).round();
+    odY = (h * 0.50).round();
+  }
+
+  // ---- Fovea: anatomical macula depression temporal to the OD.
   final centreX = w / 2.0;
   final centreY = h / 2.0;
   final odSide = odX < centreX ? 1 : -1;
   final margin = (minDim ~/ 20).clamp(2, 1 << 12);
   double clip(double v, double lo, double hi) =>
       v < lo ? lo : (v > hi ? hi : v);
-  final foveaX = clip(
-    odX + odSide * odRadiusPx * 3.2,
+  final expFoveaX = clip(
+    odX + odSide * odRadiusPx * 2.8,
     margin.toDouble(),
     (w - margin).toDouble(),
   );
-  final foveaY = clip(
-    odY + (centreY - odY) * 0.3,
+  final expFoveaY = clip(
+    odY + (centreY - odY) * 0.25,
     margin.toDouble(),
     (h - margin).toDouble(),
   );
+
+  // Search macular depression (minimum green channel) in search ROI
+  final searchR = odRadiusPx;
+  final roiY1 = (expFoveaY - searchR).round().clamp(0, h - 1);
+  final roiY2 = (expFoveaY + searchR).round().clamp(0, h - 1);
+  final roiX1 = (expFoveaX - searchR).round().clamp(0, w - 1);
+  final roiX2 = (expFoveaX + searchR).round().clamp(0, w - 1);
+
+  var foveaX = expFoveaX;
+  var foveaY = expFoveaY;
+  var minGreen = double.infinity;
+  for (var ry = roiY1; ry <= roiY2; ry++) {
+    for (var rx = roiX1; rx <= roiX2; rx++) {
+      final ri = ry * w + rx;
+      if (retinal[ri] == 0) continue;
+      if (green[ri] < minGreen) {
+        minGreen = green[ri];
+        foveaX = rx.toDouble();
+        foveaY = ry.toDouble();
+      }
+    }
+  }
 
   // ---- Microaneurysm candidates: top-hat dark spots on the green channel.
   final bgRadius = ((minDim * 15.0 / 512.0) ~/ 2).clamp(2, 24);
   final background = _boxBlur(green, w, h, bgRadius);
   final spotMask = Uint8List(n);
-  for (var i = 0; i < n; i++) {
-    if (retinal[i] != 0 && background[i] - green[i] > 15.0) {
-      spotMask[i] = 255;
+  final odDiscRadiusSq = (odRadiusPx * 1.3) * (odRadiusPx * 1.3);
+  final borderExclusion = (minDim * 0.05).round().clamp(5, 40);
+
+  for (var y = borderExclusion; y < h - borderExclusion; y++) {
+    for (var x = borderExclusion; x < w - borderExclusion; x++) {
+      final i = y * w + x;
+      if (retinal[i] == 0) continue;
+      // Exclude optic disc region
+      final dx = x - odX;
+      final dy = y - odY;
+      if (dx * dx + dy * dy < odDiscRadiusSq) continue;
+
+      if (background[i] - green[i] > 15.0) {
+        spotMask[i] = 255;
+      }
     }
   }
 

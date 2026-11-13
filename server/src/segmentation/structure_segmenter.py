@@ -167,12 +167,18 @@ class RetinalStructureSegmenter:
             intensity = (red * 0.6 + green * 0.4)
 
             # Erode retinal mask to exclude lens aperture border glare and halo
-            border_margin = max(15, int(min(h, w) * 0.07))
+            border_margin = max(15, int(min(h, w) * 0.10))
             er_k = min(border_margin * 2 + 1, max(3, (min(h, w) // 10) | 1))
             er_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (er_k, er_k))
             eroded_mask = cv2.erode(retinal_mask, er_kernel)
             if np.count_nonzero(eroded_mask) < 100:
-                eroded_mask = retinal_mask
+                eroded_mask = retinal_mask.copy()
+
+            # Enforce anatomical equatorial band: human optic disc is never in top 20% or bottom 20%
+            eroded_mask[:int(0.20 * h), :] = 0
+            eroded_mask[int(0.80 * h):, :] = 0
+            eroded_mask[:, :int(0.08 * w)] = 0
+            eroded_mask[:, int(0.92 * w):] = 0
 
             # Smooth with large Gaussian to find global bright region.
             # Bound kernel to image size to avoid cv2.error on small images.
