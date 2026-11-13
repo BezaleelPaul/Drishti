@@ -23,6 +23,7 @@ Thumbs.db
 binaries/*.apk
 binaries/*.zip
 binaries/*.tar.gz
+linux_app/
 
 # Datasets
 data/
