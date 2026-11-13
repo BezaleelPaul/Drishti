@@ -166,6 +166,17 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
     }
   }
 
+  void _rescan() {
+    setState(() {
+      widget.state.imageBytes = null;
+      widget.state.filename = null;
+      widget.state.quality = null;
+      widget.state.analysis = null;
+      widget.state.markers = null;
+      widget.state.screeningId = null;
+    });
+  }
+
   void _openInspector() {
     final bytes = widget.state.imageBytes;
     if (bytes == null) return;
@@ -175,6 +186,7 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
           imageBytes: bytes,
           title: 'Fundus inspection',
           caption: 'Inspect the capture · pinch, drag, double-tap',
+          onRescan: _rescan,
         ),
       ),
     );
@@ -544,27 +556,79 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
                         ),
                 ),
                 const SizedBox(height: 14),
-                ElevatedButton(
-                  onPressed: st.imageBytes == null ? null : _proceed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00B4D8),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 3,
-                    shadowColor: const Color(0x6600B4D8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                if (st.imageBytes != null) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: OutlinedButton.icon(
+                          key: const ValueKey('btn_rescan_capture_step2'),
+                          onPressed: _rescan,
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: Text(
+                            context.tr('btn_rescan'),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            foregroundColor: const Color(0xFF67E8F9),
+                            side: const BorderSide(color: Color(0xFF00B4D8), width: 1.2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 1,
+                        child: ElevatedButton(
+                          onPressed: _proceed,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00B4D8),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            elevation: 3,
+                            shadowColor: const Color(0x6600B4D8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            context.tr('btn_proceed_ai'),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  ElevatedButton(
+                    onPressed: null,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      context.tr('btn_proceed_ai'),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
-                  child: Text(
-                    context.tr('btn_proceed_ai'),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
+                ],
               ],
             ),
           ),

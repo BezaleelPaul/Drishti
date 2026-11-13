@@ -211,6 +211,29 @@ class _FlowAnalysisScreenState extends State<FlowAnalysisScreen> {
             color: Colors.white,
           ),
         ),
+        actions: [
+          TextButton.icon(
+            key: const ValueKey('ai-cancel-rescan'),
+            onPressed: () {
+              _timer?.cancel();
+              widget.state.imageBytes = null;
+              widget.state.quality = null;
+              widget.state.analysis = null;
+              widget.state.markers = null;
+              widget.state.screeningId = null;
+              Navigator.pop(context);
+            },
+            icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF67E8F9)),
+            label: Text(
+              context.tr('btn_rescan'),
+              style: const TextStyle(
+                color: Color(0xFF67E8F9),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: [
