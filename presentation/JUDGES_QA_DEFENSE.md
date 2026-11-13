@@ -1,5 +1,5 @@
-# SIH 2026 Judges Q&A Defense Sheet
-## Problem Statement SIH26038 (MathWorks) — Retinal Screening
+# Clinical Judges Q&A Defense Sheet
+## Autonomous Retinal Screening Platform Defense
 
 ---
 
@@ -29,7 +29,7 @@
 > Furthermore, in our pipeline:
 > 1. We cross-verify Grad-CAM activations with our Requirement 2 Anatomical Structure Segmenter (Optic Disc, Fovea, and vessel mask).
 > 2. We maintain honest clinical claim boundaries: we explicitly inform the clinician that Grad-CAM represents an activation focus map, NOT automated lesion boundary segmentation.
-> 3. All Grad-CAM overlays are computed in 1.14 seconds, far beating the MathWorks requirement of <30 seconds."*
+> 3. All Grad-CAM overlays are computed in 1.14 seconds, far beating the clinical workflow requirement of <30 seconds."*
 
 ---
 
@@ -38,7 +38,7 @@
 **Winning Answer:**
 > *"In rural primary health centers, high-end NVIDIA GPUs with high power consumption are not feasible. EfficientNetB0 utilizes compound scaling (balancing depth, width, and resolution) with inverted residual mobile blocks (MBConv). 
 > It provides 77.1% ImageNet top-1 accuracy with only 5.3 million parameters (compared to 25.6 million in ResNet-50 and 86 million in ViT-Base).
-> This allows ELYTRIVA to run full inference, Grad-CAM, and segmentation in ~1.2 seconds on an ordinary dual-core laptop CPU without requiring a GPU or cloud connectivity."*
+> This allows Drishti to run full inference, Grad-CAM, and segmentation in ~1.2 seconds on an ordinary dual-core laptop CPU without requiring a GPU or cloud connectivity."*
 
 ---
 
@@ -70,7 +70,7 @@
 > 
 > But here is why those systems fail in rural Indian primary health camps:
 > 1. **The Ungradable Image Blindspot:** Centralized models assume high-grade optical captures. In real rural camps with low-cost handheld cameras (Remidio, Forus 3Nethra, Volk), 25–35% of images have corneal glare, motion blur, or pupil shadow. A standard classifier forced to grade them outputs dangerously confident false diagnoses on ungradable pixels. Our **Model 1 Quality Gate** stops ungradable images *before* classification and gives instant audio/visual recapture guidance to ASHA workers.
-> 2. **Edge Operationalization (Zero Cloud):** Google ARDA and cloud architectures require high-speed internet. ELYTRIVA runs 100% offline on a ₹15,000 dual-core laptop CPU in <180 ms and <620 MB RAM.
+> 2. **Edge Operationalization (Zero Cloud):** Google ARDA and cloud architectures require high-speed internet. Drishti runs 100% offline on a ₹15,000 dual-core laptop CPU in <180 ms and <620 MB RAM.
 > 3. **Quantitative Retinal Biomarkers:** We don't just output a black-box severity score; our anatomical segmentation engine calculates physical Euclidean distances from exudates to the fovea center to grade Clinically Significant Macular Edema (CSME) risk.
 > 4. **District-Scale Queuing Optimization:** As demonstrated in our MATLAB/Simulink model, we resolve the bottleneck of ophthalmologist scarcity by filtering 99.1% of healthy tele-traffic at the village edge.
 > 

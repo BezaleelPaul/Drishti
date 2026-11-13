@@ -180,14 +180,14 @@ def export_abdm_fhir_diagnostic_report(
                     "display": "Diabetic retinopathy study panel",
                 }
             ],
-            "text": "AI-Assisted Retinal Screening for Diabetic Retinopathy (MathWorks SIH26038)",
+            "text": "AI-Assisted Retinal Screening for Diabetic Retinopathy",
         },
         "subject": {"reference": f"Patient/{sanitized_pid}", "display": f"Patient {sanitized_pid}"},
         "effectiveDateTime": timestamp,
         "issued": timestamp,
         "performer": [
             {"display": doctor_name},
-            {"display": "ELYTRIVA Screening Engine (MathWorks SIH26038)"},
+            {"display": "Drishti Screening Engine"},
         ],
         "conclusion": (
             f"Diabetic Retinopathy Grade: {grade_label}. "

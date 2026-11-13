@@ -1,4 +1,4 @@
-# ELYTRIVA — Links, Setup & How to Connect
+# Drishti — Links, Setup & How to Connect
 
 One page with every link and start command. If it isn't here, ask before
 improvising.
@@ -9,8 +9,8 @@ improvising.
 |---|---|
 | Backend API (Render, free tier) | https://drishti-ai-xg6w.onrender.com |
 | Backend health check | https://drishti-ai-xg6w.onrender.com/ (expect `"status": "up"`) |
-| Release downloads (APK, Windows, macOS, Linux) | https://github.com/BezaleelPaul/ELYTRIVA/releases/tag/v1.0.0-hardened |
-| Web demo (auto-deployed from `master`) | https://bezaleelpaul.github.io/ELYTRIVA/ |
+| Release downloads (APK, Windows, macOS, Linux) | https://github.com/BezaleelPaul/Drishti/releases/tag/v1.0.0-hardened |
+| Web demo (auto-deployed from `master`) | https://bezaleelpaul.github.io/Drishti/ |
 | Render dashboard (redeploy, logs, env vars) | https://dashboard.render.com |
 | Privacy & access matrix | `docs/PRIVACY.md` |
 
@@ -42,7 +42,7 @@ The app's Online badge goes green when `/status` answers with the key.
 |---|---|---|
 | Android | `netra_ai_mobile-release.apk` | Uninstall any old debug build first (signature changed), tap APK, allow unknown apps |
 | Windows | `netra_ai_windows_app.zip` | Extract, run `netra_ai_mobile.exe`, no install |
-| macOS | `ELYTRIVA-macOS-v1.0.0.zip` (CI name: `netra_ai_macos.zip`) | Unzip, right-click `netra_ai_mobile.app` → Open (unsigned bypass, once) |
+| macOS | `drishti_macos_v1.7.1.zip` (also `drishti_macos_v1.7.0.zip`) | Unzip, move `Drishti.app` to `/Applications`. Run `xattr -cr /Applications/Drishti.app` (or Right-Click → Open) to clear browser quarantine |
 | Linux | `netra_ai_linux.tar.gz` | `tar -xzf netra_ai_linux.tar.gz && ./bundle/netra_ai_mobile` |
 | iOS | — (unsigned CI build only) | Needs Apple Developer account ($99/yr); see CI artifacts |
 
@@ -63,7 +63,7 @@ cd flutter_app
 flutter build apk --release --dart-define=DRISHTI_BASE_URL=<url> --dart-define=DRISHTI_API_KEY=<op-key>
 flutter build windows --release --dart-define=DRISHTI_BASE_URL=<url> --dart-define=DRISHTI_API_KEY=<op-key>
 # macOS + Linux + iOS (cloud Mac / Linux runners, free)
-gh workflow run 'ELYTRIVA CI Pipeline' --ref master
+gh workflow run 'Drishti CI Pipeline' --ref master
 # Publish
 gh release upload v1.0.0-hardened <files> --clobber
 ```

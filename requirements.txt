@@ -1,4 +1,4 @@
-# SIH 2026: AI-Assisted Diabetic Retinopathy Screening
+# DRISHTI-2026: AI-Assisted Diabetic Retinopathy Screening
 # Full pinned environment (proven working combination, venv, Python 3.11).
 # This file is kept for CI / Makefile / setup scripts; it resolves to the
 # exact same pins as before via requirements-dev.txt.

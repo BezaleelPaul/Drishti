@@ -247,7 +247,7 @@ class _FuturisticSplashScreenState extends State<FuturisticSplashScreen>
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'ELYTRIVA // OS v1.2',
+                    'DRISHTI // OS v1.2',
                     maxLines: 1,
                     softWrap: false,
                     style: ScannerHUDTheme.hudMonoStyle.copyWith(
@@ -308,7 +308,7 @@ class _FuturisticSplashScreenState extends State<FuturisticSplashScreen>
               ),
             ),
           ),
-          // The ELYTRIVA brand mark blooms over the calibration, breathing
+          // The DRISHTI brand mark blooms over the calibration, breathing
           // with the same clock as the scanner so it reads as ONE composed
           // surface instead of a static image pasted on an animation.
           Opacity(
@@ -344,7 +344,7 @@ class _FuturisticSplashScreenState extends State<FuturisticSplashScreen>
                     // directly on the scanner canvas, so the eye reads as
                     // part of the same surface instead of a pasted image.
                     child: Image.asset(
-                      'assets/branding/elytriva_mark.png',
+                      'assets/branding/drishti_mark.png',
                       width: 152,
                       height: 152,
                       fit: BoxFit.contain,
@@ -361,7 +361,7 @@ class _FuturisticSplashScreenState extends State<FuturisticSplashScreen>
   }
 
   Widget _wordmark(double wordIn) {
-    // The ELYTRIVA wordmark fades up over the brand mark; the tagline
+    // The DRISHTI wordmark fades up over the brand mark; the tagline
     // resolves into the three screening outcomes the product actually
     // returns (GOOD / BORDERLINE / REJECT).
     //
@@ -379,7 +379,7 @@ class _FuturisticSplashScreenState extends State<FuturisticSplashScreen>
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxWidth.clamp(120, 240)),
               child: Image.asset(
-                'assets/branding/elytriva_logo_horizontal_no_tagline.png',
+                'assets/branding/drishti_logo_horizontal_no_tagline.png',
                 fit: BoxFit.contain,
                 filterQuality: FilterQuality.high,
               ),

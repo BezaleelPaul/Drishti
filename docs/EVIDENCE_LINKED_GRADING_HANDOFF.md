@@ -1,4 +1,4 @@
-# Handoff Report — Evidence-Linked Grading (SIH26038, schema_version 1.0)
+# Handoff Report — Evidence-Linked Grading (schema_version 1.0)
 
 Date: 2026-10-21 · Branch: `master` · Commits: `93838a2`, `90c5804`, `6227da5`, `827ae73`
 

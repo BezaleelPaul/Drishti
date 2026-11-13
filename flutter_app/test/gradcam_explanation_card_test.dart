@@ -28,7 +28,7 @@ ScreeningAnalysisModel analysis({String? gradcamUrl, String? backend}) =>
       actionRecommendation: 'Refer',
       plainLanguageAdvice: 'Refer to an eye doctor.',
       smsReferralSlip:
-          'ELYTRIVA: Moderate NPDR (Grade 2). Refer. Screening:SCR-TEST-1',
+          'DRISHTI: Moderate NPDR (Grade 2). Refer. Screening:SCR-TEST-1',
     );
 
 Uint8List _png() {

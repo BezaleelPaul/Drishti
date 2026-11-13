@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Drishti-AI — Emergency Offline Expo Demo Backup (Level 3)</title>
+  <title>Drishti-AI — Emergency Offline Expo Demo (Level 3)</title>
   <style>
     :root {
       --bg: #0b0f19;
@@ -17,7 +18,13 @@
       --text: #f8fafc;
       --text-muted: #94a3b8;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: var(--bg);
@@ -25,6 +32,7 @@
       line-height: 1.5;
       padding: 24px;
     }
+
     .header {
       background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
       border: 1px solid var(--border);
@@ -35,6 +43,7 @@
       justify-content: space-between;
       align-items: center;
     }
+
     .badge {
       background: rgba(16, 185, 129, 0.2);
       border: 1px solid var(--success);
@@ -47,8 +56,17 @@
       display: inline-block;
       margin-bottom: 8px;
     }
-    .title { font-size: 28px; font-weight: 800; }
-    .subtitle { color: var(--text-muted); font-size: 15px; }
+
+    .title {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
     .nav-tabs {
       display: flex;
       gap: 12px;
@@ -56,6 +74,7 @@
       border-bottom: 1px solid var(--border);
       padding-bottom: 12px;
     }
+
     .tab-btn {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -67,20 +86,35 @@
       font-size: 14px;
       transition: all 0.2s ease;
     }
-    .tab-btn.active, .tab-btn:hover {
+
+    .tab-btn.active,
+    .tab-btn:hover {
       background: var(--primary);
       color: white;
       border-color: var(--primary-light);
     }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
       padding: 20px 24px;
       border-radius: 14px;
     }
+
     .card-title {
       font-size: 17px;
       font-weight: 700;
@@ -92,13 +126,20 @@
       padding-bottom: 8px;
       color: var(--primary-light);
     }
+
     .metric-big {
       font-size: 36px;
       font-weight: 900;
       font-family: monospace;
       color: var(--success);
     }
-    .metric-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    .metric-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
     .demo-box {
       border: 2px dashed var(--border);
       border-radius: 12px;
@@ -106,6 +147,7 @@
       text-align: center;
       margin-top: 12px;
     }
+
     .status-pill {
       display: inline-block;
       padding: 6px 14px;
@@ -113,8 +155,19 @@
       font-weight: 700;
       font-size: 13px;
     }
-    .pill-green { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
-    .pill-red { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+
+    .pill-green {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+
+    .pill-red {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+
     pre {
       background: #090d16;
       border: 1px solid var(--border);
@@ -124,11 +177,28 @@
       overflow-x: auto;
       color: #38bdf8;
     }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
-    th { background: rgba(2, 132, 199, 0.1); color: var(--primary-light); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: rgba(2, 132, 199, 0.1);
+      color: var(--primary-light);
+    }
   </style>
 </head>
+
 <body>
 
   <header class="header">
@@ -138,8 +208,7 @@
       <p class="subtitle">Complete Visual Backup for Judging • No Internet Connection Required</p>
     </div>
     <div style="text-align: right;">
-      <div style="font-weight: 700; color: #fff;">TechUtsav 2.0 • CMR SOET</div>
-      <div style="color: var(--text-muted); font-size: 13px;">Team Drishti (SIH26038)</div>
+      <div style="color: var(--text-muted); font-size: 13px;">Team Drishti</div>
     </div>
   </header>
 
@@ -153,7 +222,7 @@
   <!-- TAB 1: SCENARIOS -->
   <div id="tab-scenarios" class="tab-content active">
     <div class="grid">
-      
+
       <!-- Scenario 1: Clean Retinal Capture -->
       <div class="card">
         <div class="card-title">✅ Scenario A: High-Quality Capture (Diagnostic)</div>
@@ -244,22 +313,62 @@ Zero diagnostic hallucination.</pre>
       <div class="card">
         <div class="card-title">⚡ Latency & Efficiency Metrics</div>
         <table>
-          <tr><th>Stage</th><th>Platform</th><th>Latency</th></tr>
-          <tr><td>Quality Gate</td><td>Core i3 CPU</td><td>&lt; 60 ms</td></tr>
-          <tr><td>DR Inference</td><td>Core i3 CPU</td><td>&lt; 180 ms</td></tr>
-          <tr><td>Grad-CAM++</td><td>Core i3 CPU</td><td>&lt; 1.20 s</td></tr>
-          <tr><td>Full Screening</td><td>End-to-End</td><td>&lt; 1.45 s</td></tr>
+          <tr>
+            <th>Stage</th>
+            <th>Platform</th>
+            <th>Latency</th>
+          </tr>
+          <tr>
+            <td>Quality Gate</td>
+            <td>Core i3 CPU</td>
+            <td>&lt; 60 ms</td>
+          </tr>
+          <tr>
+            <td>DR Inference</td>
+            <td>Core i3 CPU</td>
+            <td>&lt; 180 ms</td>
+          </tr>
+          <tr>
+            <td>Grad-CAM++</td>
+            <td>Core i3 CPU</td>
+            <td>&lt; 1.20 s</td>
+          </tr>
+          <tr>
+            <td>Full Screening</td>
+            <td>End-to-End</td>
+            <td>&lt; 1.45 s</td>
+          </tr>
         </table>
       </div>
 
       <div class="card">
-        <div class="card-title">📡 MathWorks 100k Simulink Queuing</div>
+        <div class="card-title">📡 District 100k Telemedicine Queuing</div>
         <table>
-          <tr><th>District Metric</th><th>Standard Cloud</th><th>Drishti-AI Edge</th></tr>
-          <tr><td>District Population</td><td>100,000</td><td>100,000</td></tr>
-          <tr><td>Scans Uploaded</td><td>100,000</td><td>900 (High Risk)</td></tr>
-          <tr><td>Bandwidth Savings</td><td>0%</td><td><strong>99.1%</strong></td></tr>
-          <tr><td>Doctor Workload</td><td>100,000/yr</td><td>16,100/yr (~62/day)</td></tr>
+          <tr>
+            <th>District Metric</th>
+            <th>Standard Cloud</th>
+            <th>Drishti-AI Edge</th>
+          </tr>
+          <tr>
+            <td>District Population</td>
+            <td>100,000</td>
+            <td>100,000</td>
+          </tr>
+          <tr>
+            <td>Scans Uploaded</td>
+            <td>100,000</td>
+            <td>900 (High Risk)</td>
+          </tr>
+          <tr>
+            <td>Bandwidth Savings</td>
+            <td>0%</td>
+            <td><strong>99.1%</strong></td>
+          </tr>
+          <tr>
+            <td>Doctor Workload</td>
+            <td>100,000/yr</td>
+            <td>16,100/yr (~62/day)</td>
+          </tr>
         </table>
       </div>
     </div>
@@ -339,4 +448,5 @@ PHC ID: PHC-RURAL-KA-042</pre>
     }
   </script>
 </body>
+
 </html>

@@ -1,4 +1,4 @@
-# ELYTRIVA / Drishti-AI: Brutal Clinical Audit & Multi-Stage Validation Report
+# Drishti-AI: Brutal Clinical Audit & Multi-Stage Validation Report
 
 **Date of Execution:** November 13, 2026  
 **Clinical Test Cohort:** EyePACS / APTOS-2019 Retinal Screening Cohort (50 Stratified Real Clinical Captures)  
@@ -143,7 +143,7 @@ This confirms that the neural feature representations reflect true biological di
 
 ---
 
-## 6. Recommendations for Judges & Hackathon Presentation
+## 6. Recommendations for Clinical Evaluation & Presentation
 
 1. **Be Completely Candid About Grade 1:**  
    Do not claim 100% 5-stage accuracy. Tell the judges: *"Our 512px edge model achieves 84% within-1-grade agreement, but like all single-frame models, it consolidates Grade 1 microaneurysms into Grade 0. Clinically, this is safe because both are Non-Referable under AAO guidelines."*

@@ -220,7 +220,7 @@ class NeonNavRail extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'ELYTRIVA',
+                  'DRISHTI',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,

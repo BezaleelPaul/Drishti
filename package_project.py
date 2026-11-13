@@ -12,7 +12,7 @@ DEFAULT_OUTPUT_DIR = "release/archives"
 
 def make_portable_zip(
     source_dir: str = ".",
-    output_zip: str = "release/archives/SIH2026_DR_Screening_Pipeline.zip",
+    output_zip: str = "release/archives/DRISHTI-2026_DR_Screening_Pipeline.zip",
 ):
     print(f"Creating portable zip archive: {output_zip}...")
     start_time = time.time()
@@ -79,7 +79,7 @@ def make_portable_zip(
 if __name__ == "__main__":
     import sys
 
-    out_name = sys.argv[1] if len(sys.argv) > 1 else "SIH2026_DR_Screening_Pipeline_LATEST.zip"
+    out_name = sys.argv[1] if len(sys.argv) > 1 else "DRISHTI-2026_DR_Screening_Pipeline_LATEST.zip"
     if not os.path.dirname(out_name):
         out_name = os.path.join(DEFAULT_OUTPUT_DIR, out_name)
     make_portable_zip(output_zip=out_name)

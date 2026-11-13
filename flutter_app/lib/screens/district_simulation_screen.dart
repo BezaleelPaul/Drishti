@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../widgets/scanner/scanner_theme.dart';
 
-/// District Simulation (MathWorks macro model) — the judge/demo engine,
+/// District Simulation (Production Clinical Standard macro model) — the judge/demo engine,
 /// nested inside About / System Info. Dark HUD chrome consistent with the
 /// clinical shell; accent colours stay semantic on the dark surface.
 class DistrictSimulationScreen extends StatefulWidget {
@@ -27,7 +27,7 @@ class _DistrictSimulationScreenState extends State<DistrictSimulationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Dynamic simulation calculations based on MathWorks Simulink engine
+    // Dynamic simulation calculations based on Production Clinical Standard Simulink engine
     final dailyIntake = (_population / 260).round();
     final dailyReferred = (dailyIntake * 0.16).round();
     final bandwidthSaved = 98.6;
@@ -69,7 +69,7 @@ class _DistrictSimulationScreenState extends State<DistrictSimulationScreen> {
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'MathWorks Req 5: District Telemedicine Engine',
+                          'System Requirement 5: District Telemedicine Engine',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

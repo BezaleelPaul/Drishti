@@ -35,7 +35,7 @@ class RetinalStructuresResult:
 
 class RetinalStructureSegmenter:
     """
-    MathWorks SIH26038 Requirement #2:
+    Clinical Requirement #2:
     Retinal Structure Segmentation and Clinical Landmark Extraction:
     - Optic Disc (OD) & Fovea localization
     - Blood vessel tree segmentation

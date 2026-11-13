@@ -1,6 +1,6 @@
-# ELYTRIVA — Team Plan: Next Update Cycle ("Phone Becomes the Screening Unit")
+# Drishti — Team Plan: Next Update Cycle ("Phone Becomes the Screening Unit")
 
-**Repo:** `C:\Users\bezal\Downloads\SIH HACKATHON` · SIH 2026 / PS 26038
+**Platform:** Drishti Autonomous Clinical AI Screening System
 **Sprint:** 21 days · **Budget:** 43.5 person-days (6 people) · Freeze at Day 16
 **Goal:** Convert the server-round-trip Flutter app into a fully offline, on-device AI screening system for low-end Android, with zero cloud PHI storage and consent-gated de-identified tele-referral.
 
@@ -23,7 +23,7 @@
 | E-1 device matrix | ⬜ **the only hardware-blocked item** | needs 2GB Android + 2 more phones |
 | Verification state | Dart `flutter analyze` 0 errors/warnings · **40/40 tests** · Python **107 tests + 119 subtests** · rehearsal 13 steps/23 assertions all_ok | CI green |
 
-**Remaining human actions:** (1) run E-1 on real phones (the app is ready — airplane-mode demo works as soon as the app is installed; the model is IN the APK now), (2) optional int8 size upgrade when a calibration corpus is downloaded, (3) F-5 retrain post-hackathon.
+**Remaining human actions:** (1) run E-1 on real phones (the app is ready — airplane-mode demo works as soon as the app is installed; the model is IN the APK now), (2) optional int8 size upgrade when a calibration corpus is downloaded, (3) F-5 retrain post-release.
 
 ---
 
@@ -151,7 +151,7 @@ E-1 device matrix (6 devices, Android 8–14, 2 GB worst — 10-patient airplane
 
 **Budget: 42 → 43.5 pd.** That is the entire delta. Nothing else enters the sprint.
 
-### Phase F — P2 backlog (post-hackathon, do NOT start in sprint)
+### Phase F — P2 backlog (post-release, do NOT start in sprint)
 
 F-1 on-device Grad-CAM polish · F-2 DL segmentation (dual-head, **focal Tversky α0.3/β0.7**, needs IDRiD masks + distillation) · F-3 CLI-equivalent hardening/Keystore rotation · F-4 per-operator data ownership · **F-5 retrain program (§4)** · F-6 extend l10n to 8 languages · F-7 CoreML/iOS · F-8 Postgres/Redis/multi-worker · F-9 real fundus-camera SDK integration (Remidio/Forus/Volk — blocked on device loans).
 

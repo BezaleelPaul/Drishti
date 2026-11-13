@@ -13,7 +13,7 @@ extension AppLangMeta on AppLang {
 }
 
 /// App-wide language state, persisted across restarts.
-/// Held by [ElytrivaApp], read via [BuildContext.tr].
+/// Held by [DrishtiApp], read via [BuildContext.tr].
 class LangController extends ValueNotifier<AppLang> {
   static const _prefsKey = 'drishti_lang';
   bool _userChangedLanguage = false;

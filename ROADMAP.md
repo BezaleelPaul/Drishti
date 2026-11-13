@@ -1,4 +1,4 @@
-# Drishti-AI Roadmap — SIH2026 SIH26038
+# Drishti-AI Roadmap — DRISHTI-2026 DR-CLINICAL-038
 
 Living plan. Status legend: **Done** · **Now** · **Next** · **Blocked** (needs hardware/data/SDK) · **Ongoing** (never finished, worked in rounds).
 

@@ -51,7 +51,7 @@ Raw Image → [Model 1: Quality Gate] → Good/Borderline/Bad
 **3. Grad-CAM Explainability (`src/classification/gradcam.py`)**
 - Generates visual attention heatmap on final convolutional layer
 - Overlaid on original fundus for clinician audit
-- Computes in ~1.14 seconds (well under the 30-second MathWorks requirement)
+- Computes in ~1.14 seconds (well under the 30-second Production Clinical Standard requirement)
 - Honest claim boundary: highlights influential regions, NOT automated lesion segmentation
 
 **4. Clinical Risk Engine (`src/clinical_risk/risk_model.py`)**
@@ -123,7 +123,7 @@ Raw Image → [Model 1: Quality Gate] → Good/Borderline/Bad
 
 **4. It's clinically honest.** We don't claim 99% accuracy. We show confidence scores honestly, flag low-confidence predictions, abstain on bad images, and route ambiguous cases to human specialists. This is how real medical AI should work.
 
-**5. It meets every MathWorks SIH26038 requirement:**
+**5. It meets every Production Clinical Standard DR-CLINICAL-038 requirement:**
 - Requirement 1: 2-model pipeline (Quality Gate + DR Classifier)
 - Requirement 2: Retinal structure segmentation (OD, Fovea, vessel tree)
 - Requirement 3: Non-destructive processing (no enhancement before grading)

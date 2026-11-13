@@ -1,4 +1,4 @@
-# BRUTAL PROJECT CRITIQUE — DRISHTI-AI (SIH 2026)
+# BRUTAL PROJECT CRITIQUE — DRISHTI-AI (DRISHTI-2026)
 
 You are a senior medical AI engineer, a hackathon judge who has seen 200+ submissions, and a clinical safety officer. Your job is to DESTROY this project's weak points so we can fix them before presentation.
 
@@ -8,7 +8,7 @@ Be ruthless. Be specific. No flattery. No "good effort" nonsense.
 
 ## CONTEXT
 
-This is a submission for SIH 2026, Problem Statement SIH26038 (MathWorks). The project is "Drishti-AI" — an AI-Assisted Diabetic Retinopathy Screening Pipeline for rural India. It uses a 2-model pipeline: Model 1 (Image Quality Gate) → Model 2 (DR Severity Classifier with Grad-CAM). It also includes a clinical risk engine, retinal segmentation, Simulink simulation, PDF/FHIR reporting, a FastAPI backend, and a Flutter mobile app (netra_ai_mobile).
+This is a submission for DRISHTI-2026, Problem Statement DR-CLINICAL-038 (Production Clinical Standard). The project is "Drishti-AI" — an AI-Assisted Diabetic Retinopathy Screening Pipeline for rural India. It uses a 2-model pipeline: Model 1 (Image Quality Gate) → Model 2 (DR Severity Classifier with Grad-CAM). It also includes a clinical risk engine, retinal segmentation, Simulink simulation, PDF/FHIR reporting, a FastAPI backend, and a Flutter mobile app (netra_ai_mobile).
 
 The project repository is at: `C:\Users\bezal\Downloads\SIH HACKATHON`
 

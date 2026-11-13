@@ -84,14 +84,14 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 100));
 
-      // ELYTRIVA brand identity: the wordmark and the brand mark are
+      // DRISHTI brand identity: the wordmark and the brand mark are
       // bundled assets (assets/branding), not painted text.
       expect(
         find.byWidgetPredicate(
           (w) =>
               w is Image &&
               (w.image as AssetImage).assetName ==
-                  'assets/branding/elytriva_logo_horizontal_no_tagline.png',
+                  'assets/branding/drishti_logo_horizontal_no_tagline.png',
         ),
         findsOneWidget,
       );
@@ -100,11 +100,11 @@ void main() {
           (w) =>
               w is Image &&
               (w.image as AssetImage).assetName ==
-                  'assets/branding/elytriva_mark.png',
+                  'assets/branding/drishti_mark.png',
         ),
         findsOneWidget,
       );
-      expect(find.text('ELYTRIVA // OS v1.2'), findsOneWidget);
+      expect(find.text('DRISHTI // OS v1.2'), findsOneWidget);
       expect(
         find.text(
           'EXPLAINABLE RETINAL SCREENING  ·  GOOD / BORDERLINE / REJECT',
@@ -132,7 +132,7 @@ void main() {
           (w) =>
               w is Image &&
               (w.image as AssetImage).assetName ==
-                  'assets/branding/elytriva_mark.png',
+                  'assets/branding/drishti_mark.png',
         ),
         findsOneWidget,
       );
@@ -141,7 +141,7 @@ void main() {
           (w) =>
               w is Image &&
               (w.image as AssetImage).assetName ==
-                  'assets/branding/elytriva_logo_horizontal_no_tagline.png',
+                  'assets/branding/drishti_logo_horizontal_no_tagline.png',
         ),
         findsOneWidget,
       );

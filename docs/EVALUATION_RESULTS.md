@@ -1,6 +1,6 @@
 # Evaluation Results — External Validation on Labeled Fundus Data
 
-Honest measurement of the shipped ELYTRIVA components on real, third-party
+Honest measurement of the shipped Drishti components on real, third-party
 labeled data. Everything below is reproducible from this repository; no numbers
 are copied from model cards without re-measurement.
 
@@ -318,7 +318,7 @@ calibration half only, reported once on the 1,407-image test half):
 4. **One held-out split, not prospective.** The section 6 operating point is
    tuned on a calibration half and confirmed on a held-out test half of the
    *same* dataset; deployment would want external prospective calibration.
-5. **Not a clinical claim.** This is a hackathon research benchmark; the model
+5. **Not a clinical claim.** This is an investigational research benchmark; the model
    card itself states "Not for clinical use".
 6. **XAI truthfulness: FAILED its own gate (X-1, 2026-09-28).** We built a
    mathematical check for the explanations — insertion/deletion curves

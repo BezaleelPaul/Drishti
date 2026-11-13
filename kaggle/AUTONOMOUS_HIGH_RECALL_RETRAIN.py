@@ -1,5 +1,5 @@
 # ============================================================================
-# DRISHTI-AI / ELYTRIVA: AUTONOMOUS HIGH-RECALL RETRAINING & AUTO-TUNING HARNESS
+# DRISHTI-AI / DRISHTI: AUTONOMOUS HIGH-RECALL RETRAINING & AUTO-TUNING HARNESS
 # VERSION 7: High-Resolution (384px) • Quad-Clinical Loss (Focal + Ordinal + Direct QWK + Boundary Boost) • 4-View TTA
 # ============================================================================
 # Target Environment: Kaggle GPU (T4 / P100)

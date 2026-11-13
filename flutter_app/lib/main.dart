@@ -17,7 +17,7 @@ void main() {
   // to memory-only with an honest isPersisted=false flag — the app never
   // crashes at boot over storage.
   unawaited(_initOfflinePersistence());
-  runApp(ElytrivaApp(langController: LangController()));
+  runApp(DrishtiApp(langController: LangController()));
 }
 
 Future<void> _initOfflinePersistence() async {
@@ -46,11 +46,11 @@ Future<void> _initOfflinePersistence() async {
   }
 }
 
-class ElytrivaApp extends StatelessWidget {
+class DrishtiApp extends StatelessWidget {
   final LangController langController;
   final Widget? initialHome;
 
-  const ElytrivaApp({
+  const DrishtiApp({
     super.key,
     required this.langController,
     this.initialHome,
@@ -61,7 +61,7 @@ class ElytrivaApp extends StatelessWidget {
     return LangScope(
       notifier: langController,
       child: MaterialApp(
-        title: 'ELYTRIVA · Rural Retinal Screening',
+        title: 'DRISHTI · Rural Retinal Screening',
         debugShowCheckedModeBanner: false,
         theme: buildFigmaTheme(),
         home: initialHome ?? const FuturisticSplashScreen(),

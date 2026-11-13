@@ -1,8 +1,8 @@
-# ELYTRIVA / Drishti-AI v1.7.0 — Best Clinical Production Version (Quad-Loss & 4-View TTA)
+# Drishti-AI v1.7.0 — Best Clinical Production Version (Quad-Loss & 4-View TTA)
 
 ### 🏆 Milestone Overview
 
-**Release v1.7.0** represents the undisputed **Best Clinical Version** of ELYTRIVA / Drishti-AI. Powered by a **384×384 Quad-Loss Architecture** (Focal + Ordinal Cumulative Distance + Direct QWK + Asymmetric Safety Penalty) and **4-View Test-Time Augmentation (TTA)**, it achieves our highest audited clinical metrics to date on the 731-sample APTOS-2019 holdout validation split:
+**Release v1.7.0** represents the undisputed **Best Clinical Version** of Drishti-AI. Powered by a **384×384 Quad-Loss Architecture** (Focal + Ordinal Cumulative Distance + Direct QWK + Asymmetric Safety Penalty) and **4-View Test-Time Augmentation (TTA)**, it achieves our highest audited clinical metrics to date on the 731-sample APTOS-2019 holdout validation split:
 - **`96.28%` Referable Sensitivity (Recall)** — only 11 missed referable cases out of 296!
 - **`91.03%` Referable Specificity** — exceeds British Diabetic Association $\ge 80\%$ standard.
 - **`0.8739` Quadratic Weighted Kappa (QWK)** — Near-Perfect Inter-Rater Agreement.
@@ -44,11 +44,11 @@
    - SHA-256: `1071E2D5BF8F13CCDFAF2077831E9508F1D7E376378EBC7CFE111C0639F65A44`.
 
 4. **Standalone Production Package:**
-   - Exported to a self-contained local production directory `ELYTRIVA_BEST_VERSION_PRODUCTION/` with one-click runner scripts.
+   - Exported to a self-contained local production directory `DRISHTI_BEST_VERSION_PRODUCTION/` with one-click runner scripts.
 
 5. **Multi-Platform Deployment Packages:**
-   - **Android:** `elytriva_mobile_v1.7.0.apk`
-   - **Windows:** `elytriva_windows_v1.7.0.zip`
-   - **Linux:** `elytriva_linux_v1.7.0.tar.gz`
-   - **macOS:** `elytriva_macos_v1.7.0.zip`
-   - **iOS:** `elytriva_ios_unsigned_v1.7.0.zip`
+   - **Android:** `drishti_mobile_v1.7.0.apk`
+   - **Windows:** `drishti_windows_v1.7.0.zip`
+   - **Linux:** `drishti_linux_v1.7.0.tar.gz`
+   - **macOS:** `drishti_macos_v1.7.0.zip`
+   - **iOS:** `drishti_ios_unsigned_v1.7.0.zip`

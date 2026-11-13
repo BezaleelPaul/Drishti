@@ -1,4 +1,4 @@
-# ELYTRIVA / Netra-AI — Privacy & Access-Control Matrix
+# Drishti / Netra-AI — Privacy & Access-Control Matrix
 
 > Health screening data (fundus photos, demographics, ABHA/phone) is sensitive
 > personal data under India's DPDP Act (and HIPAA/GDPR equivalents where

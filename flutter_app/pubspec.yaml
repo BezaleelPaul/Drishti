@@ -92,7 +92,7 @@ dev_dependencies:
 
 flutter_launcher_icons:
   # Legacy (pre-adaptive) icon: the full brand tile.
-  image_path: "assets/branding/elytriva_icon_1024.png"
+  image_path: "assets/branding/drishti_icon_1024.png"
   android: "ic_launcher"
   # Adaptive foreground: the MARK only (artwork, no tile). The launcher
   # masks/crops the foreground layer, so a tiled background would show a
@@ -100,7 +100,7 @@ flutter_launcher_icons:
   # adaptive_icon_background instead, and the artwork is scaled into the
   # safe zone by the launcher.
   adaptive_icon_background: "#0B132B"
-  adaptive_icon_foreground: "assets/branding/elytriva_mark.png"
+  adaptive_icon_foreground: "assets/branding/drishti_mark.png"
   min_sdk_android: 21
   remove_alpha_ios: true
   ios: true
@@ -138,11 +138,11 @@ flutter:
     # results/drdetect_tflite_parity.json). SHA-256:
     # 8644E287098D347F2D91A6327ACD5ED90A263E6535A8308EEA4B5BF3B82CE3C0
     - assets/models/drdetect_ordinal_512_fp32.tflite
-    # ELYTRIVA brand kit (assets/branding): splash mark + wordmark.
-    # (elytriva_icon_512.png stays a build-time input for the launcher
+    # DRISHTI brand kit (assets/branding): splash mark + wordmark.
+    # (drishti_icon_512.png stays a build-time input for the launcher
     # adaptive icon; it is not a runtime asset.)
-    - assets/branding/elytriva_mark.png
-    - assets/branding/elytriva_logo_horizontal_no_tagline.png
+    - assets/branding/drishti_mark.png
+    - assets/branding/drishti_logo_horizontal_no_tagline.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -1,4 +1,4 @@
-# SIH 2026 Presentation & Demonstration Guide
+# Drishti Presentation & Demonstration Guide
 
 ## 1. The 30-Second Pitch (Section 27)
 

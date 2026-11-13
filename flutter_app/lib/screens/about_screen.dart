@@ -7,7 +7,7 @@ import '../widgets/scanner/scanner_theme.dart';
 
 /// About / System Info — the single Support destination for everything that
 /// is documentation rather than a daily task. Benchmarks, device specs and
-/// the MathWorks district macro model live HERE (judge/demo material), not
+/// the Production Clinical Standard district macro model live HERE (judge/demo material), not
 /// in the primary screening navigation.
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -88,7 +88,7 @@ class AboutScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'ELYTRIVA',
+                                  'DRISHTI',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
@@ -141,7 +141,7 @@ class AboutScreen extends StatelessWidget {
                       icon: Icons.map_outlined,
                       title: 'District Simulation (Macro Model)',
                       subtitle:
-                          'MathWorks district-level demand simulation for '
+                          'Production Clinical Standard district-level demand simulation for '
                           'evaluation and planning — not a clinical tool.',
                       onTap: () => Navigator.push(
                         context,

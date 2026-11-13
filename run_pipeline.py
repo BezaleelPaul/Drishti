@@ -12,7 +12,7 @@ from src.pipeline.router import ScreeningPipelineRouter
 
 def main():
     parser = argparse.ArgumentParser(
-        description="SIH 2026: AI-Assisted Diabetic Retinopathy Screening Pipeline"
+        description="DRISHTI-2026: AI-Assisted Diabetic Retinopathy Screening Pipeline"
     )
     parser.add_argument(
         "--image",
@@ -74,7 +74,7 @@ def main():
         sys.exit(1)
 
     print(f"\n{'='*70}")
-    print("SIH 2026: AI-Assisted DR Screening Pipeline Execution")
+    print("DRISHTI-2026: AI-Assisted DR Screening Pipeline Execution")
     print(f"Processing {len(image_paths)} image(s)...")
     print(f"{'='*70}\n")
 

@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "Bezaleel and SIH 2026 Team", email = "sih2026@team.internal" },
+    { name = "Bezaleel and Drishti Team", email = "drishti@team.internal" },
 ]
 keywords = [
     "diabetic-retinopathy",
@@ -19,8 +19,8 @@ keywords = [
     "quality-gate",
     "explainable-ai",
     "grad-cam",
-    "smart-india-hackathon",
-    "mathworks",
+    "autonomous-screening",
+    "tele-ophthalmology",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

@@ -1,4 +1,4 @@
-"""Derive the ELYTRIVA mark-only asset (no navy tile) for the splash.
+"""Derive the DRISHTI mark-only asset (no navy tile) for the splash.
 
 The shipped brand PNG is a rounded-square navy TILE (designed for the
 launcher icon and for use on light surfaces). Its tile colour is exactly the
@@ -29,8 +29,8 @@ from pathlib import Path
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SOURCE = REPO_ROOT / "ELYTRIVA_Brand_Kit_Flutter" / "flutter_assets" / "elytriva_icon_512.png"
-TARGET = REPO_ROOT / "flutter_app" / "assets" / "branding" / "elytriva_mark.png"
+SOURCE = REPO_ROOT / "DRISHTI_Brand_Kit_Flutter" / "flutter_assets" / "drishti_icon_512.png"
+TARGET = REPO_ROOT / "flutter_app" / "assets" / "branding" / "drishti_mark.png"
 
 # Tile colour of the shipped brand PNG (sampled from the asset).
 TILE_RGB = (11, 19, 43)

@@ -1,7 +1,7 @@
-# Drishti (Elytriva) — Production Clinical Diabetic Retinopathy Diagnostic Platform
-### Smart India Hackathon 2026 (SIH26038) • MathWorks MedTech Track
+# Drishti — Production Clinical Diabetic Retinopathy Diagnostic Platform
+### Autonomous Clinical AI Retinal Screening Platform
 
-Drishti (Elytriva) is a self-contained, offline-first **Clinical Production Package** for autonomous Diabetic Retinopathy (DR) screening and triage. It includes calibrated deep learning weights, cross-platform standalone binaries, presentation materials, 10-subsystem clinical verification harnesses, and FastAPI backend services.
+Drishti is a self-contained, offline-first **Clinical Production Package** for autonomous Diabetic Retinopathy (DR) screening and triage. It includes calibrated deep learning weights, cross-platform standalone binaries, presentation materials, 10-subsystem clinical verification harnesses, and FastAPI backend services.
 
 ---
 
@@ -10,11 +10,11 @@ Drishti (Elytriva) is a self-contained, offline-first **Clinical Production Pack
 ```
 Drishti/
 ├── binaries/                       # Standalone binaries (distributed via GitHub Releases v1.7.0)
-│   ├── elytriva_mobile_v1.7.0.apk  # Android release APK (offline INT8 edge engine)
-│   ├── elytriva_windows_v1.7.0.zip # Windows desktop clinic bundle
-│   ├── elytriva_linux_v1.7.0.tar.gz# Linux workstation clinic bundle
-│   ├── elytriva_macos_v1.7.0.zip   # macOS clinic application bundle
-│   └── elytriva_ios_unsigned_v1.7.0.zip # iOS release bundle
+│   ├── drishti_mobile_v1.7.0.apk  # Android release APK (offline INT8 edge engine)
+│   ├── drishti_windows_v1.7.0.zip # Windows desktop clinic bundle
+│   ├── drishti_linux_v1.7.0.tar.gz# Linux workstation clinic bundle
+│   ├── drishti_macos_v1.7.0.zip   # macOS clinic application bundle
+│   └── drishti_ios_unsigned_v1.7.0.zip # iOS release bundle
 │
 ├── models/                         # Calibrated clinical & edge model weights
 │   ├── dr_efficientnet_b0_tuned_int8.tflite # 5.08 MB INT8 edge model (96.28% recall)
@@ -25,13 +25,13 @@ Drishti/
 │
 ├── docs/                           # Comprehensive clinical, architectural & regulatory docs
 │   ├── CLINICAL_BRUTAL_TEST_REPORT.md # 100-patient brutal real-world clinical test
-│   ├── REAL_WORLD_READINESS_AUDIT.md  # 10/10 hackathon / 6.2/10 SaMD clinical audit
+│   ├── REAL_WORLD_READINESS_AUDIT.md  # SaMD clinical audit & regulatory defense
 │   ├── ARCHITECTURE.md             # System architecture & data flow
 │   ├── DECISION_FLOW.md            # Clinical triage decision trees & gating logic
 │   └── METRICS_AND_EVALUATION.md   # Statistical validation & inter-grader concordance
 │
 ├── presentation/                   # Complete judge defense & presentation suite
-│   ├── ELYTRIVA_SIH2026_Presentation.pptx # 15-slide widescreen PowerPoint deck
+│   ├── DRISHTI_Presentation.pptx  # 15-slide widescreen PowerPoint deck
 │   ├── OFFLINE_DEMO_BACKUP.html    # Interactive browser dashboard (runs with no Wi-Fi)
 │   ├── JUDGES_QA_DEFENSE.md        # Winning defense script for hard technical questions
 │   ├── PITCH_AND_SLIDES_OUTLINE.md # 30-sec pitch, 3-min pitch, and slide notes
@@ -99,11 +99,11 @@ Drishti/
 
 ---
 
-## 📱 Cross-Platform Standalone Downloads (Release v1.7.0)
+## 📱 Cross-Platform Standalone Downloads (Release v1.7.1)
 
 Pre-built binaries are packaged and downloadable from [GitHub Releases](https://github.com/BezaleelPaul/Drishti/releases):
-- **Android:** `elytriva_mobile_v1.7.0.apk` — Sideload onto any Android phone or tablet (bundled offline INT8 model).
-- **Windows:** `elytriva_windows_v1.7.0.zip` — Extract and run `elytriva.exe`.
-- **Linux:** `elytriva_linux_v1.7.0.tar.gz` — Extract and run `./bundle/elytriva`.
-- **macOS:** `elytriva_macos_v1.7.0.zip` — Extract and drag `netra_ai_mobile.app` to Applications.
-- **iOS:** `elytriva_ios_unsigned_v1.7.0.zip` — Unsigned iOS release archive for sideloading / TestFlight.
+- **Android:** `drishti_mobile_v1.7.1.apk` — Sideload onto any Android phone or tablet (dual v2/v3 signed, bundled offline INT8 model).
+- **Windows:** `drishti_windows_v1.7.1.zip` — Extract and run `drishti.exe`.
+- **Linux:** `drishti_linux_v1.7.1.tar.gz` — Extract and run `./bundle/drishti`.
+- **macOS:** `drishti_macos_v1.7.1.zip` — Extract and drag `Drishti.app` to `/Applications`. Run `xattr -cr /Applications/Drishti.app` to clear browser quarantine.
+- **iOS:** `drishti_ios_unsigned_v1.7.1.zip` — Unsigned iOS release archive for sideloading / TestFlight.

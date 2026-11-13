@@ -27,7 +27,7 @@ except Exception:  # noqa: BLE001 - optional toolbox crop uses OpenCV fallback
 
 class AdaptiveQualityEnhancer:
     """
-    MathWorks SIH26038 Requirement #1:
+    Clinical Quality Assurance Requirement #1:
     Adaptive enhancement for borderline fundus images:
     - Dynamic circular ROI extraction (via berenslab/fundus_image_toolbox EyeQ algorithm)
     - Dynamic Contrast-Limited Adaptive Histogram Equalization (CLAHE) in CIELAB space

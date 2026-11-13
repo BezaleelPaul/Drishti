@@ -1,7 +1,7 @@
 """Free doctor notification via the WhatsApp Cloud API sandbox (Ticket D-3b).
 
 WHY THIS CHANNEL: Meta's Cloud API has a free tier (test number + up to 5
-verified recipients) — genuinely free for the hackathon demo, unlike Indian
+verified recipients) — genuinely free for staging and demonstration, unlike Indian
 transactional SMS which requires DLT registration (paid paperwork).
 
 PRIVACY CONTRACT (docs/PRIVACY.md "what leaves the device"): the message

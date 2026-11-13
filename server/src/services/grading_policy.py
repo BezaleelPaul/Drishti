@@ -1,7 +1,7 @@
 """Versioned grading-criteria engine for evidence-linked DR explanation.
 
 Framework: International Clinical Diabetic Retinopathy (ICDRS) severity
-scale — the framework named by the SIH26038 project brief ("International
+scale — the framework named by the clinical project brief ("International
 Clinical DR scale levels zero to four").
 
 IMPLEMENTED SUBSET — READ THIS BEFORE TRUSTING AN OUTPUT

@@ -1,5 +1,5 @@
 """
-End-to-End System Verification Suite for MathWorks SIH26038.
+End-to-End System Verification Suite for Drishti Clinical Platform.
 Tests all 10 core sub-systems and benchmarks execution time.
 """
 import os
@@ -35,7 +35,7 @@ def _sample(*parts: str) -> str:
 
 def run_comprehensive_verification():
     print("=" * 70)
-    print("STARTING END-TO-END VERIFICATION OF DRISHTI-AI (MATHWORKS SIH26038)")
+    print("STARTING END-TO-END VERIFICATION OF DRISHTI-AI")
     print("=" * 70)
     
     results = {}
@@ -78,7 +78,7 @@ def run_comprehensive_verification():
     ml_q = q_good.metrics.raw_scores["ml_quality_score"]
     results["Model 1 Quality Gate"] = f"PASS ({t_quality*1000:.1f} ms) - Good certified (ML Quality: {ml_q*100:.1f}%), Bad rejected"
 
-    # Test 3: MathWorks Req 1 Adaptive CLAHE
+    # Test 3: Clinical Req 1 Adaptive CLAHE
     t0 = time.time()
     enhancer = AdaptiveQualityEnhancer()
     enhanced_img = enhancer.enhance_borderline_image(np.array(good_img))
@@ -86,7 +86,7 @@ def run_comprehensive_verification():
     assert enhanced_img.shape == np.array(good_img).shape
     results["Req 1 Adaptive CLAHE"] = f"PASS ({t_clahe*1000:.1f} ms) - Non-destructive LAB enhanced"
 
-    # Test 4: MathWorks Req 2 Retinal Structure Segmentation & Biomarkers
+    # Test 4: Clinical Req 2 Retinal Structure Segmentation & Biomarkers
     t0 = time.time()
     segmenter = RetinalStructureSegmenter(use_dl_toolbox=False)
     seg_res = segmenter.segment_structures(np.array(good_img))
@@ -96,7 +96,7 @@ def run_comprehensive_verification():
     assert seg_res.vessel_density_pct > 0.0
     results["Req 2 Structure Segmentation"] = f"PASS ({t_seg*1000:.1f} ms) - OD, Fovea, Vessels, {len(seg_res.microaneurysm_candidates)} MAs, CSME: {seg_res.csme_risk.split()[0]}"
 
-    # Test 5: MathWorks Req 3 DR Severity Grading (EfficientNetB0)
+    # Test 5: Clinical Req 3 DR Severity Grading (EfficientNetB0)
     t0 = time.time()
     classifier = DRClassifier()
     dr_pred = classifier.predict(good_img)
@@ -104,7 +104,7 @@ def run_comprehensive_verification():
     assert dr_pred.predicted_grade.value in [0, 1, 2, 3, 4]
     results["Req 3 DR Classification"] = f"PASS ({t_dr*1000:.1f} ms) - Grade {dr_pred.predicted_grade.value}: {dr_pred.predicted_grade.label} (Conf: {dr_pred.confidence*100:.1f}%)"
 
-    # Test 6: MathWorks Req 4 Explainability (<30s Grad-CAM++)
+    # Test 6: Clinical Req 4 Explainability (<30s Grad-CAM++)
     t0 = time.time()
     explainer = GradCAMExplainer(classifier_backend=classifier)
     gradcam_res = explainer.generate_heatmap(good_img, dr_pred.predicted_grade, classifier=classifier)
@@ -113,7 +113,7 @@ def run_comprehensive_verification():
     assert t_cam < 10.0 # Explainability must be near-instant (measured ~1s)
     results["Req 4 Grad-CAM Explainability"] = f"PASS ({t_cam:.2f} s < 30s limit) - Layer: {gradcam_res.target_layer}"
 
-    # Test 7: MathWorks Req 5 Simulink 100k Telemedicine Simulation
+    # Test 7: Clinical Req 5 Simulink 100k Telemedicine Simulation
     t0 = time.time()
     sim_engine = TelemedicineSimulinkEngine(DistrictSimulationParams())
     sim_res = sim_engine.run_simulation()

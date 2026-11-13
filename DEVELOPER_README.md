@@ -1,6 +1,6 @@
 # 🌐 Drishti-AI: Universal Developer & Deployment Guide
 
-### Smart India Hackathon 2026 • Problem Statement SIH26038 (MathWorks)
+### Clinical Screening Platform 2026 • Problem Statement DR-CLINICAL-038 (Production Clinical Standard)
 **Complete Clinical Screening Platform (Python AI Pipeline • FastAPI Backend • Flutter Mobile App)**
 
 > **Clinical Architecture Premise:**  
@@ -94,9 +94,9 @@ SIH HACKATHON/
 │   │   └── gradcam.py          # True gradient backpropagation attention heatmaps
 │   ├── clinical_risk/          # Upstream population diabetes risk assessment
 │   │   └── risk_model.py       # Random Forest model calibrated on ICMR cutoffs
-│   ├── segmentation/           # MathWorks Req 2: Retinal Structure Segmentation
+│   ├── segmentation/           # System Requirement 2: Retinal Structure Segmentation
 │   │   └── structure_segmenter.py # Optic Disc, Fovea, Vessel Tree, CSME risk
-│   ├── simulation/             # MathWorks Req 5: Simulink 100k Queuing Simulation
+│   ├── simulation/             # System Requirement 5: Simulink 100k Queuing Simulation
 │   │   └── telemedicine_sim.py # 99.1% bandwidth reduction discrete-event model
 │   ├── reporting/              # Clinical reporting & ABDM export
 │   │   ├── pdf_generator.py    # Hospital-grade printable A4 PDF screening dossier

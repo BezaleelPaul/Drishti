@@ -81,7 +81,7 @@ void main() {
     ) async {
       await _pumpRail(tester);
 
-      expect(find.text('ELYTRIVA'), findsOneWidget);
+      expect(find.text('DRISHTI'), findsOneWidget);
       for (final e in _entries()) {
         expect(
           find.text(e.label),
@@ -124,7 +124,7 @@ void main() {
 
       expect(find.text('screen-queue'), findsOneWidget);
       // The rail is popped, so its labels are gone.
-      expect(find.text('ELYTRIVA'), findsNothing);
+      expect(find.text('DRISHTI'), findsNothing);
     });
 
     testWidgets(

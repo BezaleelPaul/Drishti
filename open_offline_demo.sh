@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Drishti AI - Offline visual demo launcher
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 DEMO_PATH="$DIR/presentation/OFFLINE_DEMO_BACKUP.html"
 echo "======================================================================="

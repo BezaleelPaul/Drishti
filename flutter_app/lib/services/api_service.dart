@@ -32,7 +32,7 @@ class ApiService {
     defaultValue: 'https://drishti-ai-xg6w.onrender.com',
   );
 
-  /// API key for the ELYTRIVA backend (X-API-Key header).
+  /// API key for the DRISHTI backend (X-API-Key header).
   /// Dev default matches the backend non-prod key; override per deployment
   /// via `--dart-define=DRISHTI_API_KEY=...` or constructor injection.
   static const String apiKey = String.fromEnvironment(
@@ -779,9 +779,9 @@ class ApiService {
         actionRecommendation: result.actionRecommendation,
         plainLanguageAdvice: result.patientPlainLanguageSummary,
         smsReferralSlip: hasErrorCode
-            ? 'ELYTRIVA: no result assigned (${result.errorCode}). '
+            ? 'DRISHTI: no result assigned (${result.errorCode}). '
                   '${result.actionRecommendation} Screening:${result.screeningId}'
-            : 'ELYTRIVA: ${result.drLabel ?? 'Screening complete'} (Grade ${grade ?? '-'}). '
+            : 'DRISHTI: ${result.drLabel ?? 'Screening complete'} (Grade ${grade ?? '-'}). '
                   '${result.actionRecommendation} Screening:${result.screeningId}',
         biomarkers: {
           'microaneurysm_count': result.microaneurysmCount,

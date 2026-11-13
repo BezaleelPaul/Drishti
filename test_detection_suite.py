@@ -1,5 +1,5 @@
 """
-Comprehensive Detection & Clinical Safety Test Suite for Drishti-AI / ELYTRIVA.
+Comprehensive Detection & Clinical Safety Test Suite for Drishti-AI / DRISHTI.
 Tests:
 1. Certified Clean Fundus: Detection of DR, vessels, optic disc, fovea, and Grad-CAM
 2. Quality Defects: Motion blur and severe underexposure fail-closed rejections
@@ -44,7 +44,7 @@ from src.services.csme_engine import (
 
 def run_detection_suite():
     print("=" * 80)
-    print("      DRISHTI-AI / ELYTRIVA: COMPREHENSIVE CLINICAL DETECTION SUITE")
+    print("      DRISHTI-AI / DRISHTI: COMPREHENSIVE CLINICAL DETECTION SUITE")
     print("=" * 80)
     router = ScreeningPipelineRouter()
     checker = ImageQualityChecker()

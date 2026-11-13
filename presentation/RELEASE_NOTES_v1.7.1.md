@@ -1,8 +1,8 @@
-# Drishti (Elytriva) v1.7.1 — Android APK Signing Fix & Production Clinical Release
+# Drishti v1.7.1 — Android & macOS Package Signing Fixes & Production Clinical Release
 
 ### 🏆 Release Highlights
 
-**Release v1.7.1** delivers the official production build with **fully resolved Android APK cryptographic signing** alongside our highest-performing clinical model.
+**Release v1.7.1** delivers the official production build with **fully resolved Android APK cryptographic signing and macOS Gatekeeper code signature seal integrity**, alongside our highest-performing clinical model.
 
 #### 1. Android Package Signing & Alignment Fix
 - **Issue Resolved:** Fixed `"App not installed as package appears to be invalid"` on Android devices caused by stripped APK signing blocks.
@@ -10,7 +10,13 @@
 - **4-Byte Zip-Aligned:** Fully aligned using Android SDK `zipalign -p -f 4` for instantaneous memory-mapped zero-copy runtime loading.
 - **Target OS:** Tested and validated on Android 7.0 through Android 15+ (`minSdkVersion 24`, `targetSdkVersion 36`).
 
-#### 2. Clinical Production Model (Quad-Loss & 4-View TTA)
+#### 2. macOS Gatekeeper & Code Signature Seal Resolution
+- **Issue Resolved:** Fixed `"Drishti is damaged and can't be opened. You should move it to the Trash."` on macOS Ventura, Sonoma, and Sequoia.
+- **Root Cause Identified:** Injecting `dr_efficientnet_b0_tuned_int8.tflite` into `App.framework` post-build without re-sealing broke Apple's `_CodeSignature/CodeResources` integrity manifest. When downloaded via browsers, Gatekeeper flagged the modified bundle as tampered/damaged.
+- **Inside-Out Code Signing:** Implemented canonical inside-out code signing across all nested dylibs, plugin bundles, frameworks, and the main executable (`codesign --force --sign - --timestamp=none`), fully restoring disk validity and designated requirement compliance (`codesign --verify --deep --strict`).
+- **Symlink Preservation & Clean Packaging:** Created `scripts/sign_and_package_macos.sh` to package cleanly with symlink preservation (`zip -r -y -q`) without `__MACOSX` pollution.
+
+#### 3. Clinical Production Model (Quad-Loss & 4-View TTA)
 - **`96.28%` Referable Sensitivity (Recall)** — only 11 missed referable cases out of 296!
 - **`91.03%` Referable Specificity** — exceeds British Diabetic Association $\ge 80\%$ standard.
 - **`0.8739` Quadratic Weighted Kappa (QWK)** — Near-Perfect Inter-Rater Agreement.
@@ -37,8 +43,8 @@
 
 ### 📦 Release Artifacts Attached
 
-* **Android APK:** `elytriva_mobile_v1.7.1.apk` *(Cryptographically signed with v2/v3 schemes)*
-* **Windows Desktop:** `elytriva_windows_v1.7.1.zip`
-* **Linux Desktop:** `elytriva_linux_v1.7.1.tar.gz`
-* **macOS Desktop:** `elytriva_macos_v1.7.1.zip`
-* **iOS Package:** `elytriva_ios_unsigned_v1.7.1.zip`
+* **Android APK:** `drishti_mobile_v1.7.1.apk` *(Cryptographically signed with v2/v3 schemes)*
+* **Windows Desktop:** `drishti_windows_v1.7.1.zip`
+* **Linux Desktop:** `drishti_linux_v1.7.1.tar.gz`
+* **macOS Desktop:** `drishti_macos_v1.7.1.zip`
+* **iOS Package:** `drishti_ios_unsigned_v1.7.1.zip`

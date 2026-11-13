@@ -262,7 +262,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
             ),
             SizedBox(width: 6),
             Text(
-              'ELYTRIVA',
+              'DRISHTI',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,

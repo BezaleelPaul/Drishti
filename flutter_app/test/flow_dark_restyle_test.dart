@@ -198,7 +198,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
 
         expectDarkChrome(tester);
-        expect(find.text('ELYTRIVA Screening Report'), findsOneWidget);
+        expect(find.text('DRISHTI Screening Report'), findsOneWidget);
         expect(
           find.text('Demo Report — Not a clinical document'),
           findsOneWidget,

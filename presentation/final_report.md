@@ -201,7 +201,7 @@
 ### Shipped v1.7.0 Model Artifacts & Standalone Production Directory
 1. **Full Keras High-Res Model:** [`final_model.keras`](file:///home/bezaleelpaul/Projects/Drishti-AI/final_model.keras) (51.2 MB)
 2. **Edge INT8 Quantized Model:** [`flutter_app/assets/models/dr_efficientnet_b0_tuned_int8.tflite`](file:///home/bezaleelpaul/Projects/Drishti-AI/flutter_app/assets/models/dr_efficientnet_b0_tuned_int8.tflite) (5.08 MB, SHA-256 `1071E2D5BF8F13CCDFAF2077831E9508F1D7E376378EBC7CFE111C0639F65A44`)
-3. **Standalone Production Folder:** [`/home/bezaleelpaul/Projects/ELYTRIVA_BEST_VERSION_PRODUCTION`](file:///home/bezaleelpaul/Projects/ELYTRIVA_BEST_VERSION_PRODUCTION)
+3. **Standalone Production Folder:** [`/home/bezaleelpaul/Projects/DRISHTI_BEST_VERSION_PRODUCTION`](file:///home/bezaleelpaul/Projects/DRISHTI_BEST_VERSION_PRODUCTION)
 4. **Multi-OS Binaries:** Packaged for Android, Windows, Linux, macOS, and iOS in release `v1.7.0`.
 
 

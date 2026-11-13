@@ -1,5 +1,5 @@
 """
-Telemedicine Queueing & Resource Allocation Simulation Module (MathWorks SIH26038 Req #5).
+Telemedicine Queueing & Resource Allocation Simulation Module (Clinical Req #5).
 """
 from src.simulation.telemedicine_sim import (
     DistrictSimulationParams,

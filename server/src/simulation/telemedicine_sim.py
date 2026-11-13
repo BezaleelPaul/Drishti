@@ -60,7 +60,7 @@ class DistrictSimulationReport:
 
 class TelemedicineSimulinkEngine:
     """
-    MathWorks SIH26038 Requirement #5:
+    Clinical Requirement #5:
     District-Level Telemedicine Screening Pipeline Simulation (100,000+ Patients/Year).
     Models image acquisition, bandwidth bottlenecks, edge AI triage, and specialist queues.
     """

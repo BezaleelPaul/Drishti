@@ -1,4 +1,4 @@
-# ELYTRIVA / Drishti-AI v1.6.0 — High-Resolution (384px) & Ben Graham Clinical Breakthrough
+# Drishti-AI v1.6.0 — High-Resolution (384px) & Ben Graham Clinical Breakthrough
 
 ### 🏆 Milestone Overview
 
@@ -42,11 +42,11 @@
    - **Zero Silent Failure:** Every degraded image is surfaced, never diagnosed with a false grade.
 
 5. **Multi-Platform Deployment Packages:**
-   - **Android:** `elytriva_mobile_v1.6.0.apk`
-   - **Windows:** `elytriva_windows_v1.6.0.zip`
-   - **Linux:** `elytriva_linux_v1.6.0.tar.gz`
-   - **macOS:** `elytriva_macos_v1.6.0.zip`
-   - **iOS:** `elytriva_ios_unsigned_v1.6.0.zip`
+   - **Android:** `drishti_mobile_v1.6.0.apk`
+   - **Windows:** `drishti_windows_v1.6.0.zip`
+   - **Linux:** `drishti_linux_v1.6.0.tar.gz`
+   - **macOS:** `drishti_macos_v1.6.0.zip`
+   - **iOS:** `drishti_ios_unsigned_v1.6.0.zip`
 
 6. **Full Test Suite & System Verification:**
    - **317 / 317 tests pass** cleanly in `pytest tests/`.

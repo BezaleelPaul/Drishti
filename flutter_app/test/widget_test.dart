@@ -12,7 +12,7 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
     SharedPreferences.setMockInitialValues(const {});
     await tester.pumpWidget(
-      ElytrivaApp(
+      DrishtiApp(
         langController: LangController(),
         initialHome: const FigmaDashboardScreen(),
       ),
