@@ -28,12 +28,14 @@ class ZoomableFundusScreen extends StatefulWidget {
     this.title = 'Fundus inspection',
     this.caption,
     this.markers,
+    this.onRescan,
   });
 
   final Uint8List imageBytes;
   final String title;
   final String? caption;
   final RetinalMarkers? markers;
+  final VoidCallback? onRescan;
 
   static const double maxZoom = 6.0;
   static const double doubleTapZoom = 2.5;
@@ -417,6 +419,21 @@ class _ZoomableFundusScreenState extends State<ZoomableFundusScreen>
                 color: Colors.white70,
               ),
               const Spacer(),
+              if (widget.onRescan != null) ...[
+                TextButton.icon(
+                  key: const ValueKey('fundus-bottom-rescan-btn'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onRescan!();
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Rescan'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF38BDF8),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
               TextButton.icon(
                 key: const ValueKey('fundus-zoom-reset'),
                 onPressed: _reset,
@@ -456,6 +473,23 @@ class _ZoomableFundusScreenState extends State<ZoomableFundusScreen>
           ),
         ),
         actions: [
+          if (widget.onRescan != null)
+            TextButton.icon(
+              key: const ValueKey('fundus-rescan-btn'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onRescan!();
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF67E8F9)),
+              label: const Text(
+                'Rescan',
+                style: TextStyle(
+                  color: Color(0xFF67E8F9),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
           if (_markersReady)
             IconButton(
               key: const ValueKey('fundus-markers-toggle'),

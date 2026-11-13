@@ -12,6 +12,7 @@ import '../../widgets/review/zoomable_fundus_screen.dart';
 import '../../widgets/scanner/scanner.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/workflow_bar.dart';
+import 'flow_capture_screen.dart';
 import 'flow_specialist_screen.dart';
 import 'flow_state.dart';
 
@@ -91,6 +92,19 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
     return parts.isEmpty ? '' : '  •  ${parts.join(" • ")}';
   }
 
+  void _rescan() {
+    widget.state.imageBytes = null;
+    widget.state.quality = null;
+    widget.state.analysis = null;
+    widget.state.markers = null;
+    widget.state.screeningId = null;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => FlowCaptureScreen(state: widget.state),
+      ),
+    );
+  }
+
   void _openInspector() {
     final bytes = widget.state.imageBytes;
     if (bytes == null) return;
@@ -101,6 +115,7 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
           title: 'Fundus inspection',
           caption: 'Inspect the original capture · pinch, drag, double-tap',
           markers: _markers,
+          onRescan: _rescan,
         ),
       ),
     );
@@ -742,31 +757,63 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FlowSpecialistScreen(state: widget.state),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: OutlinedButton.icon(
+                        key: const ValueKey('btn_rescan_capture'),
+                        onPressed: _rescan,
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: Text(
+                          context.tr('btn_rescan'),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          foregroundColor: const Color(0xFF67E8F9),
+                          side: const BorderSide(color: Color(0xFF00B4D8), width: 1.2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: const Color(0xFF00B4D8),
-                    foregroundColor: Colors.white,
-                    elevation: 3,
-                    shadowColor: const Color(0x6600B4D8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 1,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FlowSpecialistScreen(state: widget.state),
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: const Color(0xFF00B4D8),
+                          foregroundColor: Colors.white,
+                          elevation: 3,
+                          shadowColor: const Color(0x6600B4D8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          context.tr('btn_proceed_specialist'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    context.tr('btn_proceed_specialist'),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
+                  ],
                 ),
               ],
             ),
