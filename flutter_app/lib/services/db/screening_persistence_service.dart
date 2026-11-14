@@ -243,6 +243,217 @@ class ScreeningPersistenceService {
     return true;
   }
 
+  /// Updates an existing patient screening record across all persistence tiers.
+  Future<bool> updateRecord(Map<String, dynamic> updatedRecord) async {
+    final sid = updatedRecord['local_screening_id']?.toString() ?? '';
+    final pid = updatedRecord['local_patient_id']?.toString() ?? '';
+    if (sid.isEmpty) return false;
+
+    // Tier 1: SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final existingJson = prefs.getString(_prefsKey);
+      List<dynamic> list = [];
+      if (existingJson != null && existingJson.isNotEmpty) {
+        try {
+          list = jsonDecode(existingJson) as List<dynamic>;
+        } catch (_) {}
+      }
+      final idx = list.indexWhere((item) => item is Map && item['local_screening_id'] == sid);
+      if (idx >= 0) {
+        final existing = Map<String, dynamic>.from(list[idx] as Map);
+        existing.addAll(updatedRecord);
+        list[idx] = existing;
+      } else {
+        list.insert(0, updatedRecord);
+      }
+      await prefs.setString(_prefsKey, jsonEncode(list));
+    } catch (e) {
+      debugPrint('Error updating SharedPreferences record: $e');
+    }
+
+    // Tier 2: File Backup
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dir.path, _backupFileName));
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        List<dynamic> list = [];
+        try {
+          list = jsonDecode(content) as List<dynamic>;
+        } catch (_) {}
+        final idx = list.indexWhere((item) => item is Map && item['local_screening_id'] == sid);
+        if (idx >= 0) {
+          final existing = Map<String, dynamic>.from(list[idx] as Map);
+          existing.addAll(updatedRecord);
+          list[idx] = existing;
+        } else {
+          list.insert(0, updatedRecord);
+        }
+        await file.writeAsString(jsonEncode(list));
+      }
+    } catch (e) {
+      debugPrint('Error updating File backup record: $e');
+    }
+
+    // Tier 3: LocalStore SQLCipher / SQLite
+    try {
+      final password = await OfflineQueueService.resolveDbPassword();
+      final store = await LocalStore.open(dbPassword: password);
+      try {
+        if (pid.isNotEmpty) {
+          await store.upsertPatient(
+            localPatientId: pid,
+            name: updatedRecord['name']?.toString(),
+            age: (updatedRecord['age'] as num?)?.toInt(),
+            gender: updatedRecord['gender']?.toString(),
+            phone: updatedRecord['phone']?.toString(),
+            village: updatedRecord['village']?.toString(),
+          );
+        }
+        final grade = (updatedRecord['dr_grade_num'] as num?)?.toInt();
+        final reviewReq = (updatedRecord['requires_human_review'] as num?)?.toInt() ??
+            (grade != null && grade > 0 ? 1 : 0);
+        await store.updateScreeningRecord(
+          localScreeningId: sid,
+          drGradeNum: grade,
+          drLabel: updatedRecord['dr_label']?.toString(),
+          requiresHumanReview: reviewReq,
+          humanReviewReason: updatedRecord['human_review_reason']?.toString(),
+          eyeSide: updatedRecord['eye_side']?.toString(),
+        );
+      } finally {
+        await store.close();
+      }
+    } catch (e) {
+      debugPrint('Error updating LocalStore record: $e');
+    }
+
+    return true;
+  }
+
+  /// Deletes a patient screening record across all persistence tiers.
+  Future<bool> deleteRecord(String localScreeningId) async {
+    if (localScreeningId.isEmpty) return false;
+
+    // Tier 1: SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final existingJson = prefs.getString(_prefsKey);
+      if (existingJson != null && existingJson.isNotEmpty) {
+        final list = (jsonDecode(existingJson) as List<dynamic>)
+            .where((item) => item is Map && item['local_screening_id'] != localScreeningId)
+            .toList();
+        await prefs.setString(_prefsKey, jsonEncode(list));
+      }
+    } catch (e) {
+      debugPrint('Error deleting from SharedPreferences: $e');
+    }
+
+    // Tier 2: File Backup
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dir.path, _backupFileName));
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        final list = (jsonDecode(content) as List<dynamic>)
+            .where((item) => item is Map && item['local_screening_id'] != localScreeningId)
+            .toList();
+        await file.writeAsString(jsonEncode(list));
+      }
+    } catch (e) {
+      debugPrint('Error deleting from File backup: $e');
+    }
+
+    // Tier 3: LocalStore SQLCipher
+    try {
+      final password = await OfflineQueueService.resolveDbPassword();
+      final store = await LocalStore.open(dbPassword: password);
+      try {
+        await store.deleteScreeningRecord(localScreeningId);
+      } finally {
+        await store.close();
+      }
+    } catch (e) {
+      debugPrint('Error deleting from LocalStore: $e');
+    }
+
+    return true;
+  }
+
+  /// Manually creates a new patient screening record.
+  Future<bool> createManualRecord(Map<String, dynamic> record) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final sid = record['local_screening_id']?.toString() ??
+        'SCR-MANUAL-${DateTime.now().millisecondsSinceEpoch}';
+    final pid = record['local_patient_id']?.toString() ??
+        'PT-${DateTime.now().millisecondsSinceEpoch % 10000}';
+    record['local_screening_id'] = sid;
+    record['local_patient_id'] = pid;
+    record['created_at'] ??= now;
+    record['sync_state'] ??= 'offline';
+
+    // Tier 1: SharedPreferences
+    try {
+      await _saveToPrefs(record);
+    } catch (e) {
+      debugPrint('Error saving manual record to SharedPreferences: $e');
+    }
+
+    // Tier 2: File backup
+    try {
+      await _saveToFileBackup(record);
+    } catch (e) {
+      debugPrint('Error saving manual record to File backup: $e');
+    }
+
+    // Tier 3: LocalStore
+    try {
+      final password = await OfflineQueueService.resolveDbPassword();
+      final store = await LocalStore.open(dbPassword: password);
+      try {
+        await store.upsertPatient(
+          localPatientId: pid,
+          name: record['name']?.toString(),
+          age: (record['age'] as num?)?.toInt(),
+          gender: record['gender']?.toString(),
+          phone: record['phone']?.toString(),
+          village: record['village']?.toString(),
+        );
+        final grade = (record['dr_grade_num'] as num?)?.toInt() ?? 0;
+        final label = (record['dr_label'] ??
+            (grade == 0
+                ? 'No Diabetic Retinopathy'
+                : 'Diabetic Retinopathy Grade $grade'))
+            .toString();
+        await store.recordScreening(
+          localScreeningId: sid,
+          localPatientId: pid,
+          eyeSide: (record['eye_side'] ?? 'Right').toString(),
+          cameraProfile: 'Manual Entry',
+          qualityGrade: 'GOOD',
+          recaptureAttemptCount: 0,
+          drGradeNum: grade,
+          drLabel: label,
+          confidence: (record['confidence'] as num?)?.toDouble() ?? 1.0,
+          requiresHumanReview: grade > 0,
+          humanReviewType: grade >= 3 ? 'URGENT' : (grade > 0 ? 'ROUTINE' : null),
+          humanReviewReason: record['human_review_reason']?.toString(),
+          modelBackend: 'manual-clinical-entry',
+          capturedAtIso: now,
+          imagePath: (record['image_path'] ?? '').toString(),
+          enqueueForSync: false,
+        );
+      } finally {
+        await store.close();
+      }
+    } catch (e) {
+      debugPrint('Error saving manual record to LocalStore: $e');
+    }
+
+    return true;
+  }
+
   /// Retrieves recent screenings across all tiers with deduplication.
   /// If no records exist, automatically seeds clinical demonstration records.
   Future<List<Map<String, dynamic>>> getRecentScreenings({int limit = 100}) async {

@@ -313,6 +313,52 @@ class LocalStore {
     );
   }
 
+  /// Updates clinical screening findings and notes in the local store.
+  Future<void> updateScreeningRecord({
+    required String localScreeningId,
+    int? drGradeNum,
+    String? drLabel,
+    int? requiresHumanReview,
+    String? humanReviewReason,
+    String? eyeSide,
+  }) async {
+    final values = <String, Object?>{
+      'updated_at_seq': DateTime.now().microsecondsSinceEpoch,
+    };
+    if (drGradeNum != null) values['dr_grade_num'] = drGradeNum;
+    if (drLabel != null) values['dr_label'] = drLabel;
+    if (requiresHumanReview != null) {
+      values['requires_human_review'] = requiresHumanReview;
+    }
+    if (humanReviewReason != null) {
+      values['human_review_reason'] = humanReviewReason;
+    }
+    if (eyeSide != null) values['eye_side'] = eyeSide;
+
+    await _db.update(
+      'screenings',
+      values,
+      where: 'local_screening_id = ?',
+      whereArgs: [localScreeningId],
+    );
+  }
+
+  /// Deletes a screening record manually from the local store.
+  Future<void> deleteScreeningRecord(String localScreeningId) async {
+    await _db.transaction((txn) async {
+      await txn.delete(
+        'screenings',
+        where: 'local_screening_id = ?',
+        whereArgs: [localScreeningId],
+      );
+      await txn.delete(
+        'sync_queue',
+        where: 'local_screening_id = ?',
+        whereArgs: [localScreeningId],
+      );
+    });
+  }
+
   /// Receipt-before-delete (invariant 2): the receipt row is written first;
   /// only afterwards does the caller delete the local image asset and flip
   /// sync_state to acked.

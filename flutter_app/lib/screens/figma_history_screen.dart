@@ -431,6 +431,52 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF00E5FF),
+                              side: const BorderSide(color: Color(0xFF00E5FF)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            label: const Text(
+                              'Edit Patient Details',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _showEditPatientDialog(r);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFEF4444),
+                            side: const BorderSide(color: Color(0xFFEF4444)),
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          label: const Text(
+                            'Delete',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _confirmDeleteRecord(r);
+                          },
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 12),
                   ],
                 ),
@@ -439,6 +485,503 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
           },
         );
       },
+    );
+  }
+
+  static String _drGradeLabel(int grade) {
+    switch (grade) {
+      case 0:
+        return 'No Diabetic Retinopathy';
+      case 1:
+        return 'Mild NPDR';
+      case 2:
+        return 'Moderate NPDR';
+      case 3:
+        return 'Severe NPDR';
+      case 4:
+        return 'Proliferative DR (PDR)';
+      default:
+        return 'Diabetic Retinopathy Grade $grade';
+    }
+  }
+
+  void _showEditPatientDialog(Map<String, dynamic>? record) {
+    final isNew = record == null;
+    final nameController = TextEditingController(
+      text: record?['name']?.toString() ?? '',
+    );
+    final idController = TextEditingController(
+      text: record?['local_patient_id']?.toString() ??
+          (isNew ? 'PT-${DateTime.now().millisecondsSinceEpoch % 10000}' : ''),
+    );
+    final ageController = TextEditingController(
+      text: record?['age']?.toString() ?? '50',
+    );
+    final villageController = TextEditingController(
+      text: record?['village']?.toString() ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: record?['phone']?.toString() ?? '',
+    );
+    final notesController = TextEditingController(
+      text: record?['human_review_reason']?.toString() ?? '',
+    );
+
+    String selectedGender = (record?['gender'] ?? 'Male').toString();
+    if (!['Male', 'Female', 'Other'].contains(selectedGender)) {
+      selectedGender = 'Male';
+    }
+    String selectedEye = (record?['eye_side'] ?? 'Right').toString();
+    if (!['Right', 'Left'].contains(selectedEye)) {
+      selectedEye = 'Right';
+    }
+    int selectedGrade = (record?['dr_grade_num'] as num?)?.toInt() ?? 0;
+    if (selectedGrade < 0 || selectedGrade > 4) selectedGrade = 0;
+
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dlgCtx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            InputDecoration deco(String label, {IconData? icon}) {
+              return InputDecoration(
+                labelText: label,
+                labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                prefixIcon: icon != null ? Icon(icon, color: const Color(0xFF64748B), size: 16) : null,
+                filled: true,
+                fillColor: const Color(0xFF0F172A),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF223254)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF223254)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: ScannerHUDTheme.neonCyan),
+                ),
+              );
+            }
+
+            return Dialog(
+              backgroundColor: const Color(0xFF0C1428),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                  width: 1.2,
+                ),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 580, maxHeight: 680),
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              isNew ? Icons.person_add_alt_1_rounded : Icons.edit_note_rounded,
+                              color: const Color(0xFF00E5FF),
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isNew ? 'Add Patient Record' : 'Edit Patient Record',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  isNew
+                                      ? 'Manually enter a clinical screening entry'
+                                      : 'Modify demographics and findings for ${idController.text}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF94A3B8),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white60, size: 20),
+                            onPressed: () => Navigator.pop(dlgCtx),
+                          ),
+                        ],
+                      ),
+                      const Divider(color: Color(0xFF1E2D4A), height: 24),
+                      // Scrollable form fields
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Row 1: Name and Patient ID
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: TextField(
+                                      controller: nameController,
+                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      decoration: deco('Patient Full Name', icon: Icons.person_outline),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    flex: 2,
+                                    child: TextField(
+                                      controller: idController,
+                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      decoration: deco('Patient ID', icon: Icons.badge_outlined),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              // Row 2: Age and Gender
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: ageController,
+                                      keyboardType: TextInputType.number,
+                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      decoration: deco('Age (years)', icon: Icons.cake_outlined),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: DropdownButtonFormField<String>(
+                                      initialValue: selectedGender,
+                                      dropdownColor: const Color(0xFF0F172A),
+                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      decoration: deco('Gender', icon: Icons.wc_outlined),
+                                      items: const [
+                                        DropdownMenuItem(value: 'Male', child: Text('Male')),
+                                        DropdownMenuItem(value: 'Female', child: Text('Female')),
+                                        DropdownMenuItem(value: 'Other', child: Text('Other')),
+                                      ],
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setDlgState(() => selectedGender = val);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              // Row 3: Village / PHC and Phone
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: villageController,
+                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      decoration: deco('Village / PHC', icon: Icons.location_on_outlined),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: phoneController,
+                                      keyboardType: TextInputType.phone,
+                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      decoration: deco('Contact Phone', icon: Icons.phone_outlined),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              // Row 4: Eye and DR Grade
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: DropdownButtonFormField<String>(
+                                      initialValue: selectedEye,
+                                      dropdownColor: const Color(0xFF0F172A),
+                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      decoration: deco('Eye', icon: Icons.remove_red_eye_outlined),
+                                      items: const [
+                                        DropdownMenuItem(value: 'Right', child: Text('Right Eye')),
+                                        DropdownMenuItem(value: 'Left', child: Text('Left Eye')),
+                                      ],
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setDlgState(() => selectedEye = val);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    flex: 3,
+                                    child: DropdownButtonFormField<int>(
+                                      initialValue: selectedGrade,
+                                      dropdownColor: const Color(0xFF0F172A),
+                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      decoration: deco('DR Grade / Result', icon: Icons.biotech_outlined),
+                                      items: const [
+                                        DropdownMenuItem(value: 0, child: Text('Grade 0: No DR')),
+                                        DropdownMenuItem(value: 1, child: Text('Grade 1: Mild NPDR')),
+                                        DropdownMenuItem(value: 2, child: Text('Grade 2: Moderate NPDR')),
+                                        DropdownMenuItem(value: 3, child: Text('Grade 3: Severe NPDR')),
+                                        DropdownMenuItem(value: 4, child: Text('Grade 4: Proliferative (PDR)')),
+                                      ],
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setDlgState(() => selectedGrade = val);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              // Row 5: Clinical Notes
+                              TextField(
+                                controller: notesController,
+                                maxLines: 2,
+                                style: const TextStyle(color: Colors.white, fontSize: 13),
+                                decoration: deco('Clinical Findings / Specialist Notes', icon: Icons.notes_rounded),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      // Action buttons
+                      Row(
+                        children: [
+                          if (!isNew)
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFFEF4444),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              ),
+                              icon: const Icon(Icons.delete_outline, size: 18),
+                              label: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+                              onPressed: isSaving
+                                  ? null
+                                  : () {
+                                      Navigator.pop(dlgCtx);
+                                      _confirmDeleteRecord(record);
+                                    },
+                            ),
+                          const Spacer(),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF94A3B8),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                            onPressed: isSaving ? null : () => Navigator.pop(dlgCtx),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00E5FF),
+                              foregroundColor: const Color(0xFF0A1128),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: isSaving
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFF0A1128),
+                                    ),
+                                  )
+                                : const Icon(Icons.check_rounded, size: 18),
+                            label: Text(
+                              isSaving
+                                  ? 'Saving...'
+                                  : (isNew ? 'Add Patient' : 'Save Changes'),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            onPressed: isSaving
+                                ? null
+                                : () async {
+                                    final name = nameController.text.trim();
+                                    final pid = idController.text.trim();
+                                    if (name.isEmpty && pid.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Please enter at least a patient name or ID.'),
+                                          backgroundColor: Color(0xFF7F1D1D),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    setDlgState(() => isSaving = true);
+                                    final messenger = ScaffoldMessenger.of(context);
+                                    final age = int.tryParse(ageController.text.trim()) ?? 50;
+                                    final finalName = name.isNotEmpty ? name : pid;
+                                    final finalPid = pid.isNotEmpty ? pid : 'PT-${DateTime.now().millisecondsSinceEpoch % 10000}';
+                                    final label = _drGradeLabel(selectedGrade);
+                                    final reason = notesController.text.trim();
+
+                                    final map = Map<String, dynamic>.from(record ?? {});
+                                    map['name'] = finalName;
+                                    map['local_patient_id'] = finalPid;
+                                    map['age'] = age;
+                                    map['gender'] = selectedGender;
+                                    map['village'] = villageController.text.trim();
+                                    map['phone'] = phoneController.text.trim();
+                                    map['eye_side'] = selectedEye;
+                                    map['dr_grade_num'] = selectedGrade;
+                                    map['dr_label'] = label;
+                                    map['requires_human_review'] = selectedGrade > 0 ? 1 : 0;
+                                    map['human_review_reason'] = reason.isNotEmpty
+                                        ? reason
+                                        : (selectedGrade > 0 ? 'Clinical findings require review' : '');
+
+                                    try {
+                                      if (isNew) {
+                                        await ScreeningPersistenceService().createManualRecord(map);
+                                      } else {
+                                        await ScreeningPersistenceService().updateRecord(map);
+                                      }
+                                      await unawaitedLoad();
+                                      if (mounted) {
+                                        if (dlgCtx.mounted) {
+                                          Navigator.pop(dlgCtx);
+                                        }
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            backgroundColor: const Color(0xFF065F46),
+                                            content: Text(
+                                              isNew
+                                                  ? 'Patient record added successfully!'
+                                                  : 'Patient record for $finalName updated!',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: const Color(0xFF7F1D1D),
+                                          content: Text('Failed to save changes: $e'),
+                                        ),
+                                      );
+                                    } finally {
+                                      if (mounted) {
+                                        setDlgState(() => isSaving = false);
+                                      }
+                                    }
+                                  },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteRecord(Map<String, dynamic> record) {
+    final sid = (record['local_screening_id'] ?? '').toString();
+    final name = (record['name'] ?? record['local_patient_id'] ?? 'Patient').toString();
+    final pid = (record['local_patient_id'] ?? '').toString();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0C1428),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: Color(0xFFEF4444), size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text('Delete Patient Record?', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete the clinical record for $name ($pid)? This will permanently remove it from local storage on this device.',
+          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await ScreeningPersistenceService().deleteRecord(sid);
+                await unawaitedLoad();
+                messenger.showSnackBar(
+                  SnackBar(
+                    backgroundColor: const Color(0xFF065F46),
+                    content: Text('Patient record for $name deleted.'),
+                  ),
+                );
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    backgroundColor: const Color(0xFF7F1D1D),
+                    content: Text('Failed to delete record: $e'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete Record', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -459,6 +1002,11 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Add Patient Record Manually',
+            icon: const Icon(Icons.person_add_alt_1_rounded, color: ScannerHUDTheme.neonCyan),
+            onPressed: () => _showEditPatientDialog(null),
+          ),
           IconButton(
             tooltip: 'Refresh Local Records',
             icon: const Icon(Icons.refresh_rounded, color: ScannerHUDTheme.neonCyan),
@@ -554,13 +1102,25 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                       const Expanded(
                         child: Text(
                           'No screening records yet — capture a screening '
-                          'for a patient and it appears here.',
+                          'for a patient or add one manually.',
                           style: TextStyle(
                             fontSize: 13,
                             height: 1.4,
                             color: Color(0xFF94A3B8),
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ScannerHUDTheme.neonCyan,
+                          foregroundColor: const Color(0xFF0C1428),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Add Patient', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        onPressed: () => _showEditPatientDialog(null),
                       ),
                     ],
                   ),
@@ -724,7 +1284,18 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                               ),
                               const SizedBox(width: 8),
                               StatusBadge(status: status),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 2),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit_outlined,
+                                  color: Color(0xFF00E5FF),
+                                  size: 19,
+                                ),
+                                tooltip: 'Edit Patient Details',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                onPressed: () => _showEditPatientDialog(record),
+                              ),
                               const Icon(
                                 Icons.chevron_right_rounded,
                                 color: Color(0xFF64748B),

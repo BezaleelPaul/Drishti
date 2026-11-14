@@ -91,5 +91,55 @@ void main() {
       expect(row.$2, 'Meera Sharma');
       expect(row.$4, 'Mild NPDR');
     });
+
+    test('updateRecord modifies existing patient details and persists', () async {
+      final service = ScreeningPersistenceService();
+      final records = await service.getRecentScreenings();
+      final first = Map<String, dynamic>.from(records.first);
+      final sid = first['local_screening_id'] as String;
+
+      first['name'] = 'Updated Patient Name';
+      first['age'] = 62;
+      first['dr_label'] = 'Severe NPDR';
+      first['dr_grade_num'] = 3;
+
+      final ok = await service.updateRecord(first);
+      expect(ok, isTrue);
+
+      final updatedRecords = await service.getRecentScreenings();
+      final target = updatedRecords.firstWhere((r) => r['local_screening_id'] == sid);
+      expect(target['name'], 'Updated Patient Name');
+      expect(target['age'], 62);
+      expect(target['dr_grade_num'], 3);
+    });
+
+    test('createManualRecord and deleteRecord manage manual patient history entries', () async {
+      final service = ScreeningPersistenceService();
+      final manual = {
+        'local_screening_id': 'SCR-MANUAL-12345',
+        'local_patient_id': 'PT-12345',
+        'name': 'Kavita Rao',
+        'age': 44,
+        'gender': 'Female',
+        'village': 'Shirwal',
+        'phone': '9876543210',
+        'eye_side': 'Left',
+        'dr_grade_num': 2,
+        'dr_label': 'Moderate NPDR',
+        'human_review_reason': 'Manual entry verification',
+      };
+
+      final created = await service.createManualRecord(manual);
+      expect(created, isTrue);
+
+      var records = await service.getRecentScreenings();
+      expect(records.any((r) => r['local_screening_id'] == 'SCR-MANUAL-12345'), isTrue);
+
+      final deleted = await service.deleteRecord('SCR-MANUAL-12345');
+      expect(deleted, isTrue);
+
+      records = await service.getRecentScreenings();
+      expect(records.any((r) => r['local_screening_id'] == 'SCR-MANUAL-12345'), isFalse);
+    });
   });
 }
