@@ -18,7 +18,8 @@ import 'flow/flow_state.dart';
 /// Powered by ScreeningPersistenceService multi-tier storage:
 /// encrypted SQLite vault, SharedPreferences instant cache, and local file backup.
 class FigmaHistoryScreen extends StatefulWidget {
-  const FigmaHistoryScreen({super.key});
+  final String initialFilter;
+  const FigmaHistoryScreen({super.key, this.initialFilter = 'all'});
 
   @override
   State<FigmaHistoryScreen> createState() => _FigmaHistoryScreenState();
@@ -29,12 +30,13 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
   List<Map<String, dynamic>> _rawRecords = const [];
   List<(String, String, String, String, FigmaStatus)> _rows = const [];
   String _searchQuery = '';
-  String _selectedFilter = 'all';
+  late String _selectedFilter;
   final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _selectedFilter = widget.initialFilter;
     ScreeningPersistenceService().addListener(_onDataChanged);
     unawaitedLoad();
   }
@@ -52,6 +54,8 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
 
   List<(String, String, String, String, FigmaStatus, Map<String, dynamic>)> get _filteredRows {
     final List<(String, String, String, String, FigmaStatus, Map<String, dynamic>)> result = [];
+    final now = DateTime.now();
+
     for (int i = 0; i < _rows.length; i++) {
       final r = _rows[i];
       final record = i < _rawRecords.length ? _rawRecords[i] : <String, dynamic>{};
@@ -60,8 +64,23 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
       final res = r.$4.toLowerCase();
       final status = r.$5;
 
-      if (_selectedFilter == 'urgent') {
+      if (_selectedFilter == 'today') {
+        final rawDate = record['created_at']?.toString() ?? '';
+        final created = DateTime.tryParse(rawDate)?.toLocal();
+        bool isToday = false;
+        if (created != null) {
+          isToday = (created.year == now.year && created.month == now.month && created.day == now.day) ||
+              now.difference(created).inHours < 24;
+        } else {
+          isToday = r.$3.contains('${now.year}');
+        }
+        if (!isToday) continue;
+      } else if (_selectedFilter == 'urgent') {
+        final grade = (record['dr_grade_num'] as num?)?.toInt() ?? 0;
+        final reviewType = (record['human_review_type'] ?? '').toString().toUpperCase();
         final isUrgent = status == FigmaStatus.referral ||
+            grade >= 3 ||
+            reviewType == 'URGENT' ||
             res.contains('severe') ||
             res.contains('pdr') ||
             res.contains('grade 3') ||
@@ -1402,6 +1421,8 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
           child: Row(
             children: [
               _filterChip('all', 'All (${_rows.length})', null),
+              const SizedBox(width: 6),
+              _filterChip('today', 'Today', const Color(0xFF00E5FF)),
               const SizedBox(width: 6),
               _filterChip('urgent', 'Urgent / Referral', const Color(0xFFEF4444)),
               const SizedBox(width: 6),

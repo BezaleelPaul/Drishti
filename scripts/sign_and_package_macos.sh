@@ -69,6 +69,8 @@ cat <<'EOF' > "$ENTITLEMENTS_PATH"
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<key>com.apple.security.device.camera</key>
+	<true/>
 </dict>
 </plist>
 EOF

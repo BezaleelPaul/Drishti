@@ -267,12 +267,22 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     if (mounted) await _refresh();
   }
 
-  Future<void> _openHistory(BuildContext context) async {
+  Future<void> _openHistory(BuildContext context, {String initialFilter = 'all'}) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const FigmaHistoryScreen()),
+      MaterialPageRoute(builder: (_) => FigmaHistoryScreen(initialFilter: initialFilter)),
     );
     if (mounted) await _refresh();
+  }
+
+  Future<void> _openTodayScreenings(BuildContext context) async {
+    setState(() => _selectedFilter = 'today');
+    await _openHistory(context, initialFilter: 'today');
+  }
+
+  Future<void> _openUrgentReferrals(BuildContext context) async {
+    setState(() => _selectedFilter = 'urgent');
+    await _openHistory(context, initialFilter: 'urgent');
   }
 
   Future<void> _openDoctorReview(BuildContext context) async {
@@ -285,14 +295,40 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
 
   List<(String, String, String, String, FigmaStatus)> get _filteredRows {
     final raw = _rows;
+    final now = DateTime.now();
     return raw.where((r) {
       final pid = r.$1.toLowerCase();
       final name = r.$2.toLowerCase();
       final res = r.$4.toLowerCase();
       final status = r.$5;
 
-      if (_selectedFilter == 'urgent') {
+      if (_selectedFilter == 'today') {
+        final rawRecord = _localRows.firstWhere(
+          (lr) => (lr['local_patient_id'] ?? '').toString().toLowerCase() == pid ||
+                  (lr['local_screening_id'] ?? '').toString().toLowerCase() == pid,
+          orElse: () => const {},
+        );
+        final createdIso = rawRecord['created_at']?.toString() ?? '';
+        final parsed = DateTime.tryParse(createdIso)?.toLocal();
+        bool isToday = false;
+        if (parsed != null) {
+          isToday = (parsed.year == now.year && parsed.month == now.month && parsed.day == now.day) ||
+              now.difference(parsed).inHours < 24;
+        } else {
+          isToday = r.$3.contains('${now.year}');
+        }
+        if (!isToday) return false;
+      } else if (_selectedFilter == 'urgent') {
+        final rawRecord = _localRows.firstWhere(
+          (lr) => (lr['local_patient_id'] ?? '').toString().toLowerCase() == pid ||
+                  (lr['local_screening_id'] ?? '').toString().toLowerCase() == pid,
+          orElse: () => const {},
+        );
+        final grade = (rawRecord['dr_grade_num'] as num?)?.toInt() ?? 0;
+        final reviewType = (rawRecord['human_review_type'] ?? '').toString().toUpperCase();
         final isUrgent = status == FigmaStatus.referral ||
+            grade >= 3 ||
+            reviewType == 'URGENT' ||
             res.contains('severe') ||
             res.contains('pdr') ||
             res.contains('grade 3') ||
@@ -518,11 +554,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                           ),
                           ScannerHUDTheme.neonCyan,
                           Icons.visibility_rounded,
-                          onTap: () => setState(() {
-                            _selectedFilter = 'all';
-                            _searchQuery = '';
-                            _searchController.clear();
-                          }),
+                          onTap: () => _openTodayScreenings(context),
                         ),
                         _statCard(
                           context,
@@ -555,9 +587,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                           ),
                           const Color(0xFFEF4444),
                           Icons.warning_amber_rounded,
-                          onTap: () => setState(() {
-                            _selectedFilter = 'urgent';
-                          }),
+                          onTap: () => _openUrgentReferrals(context),
                         ),
                       ],
                     ),
@@ -1258,7 +1288,9 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
             children: [
               _filterChip('all', 'All (${_rows.length})', null),
               const SizedBox(width: 6),
-              _filterChip('urgent', 'Urgent / Referral', const Color(0xFFEF4444)),
+              _filterChip('today', 'Today ($_localTodayCount)', ScannerHUDTheme.neonCyan),
+              const SizedBox(width: 6),
+              _filterChip('urgent', 'Urgent / Referral ($_localUrgentCount)', const Color(0xFFEF4444)),
               const SizedBox(width: 6),
               _filterChip('awaiting', 'Pending Review', const Color(0xFFF59E0B)),
               const SizedBox(width: 6),
