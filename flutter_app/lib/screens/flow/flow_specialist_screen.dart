@@ -7,6 +7,7 @@ import '../../services/db/screening_persistence_service.dart';
 import '../../services/smtp/smtp_service.dart';
 import '../../widgets/scanner/scanner.dart';
 import '../../widgets/workflow_bar.dart';
+import '../admin/admin_portal_screen.dart';
 import 'flow_referral_screen.dart';
 import 'flow_state.dart';
 
@@ -27,6 +28,113 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
   String _decision = 'CONFIRM';
   int _correctedGrade = 2;
   bool _busy = false;
+  String _specialistEmail = '';
+  bool _autoSendEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSpecialistRecipient();
+  }
+
+  Future<void> _loadSpecialistRecipient() async {
+    final cfg = await SmtpService().loadConfig();
+    if (!mounted) return;
+    setState(() {
+      _specialistEmail = cfg.specialistEmail.trim();
+      _autoSendEnabled = cfg.autoSendOnDr;
+    });
+  }
+
+  Future<void> _editSpecialistEmailDialog() async {
+    final controller = TextEditingController(text: _specialistEmail);
+    final updated = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF1E293B)),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.mark_email_read_outlined, color: ScannerHUDTheme.neonCyan, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Assign Specialist Recipient',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the email address of the ophthalmologist or hospital receiving clinical referral dossiers:',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Specialist Email(s)',
+                hintText: 'dr.sharma@eyeclinic.org',
+                hintStyle: const TextStyle(color: Color(0xFF475569)),
+                labelStyle: const TextStyle(color: ScannerHUDTheme.neonCyan),
+                filled: true,
+                fillColor: const Color(0xFF1E293B),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF334155)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: ScannerHUDTheme.neonCyan),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ScannerHUDTheme.neonCyan,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Save Recipient', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (updated != null && mounted) {
+      final cfg = await SmtpService().loadConfig();
+      cfg.specialistEmail = updated;
+      await SmtpService().saveConfig(cfg);
+      setState(() => _specialistEmail = updated);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF065F46),
+          content: Text(
+            updated.isNotEmpty
+                ? 'Specialist recipient updated: $updated'
+                : 'Specialist recipient cleared',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -186,7 +294,9 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
+                _specialistRecipientCard(),
+                const SizedBox(height: 14),
                 Text(
                   context.tr('decision_label'),
                   style: const TextStyle(
@@ -397,6 +507,141 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _specialistRecipientCard() {
+    final hasRecipient = _specialistEmail.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: ScannerHUDTheme.darkSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasRecipient
+              ? const Color(0xFF00E5FF).withValues(alpha: 0.35)
+              : const Color(0xFFF59E0B).withValues(alpha: 0.4),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: hasRecipient
+                      ? const Color(0xFF064E3B).withValues(alpha: 0.5)
+                      : const Color(0xFF78350F).withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  hasRecipient ? Icons.local_hospital : Icons.mark_email_unread_outlined,
+                  size: 18,
+                  color: hasRecipient ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ASSIGNED SPECIALIST RECIPIENT',
+                      style: TextStyle(
+                        fontSize: 10,
+                        letterSpacing: 1.1,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasRecipient ? _specialistEmail : 'No specialist email assigned yet',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: hasRecipient ? Colors.white : const Color(0xFFFBBF24),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _editSpecialistEmailDialog,
+                icon: Icon(
+                  hasRecipient ? Icons.edit_outlined : Icons.add_circle_outline,
+                  size: 16,
+                  color: ScannerHUDTheme.neonCyan,
+                ),
+                label: Text(
+                  hasRecipient ? 'Edit' : 'Add',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: ScannerHUDTheme.neonCyan,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hasRecipient ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  hasRecipient
+                      ? (_autoSendEnabled
+                          ? 'Automated Email Dossier & PDF will be dispatched on submission'
+                          : 'Manual referral mode active (auto-send disabled in Admin)')
+                      : 'Referral email alerts paused until an email is added',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                ),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AdminPortalScreen()),
+                  );
+                  await _loadSpecialistRecipient();
+                },
+                child: const Text(
+                  'Admin Portal →',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF00E5FF),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
