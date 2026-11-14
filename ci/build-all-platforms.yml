@@ -31,23 +31,22 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Set up Java 21 (Temurin)
+      - name: Set up Java 17 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
-          java-version: "21"
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.50.0"
           channel: "stable"
           cache: true
 
       - name: Configure Android Release Signing
         run: |
-          cat << 'EOF' > flutter_app/android/key.properties
-          storeFile=../../mobile_keystore/drishti-release.jks
+          cat << EOF > flutter_app/android/key.properties
+          storeFile=$GITHUB_WORKSPACE/mobile_keystore/drishti-release.jks
           storePassword=drishti123
           keyAlias=drishti
           keyPassword=drishti123
@@ -92,7 +91,6 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.50.0"
           channel: "stable"
           cache: true
 
@@ -130,7 +128,6 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.50.0"
           channel: "stable"
           cache: true
 
@@ -169,7 +166,6 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.50.0"
           channel: "stable"
           cache: true
 
@@ -209,7 +205,6 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.50.0"
           channel: "stable"
           cache: true
 
