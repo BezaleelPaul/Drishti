@@ -927,9 +927,9 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
   }
 
   void _confirmDeleteRecord(Map<String, dynamic> record) {
-    final sid = (record['local_screening_id'] ?? '').toString();
-    final name = (record['name'] ?? record['local_patient_id'] ?? 'Patient').toString();
-    final pid = (record['local_patient_id'] ?? '').toString();
+    final sid = (record['local_screening_id'] ?? record['screening_id'] ?? '').toString();
+    final pid = (record['local_patient_id'] ?? record['patient_id'] ?? '').toString();
+    final name = (record['name'] ?? pid.isNotEmpty ? pid : 'Patient').toString();
 
     showDialog(
       context: context,

@@ -141,5 +141,21 @@ void main() {
       records = await service.getRecentScreenings();
       expect(records.any((r) => r['local_screening_id'] == 'SCR-MANUAL-12345'), isFalse);
     });
+
+    test('deleteRecord permanently deletes record and never resurrects on refresh', () async {
+      final service = ScreeningPersistenceService();
+      var records = await service.getRecentScreenings();
+      expect(records.any((r) => r['local_patient_id'] == 'PT-8821'), isTrue);
+
+      final ok = await service.deleteRecord('SCR-PT-8821-Right', localPatientId: 'PT-8821');
+      expect(ok, isTrue);
+
+      // Subsequent reads (simulating multiple UI refreshes)
+      records = await service.getRecentScreenings();
+      expect(records.any((r) => r['local_patient_id'] == 'PT-8821'), isFalse);
+
+      records = await service.getRecentScreenings();
+      expect(records.any((r) => r['local_patient_id'] == 'PT-8821'), isFalse);
+    });
   });
 }

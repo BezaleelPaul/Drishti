@@ -378,6 +378,13 @@ class LocalStore {
         where: whereClause,
         whereArgs: whereArgs,
       );
+      if (localPatientId != null && localPatientId.isNotEmpty) {
+        await txn.delete(
+          'patients',
+          where: 'local_patient_id = ?',
+          whereArgs: [localPatientId],
+        );
+      }
     });
   }
 

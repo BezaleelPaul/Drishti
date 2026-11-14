@@ -153,41 +153,6 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
       } catch (e) {
         debugPrint('Local cases load error in DoctorReview: $e');
       }
-
-      // If still empty (e.g. fresh install or all local cases are Grade 0), populate clinical sample cases needing audit
-      if (combined.isEmpty) {
-        final samples = ScreeningPersistenceService.sampleRecords
-            .where((s) => ((s['dr_grade_num'] as num?)?.toInt() ?? 0) > 0)
-            .toList();
-        for (final s in samples) {
-          final pid = (s['local_patient_id'] ?? '').toString();
-          final sid = (s['local_screening_id'] ?? 'SCR-$pid').toString();
-          final name = (s['name'] ?? pid).toString();
-          final grade = (s['dr_grade_num'] as num?)?.toInt() ?? 2;
-          final label = (s['dr_label'] ?? 'Diabetic Retinopathy Grade $grade').toString();
-          final conf = (s['confidence'] as num?)?.toDouble() ?? 0.95;
-          final isUrgent = grade >= 3 || (s['human_review_type'] == 'URGENT');
-          final reason = (s['human_review_reason'] ?? 'Specialist tele-ophthalmology review required').toString();
-
-          combined.add({
-            'review_id': sid,
-            'patient_name': name,
-            'abha_id': pid,
-            'screening_id': sid,
-            'eye_side': (s['eye_side'] ?? 'Right').toString(),
-            'original_image_url': '',
-            'image_path': (s['image_path'] ?? '').toString(),
-            'dr_grade': grade,
-            'dr_label': label,
-            'reason': reason,
-            'confidence': '${(conf * 100).toStringAsFixed(1)}%',
-            'priority': isUrgent ? 'URGENT' : 'Review Required',
-            'is_signed_off': false,
-            'is_local': true,
-            'raw_record': s,
-          });
-        }
-      }
     }
 
     if (mounted) {

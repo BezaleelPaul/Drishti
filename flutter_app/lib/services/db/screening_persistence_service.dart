@@ -22,7 +22,45 @@ class ScreeningPersistenceService with ChangeNotifier {
   ScreeningPersistenceService._internal();
 
   static const String _prefsKey = 'drishti_screenings_cache_v2';
+  static const String _deletedIdsKey = 'drishti_deleted_record_ids_v1';
   static const String _backupFileName = 'drishti_screenings_backup.json';
+
+  Future<Set<String>> _loadDeletedIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_deletedIdsKey) ?? [];
+      return list.toSet();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _recordDeletedIds(Iterable<String> ids) async {
+    final clean = ids.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+    if (clean.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final set = (prefs.getStringList(_deletedIdsKey) ?? []).toSet();
+      set.addAll(clean);
+      await prefs.setStringList(_deletedIdsKey, set.toList());
+    } catch (_) {}
+  }
+
+  Future<void> _unmarkDeletedIds(Iterable<String> ids) async {
+    final clean = ids.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+    if (clean.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final set = (prefs.getStringList(_deletedIdsKey) ?? []).toSet();
+      bool changed = false;
+      for (final id in clean) {
+        if (set.remove(id)) changed = true;
+      }
+      if (changed) {
+        await prefs.setStringList(_deletedIdsKey, set.toList());
+      }
+    } catch (_) {}
+  }
 
   /// Default clinical sample records seeded if no screenings exist yet.
   static List<Map<String, dynamic>> get sampleRecords {
@@ -239,6 +277,7 @@ class ScreeningPersistenceService with ChangeNotifier {
       debugPrint('LocalStore save error (Tier 1 & 2 preserved record): $e');
     }
 
+    await _unmarkDeletedIds([screeningId, pState.patientId]);
     debugPrint('Screening saved across tiers: $screeningId');
     notifyListeners();
     return true;
@@ -253,6 +292,8 @@ class ScreeningPersistenceService with ChangeNotifier {
       updatedRecord['local_screening_id'] = sid;
     }
     if (sid.isEmpty && pid.isEmpty) return false;
+
+    await _unmarkDeletedIds([sid, pid]);
 
     // Tier 1: SharedPreferences (Immediate persistent client cache)
     try {
@@ -351,6 +392,9 @@ class ScreeningPersistenceService with ChangeNotifier {
     final pid = (localPatientId ?? '').trim();
     if (sid.isEmpty && pid.isEmpty) return false;
 
+    // 1. Permanently register tombstone in persistent storage
+    await _recordDeletedIds([sid, pid]);
+
     bool matches(Map item) {
       final itemSid = (item['local_screening_id'] ?? item['screening_id'] ?? '').toString();
       final itemPid = (item['local_patient_id'] ?? item['patient_id'] ?? '').toString();
@@ -417,6 +461,8 @@ class ScreeningPersistenceService with ChangeNotifier {
     record['created_at'] ??= now;
     record['sync_state'] ??= 'offline';
 
+    await _unmarkDeletedIds([sid, pid]);
+
     // Tier 1: SharedPreferences
     try {
       await _saveToPrefs(record);
@@ -479,15 +525,23 @@ class ScreeningPersistenceService with ChangeNotifier {
     return true;
   }
 
-  /// Retrieves recent screenings across all tiers with deduplication.
-  /// If no records exist, automatically seeds clinical demonstration records.
+  /// Retrieves recent screenings across all tiers with deduplication and permanent deletion filtering.
   Future<List<Map<String, dynamic>>> getRecentScreenings({int limit = 100}) async {
     final Map<String, Map<String, dynamic>> recordsById = {};
+    final deletedIds = await _loadDeletedIds();
+
+    bool isDeleted(Map r) {
+      final sid = (r['local_screening_id'] ?? r['screening_id'] ?? '').toString();
+      final pid = (r['local_patient_id'] ?? r['patient_id'] ?? '').toString();
+      return (sid.isNotEmpty && deletedIds.contains(sid)) ||
+             (pid.isNotEmpty && deletedIds.contains(pid));
+    }
 
     // 1. Load from SharedPreferences (freshest user edits and additions)
     try {
       final prefsList = await _loadFromPrefs();
       for (final r in prefsList) {
+        if (isDeleted(r)) continue;
         final id = (r['local_screening_id'] ?? r['local_patient_id'] ?? '').toString();
         if (id.isNotEmpty) {
           recordsById[id] = Map<String, dynamic>.from(r);
@@ -502,12 +556,13 @@ class ScreeningPersistenceService with ChangeNotifier {
       final password = await OfflineQueueService.resolveDbPassword();
       final store = await LocalStore.open(dbPassword: password);
       try {
-        await store.seedSampleScreeningsIfEmpty();
         final dbRows = await store.recentScreenings(limit: limit);
         for (final row in dbRows) {
+          final rowMap = Map<String, dynamic>.from(row);
+          if (isDeleted(rowMap)) continue;
           final id = (row['local_screening_id'] ?? '').toString();
           if (id.isNotEmpty && !recordsById.containsKey(id)) {
-            recordsById[id] = Map<String, dynamic>.from(row);
+            recordsById[id] = rowMap;
           }
         }
       } finally {
@@ -521,6 +576,7 @@ class ScreeningPersistenceService with ChangeNotifier {
     try {
       final fileList = await _loadFromFileBackup();
       for (final r in fileList) {
+        if (isDeleted(r)) continue;
         final id = (r['local_screening_id'] ?? '').toString();
         if (id.isNotEmpty && !recordsById.containsKey(id)) {
           recordsById[id] = r;
@@ -530,15 +586,18 @@ class ScreeningPersistenceService with ChangeNotifier {
       debugPrint('File backup retrieval error: $e');
     }
 
-    // If completely empty, seed sample records
-    if (recordsById.isEmpty) {
-      debugPrint('No screening records found — seeding default clinical sample records.');
+    // Only seed sample records on a truly pristine app install (never initialized and no deletions)
+    final prefs = await SharedPreferences.getInstance();
+    final hasPrefsInitialized = prefs.containsKey(_prefsKey);
+    if (recordsById.isEmpty && !hasPrefsInitialized && deletedIds.isEmpty) {
+      debugPrint('Initial clean install — seeding default clinical sample records.');
       final samples = sampleRecords;
       for (final s in samples) {
-        recordsById[s['local_screening_id'] as String] = s;
+        if (!isDeleted(s)) {
+          recordsById[s['local_screening_id'] as String] = s;
+        }
       }
       try {
-        final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_prefsKey, jsonEncode(samples));
       } catch (_) {}
     }
