@@ -15,7 +15,7 @@ import 'local_store.dart';
 /// 2. SharedPreferences JSON cache (desktop & mobile instant load)
 /// 3. Offline filesystem backup JSON (survives app rebuilds)
 /// 4. Offline sync queue (store-and-forward when connectivity returns)
-class ScreeningPersistenceService {
+class ScreeningPersistenceService with ChangeNotifier {
   static final ScreeningPersistenceService _instance =
       ScreeningPersistenceService._internal();
   factory ScreeningPersistenceService() => _instance;
@@ -52,7 +52,7 @@ class ScreeningPersistenceService {
         'human_review_type': 'ROUTINE',
         'human_review_reason': 'Moderate microaneurysms and hard exudates detected',
         'model_backend': 'tflite-fp32',
-        'created_at': now.subtract(const Duration(days: 1, hours: 4)).toIso8601String(),
+        'created_at': now.subtract(const Duration(hours: 2)).toIso8601String(),
         'image_path': '',
         'sync_state': 'offline',
       },
@@ -235,11 +235,12 @@ class ScreeningPersistenceService {
         imagePath: imagePath,
         enqueueForSync: true,
       );
-      debugPrint('Screening saved to LocalStore: $screeningId for ${pState.name}');
     } catch (e) {
       debugPrint('LocalStore save error (Tier 1 & 2 preserved record): $e');
     }
 
+    debugPrint('Screening saved across tiers: $screeningId');
+    notifyListeners();
     return true;
   }
 
@@ -329,6 +330,7 @@ class ScreeningPersistenceService {
       debugPrint('Error updating LocalStore record: $e');
     }
 
+    notifyListeners();
     return true;
   }
 
@@ -378,6 +380,7 @@ class ScreeningPersistenceService {
       debugPrint('Error deleting from LocalStore: $e');
     }
 
+    notifyListeners();
     return true;
   }
 
@@ -451,6 +454,7 @@ class ScreeningPersistenceService {
       debugPrint('Error saving manual record to LocalStore: $e');
     }
 
+    notifyListeners();
     return true;
   }
 
