@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/retinal_markers.dart';
 import '../services/api_service.dart';
+import '../services/smtp/smtp_service.dart';
 import '../widgets/review/marker_viewer.dart';
 import '../widgets/scanner/scanner_theme.dart';
 
@@ -26,11 +27,20 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _pendingCases = [];
   String? _authNotice;
+  String _specialistEmail = '';
 
   @override
   void initState() {
     super.initState();
+    _loadSpecialistEmail();
     _loadQueue();
+  }
+
+  Future<void> _loadSpecialistEmail() async {
+    final cfg = await SmtpService().loadConfig();
+    if (mounted) {
+      setState(() => _specialistEmail = cfg.specialistEmail.trim());
+    }
   }
 
   Future<void> _loadQueue() async {
@@ -494,11 +504,47 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Queue',
-            onPressed: _loadQueue,
+            onPressed: () {
+              _loadSpecialistEmail();
+              _loadQueue();
+            },
           ),
         ],
       ),
-      body: queueBody,
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: const BoxDecoration(
+              color: Color(0xFF101A33),
+              border: Border(bottom: BorderSide(color: Color(0xFF1E2D4A))),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.mark_email_read_outlined, size: 16, color: Color(0xFFA855F7)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Specialist Receiver: ',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8)),
+                ),
+                Expanded(
+                  child: Text(
+                    _specialistEmail.isNotEmpty ? _specialistEmail : 'Not configured in Admin',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _specialistEmail.isNotEmpty ? const Color(0xFFC084FC) : const Color(0xFFFBBF24),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: queueBody),
+        ],
+      ),
     );
   }
 }

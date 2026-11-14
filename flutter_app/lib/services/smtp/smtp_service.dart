@@ -51,7 +51,7 @@ class SmtpResult {
 
 /// Pure Dart zero-dependency RFC 5321 / RFC 5322 SMTP client.
 /// Works standalone on macOS, iOS, Android, and Linux.
-class SmtpService {
+class SmtpService with ChangeNotifier {
   static final SmtpService _instance = SmtpService._internal();
   factory SmtpService() => _instance;
   SmtpService._internal();
@@ -102,6 +102,7 @@ class SmtpService {
     await prefs.setString(_kSenderName, config.senderName.trim());
     await prefs.setBool(_kAutoSend, config.autoSendOnDr);
     await prefs.setInt(_kMinGrade, config.minSeverityGrade);
+    notifyListeners();
   }
 
   /// Evaluates whether a screening warrants automated specialist notification,

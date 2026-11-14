@@ -45,6 +45,12 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
     _senderName = TextEditingController(text: 'Drishti AI Automated Screening');
     _testRecipient = TextEditingController();
 
+    _specialistEmail.addListener(() {
+      if (_testRecipient.text.isEmpty) {
+        _testRecipient.text = _specialistEmail.text;
+      }
+    });
+
     _loadExistingConfig();
   }
 
@@ -102,13 +108,22 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
     try {
+      final targetReceiver = _specialistEmail.text.trim().isNotEmpty
+          ? _specialistEmail.text.trim()
+          : _testRecipient.text.trim();
+      if (_specialistEmail.text.trim().isEmpty && targetReceiver.isNotEmpty) {
+        _specialistEmail.text = targetReceiver;
+      }
+      if (_testRecipient.text.trim().isEmpty && targetReceiver.isNotEmpty) {
+        _testRecipient.text = targetReceiver;
+      }
       final config = SmtpConfig(
         senderEmail: _senderEmail.text.trim(),
         senderPassword: _password.text.trim(),
         smtpHost: _host.text.trim(),
         smtpPort: int.tryParse(_port.text.trim()) ?? 465,
         useSsl: _useSsl,
-        specialistEmail: _specialistEmail.text.trim(),
+        specialistEmail: targetReceiver,
         senderName: _senderName.text.trim(),
         autoSendOnDr: _autoSendOnDr,
         minSeverityGrade: _minGrade,
@@ -254,15 +269,15 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
                   // Section 1: Specialist Dispatch Settings
                   _sectionHeader(
                     title: 'Specialist Recipient Settings',
-                    subtitle: 'Doctor and hospital alert destinations',
+                    subtitle: 'Doctor and hospital alert destinations (Receiver Email)',
                     icon: Icons.local_hospital_outlined,
                   ),
                   const SizedBox(height: 10),
                   _card([
                     _textInput(
-                      label: 'Specialist Doctor Email(s)',
+                      label: 'Receiver Email (Specialist Doctor)',
                       controller: _specialistEmail,
-                      hint: 'dr.specialist@hospital.org (comma-separated)',
+                      hint: 'dr.specialist@hospital.org (Receiver email)',
                       icon: Icons.alternate_email,
                       required: true,
                     ),

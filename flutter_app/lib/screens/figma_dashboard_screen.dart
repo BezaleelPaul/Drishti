@@ -7,6 +7,8 @@ import '../services/api_service.dart';
 import '../services/db/screening_persistence_service.dart';
 import '../services/ml/pipeline_schema.dart';
 import '../services/offline_queue_service.dart';
+import '../services/referral_uplink_service.dart';
+import '../services/smtp/smtp_service.dart';
 import '../theme/figma_theme.dart';
 import '../widgets/charts/severity_distribution_chart.dart';
 import '../widgets/futuristic/futuristic_ui.dart';
@@ -14,6 +16,7 @@ import '../widgets/nav/neon_nav_rail.dart';
 import '../widgets/orbit/orbit.dart';
 import '../widgets/scanner/scanner_theme.dart';
 import '../widgets/status_badge.dart';
+import 'admin/admin_portal_screen.dart';
 import 'flow/flow_register_screen.dart';
 import 'doctor_review_screen.dart';
 import 'figma_history_screen.dart';
@@ -43,6 +46,8 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
   int _queuedAi = 0;
   Map<String, dynamic>? _live;
   List<Map<String, Object?>> _localRows = const [];
+  String _specialistEmail = '';
+  bool _isBackgroundSyncing = false;
   Timer? _poll;
   String _searchQuery = '';
   String _selectedFilter = 'all'; // 'all', 'urgent', 'awaiting', 'normal'
@@ -52,6 +57,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
   void initState() {
     super.initState();
     ScreeningPersistenceService().addListener(_onDataChanged);
+    SmtpService().addListener(_onDataChanged);
     _refresh();
     _poll = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
   }
@@ -63,6 +69,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
   @override
   void dispose() {
     ScreeningPersistenceService().removeListener(_onDataChanged);
+    SmtpService().removeListener(_onDataChanged);
     _poll?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -79,15 +86,58 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     // Always load all local on-device screening records
     final localRows = await _loadLocalScreenings(limit: 100);
 
+    // Load receiver email from Admin SMTP configuration
+    String receiverEmail = '';
+    try {
+      final smtpCfg = await SmtpService().loadConfig();
+      receiverEmail = smtpCfg.specialistEmail.trim();
+    } catch (_) {}
+
+    final totalQueued =
+        persisted.screenings.length + persisted.patients.length + deid.length;
+
     if (!mounted) return;
     setState(() {
       _online = online;
-      _queuedCount =
-          persisted.screenings.length + persisted.patients.length + deid.length;
+      _queuedCount = totalQueued;
       _queuedAi = persisted.screenings.length;
       _live = live;
       _localRows = localRows;
+      _specialistEmail = receiverEmail;
     });
+
+    // Automatic background synchronization
+    if (online &&
+        (totalQueued > 0 ||
+            ApiService.offlineQueue.isNotEmpty ||
+            ApiService.offlinePatients.isNotEmpty) &&
+        !_isBackgroundSyncing) {
+      unawaited(_triggerBackgroundSync());
+    }
+  }
+
+  Future<void> _triggerBackgroundSync() async {
+    if (_isBackgroundSyncing) return;
+    _isBackgroundSyncing = true;
+    try {
+      await _api.syncOfflineBatch();
+      await ReferralUplinkService().flushQueued();
+      final persisted = await OfflineQueueService.instance.restoreAll();
+      final deid = await OfflineQueueService.instance.restoreKind(
+        OfflineQueueService.kindDeidReferral,
+      );
+      if (mounted) {
+        setState(() {
+          _queuedCount =
+              persisted.screenings.length + persisted.patients.length + deid.length;
+          _queuedAi = persisted.screenings.length;
+        });
+      }
+    } catch (e) {
+      debugPrint('Background sync error: $e');
+    } finally {
+      _isBackgroundSyncing = false;
+    }
   }
 
   Future<List<Map<String, Object?>>> _loadLocalScreenings({
@@ -525,14 +575,19 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Text('📡', style: TextStyle(fontSize: 20)),
+                            Text(
+                              _online == true ? '🔄' : '📡',
+                              style: const TextStyle(fontSize: 20),
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '$_queuedCount ${context.tr('case_waiting')}',
+                                    _online == true
+                                        ? 'Background Sync: $_queuedCount record(s) uploading...'
+                                        : '$_queuedCount ${context.tr('case_waiting')}',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13,
@@ -540,7 +595,9 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                                     ),
                                   ),
                                   Text(
-                                    context.tr('captured_offline'),
+                                    _online == true
+                                        ? 'Synchronizing automatically with the health server'
+                                        : context.tr('captured_offline'),
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: Color(0xFF94A3B8),
@@ -551,16 +608,15 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                                 ],
                               ),
                             ),
-                            TextButton(
-                              onPressed: () => _openQueue(context),
-                              child: Text(
-                                context.tr('view_arrow'),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
+                            if (_online == true)
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
                                   color: ScannerHUDTheme.neonCyan,
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -1003,6 +1059,9 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isCompact = constraints.maxWidth < 500;
+          final specialistSubtitle = _specialistEmail.isNotEmpty
+              ? _specialistEmail
+              : 'Set receiver in Admin';
           return Row(
             children: [
               Expanded(
@@ -1010,6 +1069,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                   context,
                   icon: Icons.add_circle_outline_rounded,
                   label: isCompact ? 'Screen' : 'New Screening',
+                  subtitle: isCompact ? null : 'Intake & AI',
                   color: ScannerHUDTheme.neonCyan,
                   onTap: () => _startScreening(context),
                   isPrimary: true,
@@ -1021,6 +1081,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                   context,
                   icon: Icons.history_edu_outlined,
                   label: isCompact ? 'History' : 'Records',
+                  subtitle: isCompact ? null : 'Patient History',
                   color: const Color(0xFF38BDF8),
                   onTap: () => _openHistory(context),
                 ),
@@ -1030,20 +1091,11 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                 child: _quickActionTile(
                   context,
                   icon: Icons.medical_services_outlined,
-                  label: isCompact ? 'Triage' : 'Specialist',
+                  label: 'Specialist',
+                  subtitle: specialistSubtitle,
                   color: const Color(0xFFA855F7),
+                  badge: _localAwaitingReviewCount > 0 ? '$_localAwaitingReviewCount' : null,
                   onTap: () => _openDoctorReview(context),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _quickActionTile(
-                  context,
-                  icon: Icons.cloud_sync_outlined,
-                  label: isCompact ? 'Queue' : 'Sync Queue',
-                  color: const Color(0xFFF59E0B),
-                  badge: _queuedCount > 0 ? '$_queuedCount' : null,
-                  onTap: () => _openQueue(context),
                 ),
               ),
             ],
@@ -1057,6 +1109,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     BuildContext context, {
     required IconData icon,
     required String label,
+    String? subtitle,
     required Color color,
     required VoidCallback onTap,
     bool isPrimary = false,
@@ -1068,7 +1121,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           decoration: BoxDecoration(
             gradient: isPrimary
                 ? LinearGradient(
@@ -1127,11 +1180,26 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: isPrimary ? FontWeight.w700 : FontWeight.w600,
                   color: isPrimary ? Colors.white : const Color(0xFFCBD5E1),
                 ),
               ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: subtitle.contains('@')
+                        ? const Color(0xFFC084FC)
+                        : const Color(0xFF94A3B8),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1331,11 +1399,16 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
               onTap: () => _openDoctorReview(context),
             ),
             _bottomNavItem(
-              icon: Icons.cloud_outlined,
-              label: 'Queue',
+              icon: Icons.admin_panel_settings_outlined,
+              label: 'Admin',
               isSelected: false,
-              badge: _queuedCount > 0 ? '$_queuedCount' : null,
-              onTap: () => _openQueue(context),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminPortalScreen()),
+                );
+                if (mounted) await _refresh();
+              },
             ),
           ],
         ),
