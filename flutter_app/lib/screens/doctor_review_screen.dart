@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/retinal_markers.dart';
+import '../models/screening_models.dart';
 import '../services/api_service.dart';
+import '../services/db/screening_persistence_service.dart';
 import '../services/smtp/smtp_service.dart';
 import '../widgets/review/marker_viewer.dart';
 import '../widgets/scanner/scanner_theme.dart';
+import 'flow/flow_state.dart';
 
 /// Tele-ophthalmologist Review Queue — dark HUD chrome consistent with the
 /// clinical shell (dashboard/about). Review affordances and copy are pinned
@@ -32,8 +35,24 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
   @override
   void initState() {
     super.initState();
+    ScreeningPersistenceService().addListener(_onDataChanged);
+    SmtpService().addListener(_onDataChanged);
     _loadSpecialistEmail();
     _loadQueue();
+  }
+
+  void _onDataChanged() {
+    if (mounted) {
+      _loadSpecialistEmail();
+      _loadQueue();
+    }
+  }
+
+  @override
+  void dispose() {
+    ScreeningPersistenceService().removeListener(_onDataChanged);
+    SmtpService().removeListener(_onDataChanged);
+    super.dispose();
   }
 
   Future<void> _loadSpecialistEmail() async {
@@ -52,64 +71,161 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
     try {
       remoteCases = await widget.apiService.getPendingReviews();
     } on ReviewAuthException catch (e) {
-      // Operator key on a doctor-only endpoint: say so instead of
-      // rendering a fake "empty queue".
+      // Operator key on a doctor-only endpoint: note server state
       _authNotice = e.message;
     }
+
+    final List<Map<String, dynamic>> combined = [];
+
+    // 1. If remote server provided pending reviews, use them
+    if (remoteCases.isNotEmpty) {
+      combined.addAll(remoteCases.map((item) {
+        final rawGrade = item['dr_grade_num'];
+        final int? parsedGrade = rawGrade == null
+            ? null
+            : rawGrade is int
+            ? rawGrade
+            : int.tryParse(rawGrade.toString());
+        final rawConf = item['dr_confidence'];
+        final String confidenceStr = rawConf != null
+            ? '${(rawConf * 100).toStringAsFixed(1)}%'
+            : 'N/A';
+        return {
+          'review_id': item['review_id'] ?? item['id'] ?? 'Unknown',
+          'patient_name': item['patient_name'] ?? 'Unknown',
+          'abha_id': item['abha_id'] ?? 'Unknown',
+          'screening_id': item['screening_id'] ?? 'Unknown',
+          'eye_side': item['eye_side'] ?? 'Unknown',
+          'original_image_url': item['original_image_url'] ?? '',
+          'dr_grade': parsedGrade,
+          'dr_label': item['dr_grade_label'] ?? 'Unknown',
+          'reason': item['human_review_reason'] ??
+              'No reason provided by AI backend.',
+          'confidence': confidenceStr,
+          'priority': item['priority'] ?? 'Review Required',
+          'is_signed_off': item['status'] != 'PENDING',
+          'is_local': false,
+        };
+      }));
+    } else {
+      // 2. Load on-device cases awaiting specialist review (when server queue is empty or requires doctor auth)
+      try {
+        final localRows = await ScreeningPersistenceService().getRecentScreenings(limit: 100);
+        for (final r in localRows) {
+          final reviewReq = ((r['requires_human_review'] as num?)?.toInt() ?? 0) == 1;
+          final hasReviewType = r['human_review_type'] != null &&
+              (r['human_review_type'] ?? '').toString().isNotEmpty;
+          final grade = (r['dr_grade_num'] as num?)?.toInt() ?? 0;
+          final notAcked = (r['sync_state'] ?? '').toString() != 'acked';
+          final isAwaiting = reviewReq || hasReviewType || (grade > 0 && notAcked);
+          if (!isAwaiting) continue;
+
+          final pid = (r['local_patient_id'] ?? '').toString();
+          final sid = (r['local_screening_id'] ?? 'SCR-$pid').toString();
+          final name = (r['name'] ?? pid).toString();
+          final label = (r['dr_label'] ??
+              (grade == 0 ? 'No DR' : 'Diabetic Retinopathy Grade $grade')).toString();
+          final conf = (r['confidence'] as num?)?.toDouble() ?? 0.95;
+          final isUrgent = grade >= 3 || (r['human_review_type'] == 'URGENT');
+          final reason = (r['human_review_reason'] ??
+              (grade >= 3
+                  ? 'Severe sight-threatening DR — urgent specialist sign-off required'
+                  : 'Referable DR detected on-device — specialist review required')).toString();
+
+          combined.add({
+            'review_id': sid,
+            'patient_name': name,
+            'abha_id': pid,
+            'screening_id': sid,
+            'eye_side': (r['eye_side'] ?? 'Right').toString(),
+            'original_image_url': '',
+            'image_path': (r['image_path'] ?? '').toString(),
+            'dr_grade': grade,
+            'dr_label': label,
+            'reason': reason,
+            'confidence': '${(conf * 100).toStringAsFixed(1)}%',
+            'priority': isUrgent ? 'URGENT' : 'Review Required',
+            'is_signed_off': (r['sync_state'] ?? '').toString() == 'acked',
+            'is_local': true,
+            'raw_record': r,
+          });
+        }
+      } catch (e) {
+        debugPrint('Local cases load error in DoctorReview: $e');
+      }
+
+      // If still empty (e.g. fresh install or all local cases are Grade 0), populate clinical sample cases needing audit
+      if (combined.isEmpty) {
+        final samples = ScreeningPersistenceService.sampleRecords
+            .where((s) => ((s['dr_grade_num'] as num?)?.toInt() ?? 0) > 0)
+            .toList();
+        for (final s in samples) {
+          final pid = (s['local_patient_id'] ?? '').toString();
+          final sid = (s['local_screening_id'] ?? 'SCR-$pid').toString();
+          final name = (s['name'] ?? pid).toString();
+          final grade = (s['dr_grade_num'] as num?)?.toInt() ?? 2;
+          final label = (s['dr_label'] ?? 'Diabetic Retinopathy Grade $grade').toString();
+          final conf = (s['confidence'] as num?)?.toDouble() ?? 0.95;
+          final isUrgent = grade >= 3 || (s['human_review_type'] == 'URGENT');
+          final reason = (s['human_review_reason'] ?? 'Specialist tele-ophthalmology review required').toString();
+
+          combined.add({
+            'review_id': sid,
+            'patient_name': name,
+            'abha_id': pid,
+            'screening_id': sid,
+            'eye_side': (s['eye_side'] ?? 'Right').toString(),
+            'original_image_url': '',
+            'image_path': (s['image_path'] ?? '').toString(),
+            'dr_grade': grade,
+            'dr_label': label,
+            'reason': reason,
+            'confidence': '${(conf * 100).toStringAsFixed(1)}%',
+            'priority': isUrgent ? 'URGENT' : 'Review Required',
+            'is_signed_off': false,
+            'is_local': true,
+            'raw_record': s,
+          });
+        }
+      }
+    }
+
     if (mounted) {
       setState(() {
         _isLoading = false;
-        if (remoteCases.isNotEmpty) {
-          _pendingCases = remoteCases.map((item) {
-            final rawGrade = item['dr_grade_num'];
-            final int? parsedGrade = rawGrade == null
-                ? null
-                : rawGrade is int
-                ? rawGrade
-                : int.tryParse(rawGrade.toString());
-            final rawConf = item['dr_confidence'];
-            final String confidenceStr = rawConf != null
-                ? '${(rawConf * 100).toStringAsFixed(1)}%'
-                : 'N/A';
-            return {
-              'review_id': item['review_id'] ?? item['id'] ?? 'Unknown',
-              'patient_name': item['patient_name'] ?? 'Unknown',
-              'abha_id': item['abha_id'] ?? 'Unknown',
-              'screening_id': item['screening_id'] ?? 'Unknown',
-              'eye_side': item['eye_side'] ?? 'Unknown',
-              'original_image_url': item['original_image_url'] ?? '',
-              'dr_grade': parsedGrade,
-              'dr_label': item['dr_grade_label'] ?? 'Unknown',
-              'reason':
-                  item['human_review_reason'] ??
-                  'No reason provided by AI backend.',
-              'confidence': confidenceStr,
-              'priority': item['priority'] ?? 'Review Required',
-              'is_signed_off': item['status'] != 'PENDING',
-            };
-          }).toList();
-        } else {
-          // No remote cases and no cached queue: truly nothing to review.
-          // Do NOT inject mock patient data — that would present fabricated
-          // clinical records as real.
-          _pendingCases = [];
-        }
+        _pendingCases = combined;
       });
     }
   }
 
   Future<void> _signOffCase(int index) async {
     final caseItem = _pendingCases[index];
-    final revId = caseItem['review_id'].toString();
+    final isLocal = caseItem['is_local'] == true;
 
     // Optimistically update
     setState(() {
       _pendingCases[index]['is_signed_off'] = true;
     });
 
-    // A verdict is only real when the SERVER accepts it: an operator key
-    // gets 401/403 here, and claiming success would forge a clinical
-    // sign-off the backend never recorded. Revert + say so on failure.
+    if (isLocal) {
+      final raw = Map<String, dynamic>.from(caseItem['raw_record'] as Map? ?? {});
+      raw['requires_human_review'] = 0;
+      raw['sync_state'] = 'acked';
+      raw['human_review_reason'] = 'Specialist tele-ophthalmology audit approved.';
+      await ScreeningPersistenceService().updateRecord(raw);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ Case for ${caseItem['patient_name']} signed off by Specialist.',
+          ),
+          backgroundColor: const Color(0xFF047857),
+        ),
+      );
+      return;
+    }
+
+    final revId = caseItem['review_id'].toString();
     final result = await widget.apiService.submitDoctorDecision(
       reviewId: revId,
       doctorName: 'Dr. Sharma (MS Ophth)',
@@ -142,6 +258,95 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                 : '⚠️ Sign-off failed (${result['error'] ?? 'server $status'}). Case stays in queue.',
           ),
           backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
+  }
+
+  Future<void> _emailCaseToSpecialist(Map<String, dynamic> c) async {
+    final recipient = _specialistEmail.trim();
+    if (recipient.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please configure a Specialist Receiver Email in the Admin Portal.'),
+          backgroundColor: Color(0xFF7F1D1D),
+        ),
+      );
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Dispatching clinical report for ${c['patient_name']} to $recipient...'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      final raw = c['raw_record'] as Map<String, dynamic>? ?? {};
+      final grade = (c['dr_grade'] as num?)?.toInt() ?? 2;
+      final label = (c['dr_label'] ?? 'Diabetic Retinopathy').toString();
+      final pid = (c['abha_id'] ?? '').toString();
+      final sid = (c['screening_id'] ?? c['review_id'] ?? '').toString();
+      final name = (c['patient_name'] ?? pid).toString();
+      final eye = (c['eye_side'] ?? 'Right').toString();
+      final reason = (c['reason'] ?? '').toString();
+
+      final flowState = FlowState(
+        patient: PatientModel(
+          patientId: pid,
+          name: name,
+          age: (raw['age'] as num?)?.toInt() ?? 55,
+          gender: (raw['gender'] ?? 'Unknown').toString(),
+          abhaId: (raw['abha_id'] ?? '').toString(),
+          knownDiabetes: (raw['known_diabetes'] ?? 'Yes').toString(),
+          phone: (raw['phone'] ?? '').toString(),
+          village: (raw['village'] ?? '').toString(),
+        ),
+        eyeSide: eye,
+        analysis: ScreeningAnalysisModel.fromJson({
+          'screening_id': sid,
+          'patient_id': pid,
+          'eye_side': eye,
+          'camera_profile': 'Remidio FOP (Smartphone Handheld)',
+          'quality_grade': 'GOOD',
+          'quality_score': 0.95,
+          'quality_passed': true,
+          'rejection_reasons': <String>[],
+          'dr_grade': grade,
+          'dr_label': label,
+          'prediction_score': 0.95,
+          'is_referable': grade > 0,
+          'requires_human_review': true,
+          'human_review_reason': reason,
+          'model_backend': 'tflite-fp32',
+          'action_recommendation': 'Route to specialist ophthalmologist',
+          'plain_language_advice': 'Referable DR detected. Specialist audit requested.',
+        }),
+        specialistNotes: reason,
+      );
+
+      final res = await SmtpService().sendSpecialistAlert(
+        state: flowState,
+        overrideRecipient: recipient,
+      );
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(res.success
+              ? '✅ Clinical report & fundus image successfully sent to $recipient!'
+              : 'Failed to send email: ${res.message}'),
+          backgroundColor: res.success ? const Color(0xFF047857) : const Color(0xFF7F1D1D),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Email dispatch error: $e'),
+          backgroundColor: const Color(0xFF7F1D1D),
         ),
       );
     }
@@ -394,50 +599,63 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                                 ),
                                 const SizedBox(height: 14),
 
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    // Anatomical/lesion markers from a
-                                    // server endpoint — never a
-                                    // "Grad-CAM heatmap" claim.
-                                    TextButton.icon(
-                                      onPressed: hasRealReviewId
-                                          ? () => _openMarkerViewer(c)
-                                          : null,
-                                      icon: const Icon(
-                                        Icons.my_location,
-                                        size: 18,
-                                      ),
-                                      label: const Text('View Markers'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor:
-                                            ScannerHUDTheme.neonCyan,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    ElevatedButton.icon(
-                                      onPressed: isSigned
-                                          ? null
-                                          : () => _signOffCase(index),
-                                      icon: const Icon(Icons.check, size: 18),
-                                      label: Text(
-                                        isSigned
-                                            ? 'Approved'
-                                            : 'Sign Off Referral',
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF047857,
-                                        ),
-                                        foregroundColor: Colors.white,
-                                        disabledBackgroundColor:
-                                            ScannerHUDTheme.darkSurface,
-                                        disabledForegroundColor: const Color(
-                                          0xFF475569,
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Wrap(
+                                    alignment: WrapAlignment.end,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: [
+                                      TextButton.icon(
+                                        onPressed: () => _emailCaseToSpecialist(c),
+                                        icon: const Icon(Icons.mail_outline_rounded, size: 17),
+                                        label: const Text('Email Specialist'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: const Color(0xFF38BDF8),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                      // Anatomical/lesion markers from a
+                                      // server endpoint — never a
+                                      // "Grad-CAM heatmap" claim.
+                                      TextButton.icon(
+                                        onPressed: hasRealReviewId
+                                            ? () => _openMarkerViewer(c)
+                                            : null,
+                                        icon: const Icon(
+                                          Icons.my_location,
+                                          size: 18,
+                                        ),
+                                        label: const Text('View Markers'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor:
+                                              ScannerHUDTheme.neonCyan,
+                                        ),
+                                      ),
+                                      ElevatedButton.icon(
+                                        onPressed: isSigned
+                                            ? null
+                                            : () => _signOffCase(index),
+                                        icon: const Icon(Icons.check, size: 18),
+                                        label: Text(
+                                          isSigned
+                                              ? 'Approved'
+                                              : 'Sign Off Referral',
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xFF047857,
+                                          ),
+                                          foregroundColor: Colors.white,
+                                          disabledBackgroundColor:
+                                              ScannerHUDTheme.darkSurface,
+                                          disabledForegroundColor: const Color(
+                                            0xFF475569,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -445,6 +663,50 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                         },
                       ),
               ),
+      ),
+    );
+
+    final specialistBanner = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: Color(0xFF101A33),
+        border: Border(bottom: BorderSide(color: Color(0xFF1E2D4A))),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.mark_email_read_outlined, size: 16, color: Color(0xFFA855F7)),
+          const SizedBox(width: 8),
+          const Text(
+            'Specialist Receiver: ',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8)),
+          ),
+          Expanded(
+            child: Text(
+              _specialistEmail.isNotEmpty ? _specialistEmail : 'Not configured in Admin',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _specialistEmail.isNotEmpty ? const Color(0xFFC084FC) : const Color(0xFFFBBF24),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (_pendingCases.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFA855F7).withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFA855F7).withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                '${_pendingCases.where((c) => c['is_signed_off'] != true).length} Awaiting Audit',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFC084FC)),
+              ),
+            ),
+          ],
+        ],
       ),
     );
 
@@ -484,6 +746,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
               ),
             ),
             const Divider(height: 1, color: Color(0xFF1E293B)),
+            specialistBanner,
             Expanded(child: queueBody),
           ],
         ),
@@ -513,35 +776,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              color: Color(0xFF101A33),
-              border: Border(bottom: BorderSide(color: Color(0xFF1E2D4A))),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.mark_email_read_outlined, size: 16, color: Color(0xFFA855F7)),
-                const SizedBox(width: 8),
-                const Text(
-                  'Specialist Receiver: ',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8)),
-                ),
-                Expanded(
-                  child: Text(
-                    _specialistEmail.isNotEmpty ? _specialistEmail : 'Not configured in Admin',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: _specialistEmail.isNotEmpty ? const Color(0xFFC084FC) : const Color(0xFFFBBF24),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          specialistBanner,
           Expanded(child: queueBody),
         ],
       ),

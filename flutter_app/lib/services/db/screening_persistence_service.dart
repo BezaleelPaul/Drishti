@@ -246,11 +246,15 @@ class ScreeningPersistenceService with ChangeNotifier {
 
   /// Updates an existing patient screening record across all persistence tiers.
   Future<bool> updateRecord(Map<String, dynamic> updatedRecord) async {
-    final sid = updatedRecord['local_screening_id']?.toString() ?? '';
-    final pid = updatedRecord['local_patient_id']?.toString() ?? '';
-    if (sid.isEmpty) return false;
+    String sid = (updatedRecord['local_screening_id'] ?? '').toString();
+    final pid = (updatedRecord['local_patient_id'] ?? '').toString();
+    if (sid.isEmpty && pid.isNotEmpty) {
+      sid = 'SCR-$pid';
+      updatedRecord['local_screening_id'] = sid;
+    }
+    if (sid.isEmpty && pid.isEmpty) return false;
 
-    // Tier 1: SharedPreferences
+    // Tier 1: SharedPreferences (Immediate persistent client cache)
     try {
       final prefs = await SharedPreferences.getInstance();
       final existingJson = prefs.getString(_prefsKey);
@@ -260,7 +264,10 @@ class ScreeningPersistenceService with ChangeNotifier {
           list = jsonDecode(existingJson) as List<dynamic>;
         } catch (_) {}
       }
-      final idx = list.indexWhere((item) => item is Map && item['local_screening_id'] == sid);
+      final idx = list.indexWhere((item) =>
+          item is Map &&
+          ((sid.isNotEmpty && (item['local_screening_id'] == sid || item['screening_id'] == sid)) ||
+           (pid.isNotEmpty && (item['local_patient_id'] == pid || item['patient_id'] == pid))));
       if (idx >= 0) {
         final existing = Map<String, dynamic>.from(list[idx] as Map);
         existing.addAll(updatedRecord);
@@ -283,7 +290,10 @@ class ScreeningPersistenceService with ChangeNotifier {
         try {
           list = jsonDecode(content) as List<dynamic>;
         } catch (_) {}
-        final idx = list.indexWhere((item) => item is Map && item['local_screening_id'] == sid);
+        final idx = list.indexWhere((item) =>
+            item is Map &&
+            ((sid.isNotEmpty && (item['local_screening_id'] == sid || item['screening_id'] == sid)) ||
+             (pid.isNotEmpty && (item['local_patient_id'] == pid || item['patient_id'] == pid))));
         if (idx >= 0) {
           final existing = Map<String, dynamic>.from(list[idx] as Map);
           existing.addAll(updatedRecord);
@@ -317,6 +327,7 @@ class ScreeningPersistenceService with ChangeNotifier {
             (grade != null && grade > 0 ? 1 : 0);
         await store.updateScreeningRecord(
           localScreeningId: sid,
+          localPatientId: pid,
           drGradeNum: grade,
           drLabel: updatedRecord['dr_label']?.toString(),
           requiresHumanReview: reviewReq,
@@ -335,8 +346,18 @@ class ScreeningPersistenceService with ChangeNotifier {
   }
 
   /// Deletes a patient screening record across all persistence tiers.
-  Future<bool> deleteRecord(String localScreeningId) async {
-    if (localScreeningId.isEmpty) return false;
+  Future<bool> deleteRecord(String localScreeningId, {String? localPatientId}) async {
+    final sid = localScreeningId.trim();
+    final pid = (localPatientId ?? '').trim();
+    if (sid.isEmpty && pid.isEmpty) return false;
+
+    bool matches(Map item) {
+      final itemSid = (item['local_screening_id'] ?? item['screening_id'] ?? '').toString();
+      final itemPid = (item['local_patient_id'] ?? item['patient_id'] ?? '').toString();
+      if (sid.isNotEmpty && (itemSid == sid || itemPid == sid)) return true;
+      if (pid.isNotEmpty && (itemPid == pid || itemSid == pid)) return true;
+      return false;
+    }
 
     // Tier 1: SharedPreferences
     try {
@@ -344,7 +365,7 @@ class ScreeningPersistenceService with ChangeNotifier {
       final existingJson = prefs.getString(_prefsKey);
       if (existingJson != null && existingJson.isNotEmpty) {
         final list = (jsonDecode(existingJson) as List<dynamic>)
-            .where((item) => item is Map && item['local_screening_id'] != localScreeningId)
+            .where((item) => item is! Map || !matches(item))
             .toList();
         await prefs.setString(_prefsKey, jsonEncode(list));
       }
@@ -359,7 +380,7 @@ class ScreeningPersistenceService with ChangeNotifier {
       if (await file.exists()) {
         final content = await file.readAsString();
         final list = (jsonDecode(content) as List<dynamic>)
-            .where((item) => item is Map && item['local_screening_id'] != localScreeningId)
+            .where((item) => item is! Map || !matches(item))
             .toList();
         await file.writeAsString(jsonEncode(list));
       }
@@ -372,7 +393,7 @@ class ScreeningPersistenceService with ChangeNotifier {
       final password = await OfflineQueueService.resolveDbPassword();
       final store = await LocalStore.open(dbPassword: password);
       try {
-        await store.deleteScreeningRecord(localScreeningId);
+        await store.deleteScreeningRecord(sid, localPatientId: pid);
       } finally {
         await store.close();
       }
@@ -463,7 +484,20 @@ class ScreeningPersistenceService with ChangeNotifier {
   Future<List<Map<String, dynamic>>> getRecentScreenings({int limit = 100}) async {
     final Map<String, Map<String, dynamic>> recordsById = {};
 
-    // 1. Load from LocalStore if available
+    // 1. Load from SharedPreferences (freshest user edits and additions)
+    try {
+      final prefsList = await _loadFromPrefs();
+      for (final r in prefsList) {
+        final id = (r['local_screening_id'] ?? r['local_patient_id'] ?? '').toString();
+        if (id.isNotEmpty) {
+          recordsById[id] = Map<String, dynamic>.from(r);
+        }
+      }
+    } catch (e) {
+      debugPrint('Prefs retrieval error: $e');
+    }
+
+    // 2. Complement with LocalStore SQLCipher for any records not yet in SharedPreferences
     try {
       final password = await OfflineQueueService.resolveDbPassword();
       final store = await LocalStore.open(dbPassword: password);
@@ -472,7 +506,7 @@ class ScreeningPersistenceService with ChangeNotifier {
         final dbRows = await store.recentScreenings(limit: limit);
         for (final row in dbRows) {
           final id = (row['local_screening_id'] ?? '').toString();
-          if (id.isNotEmpty) {
+          if (id.isNotEmpty && !recordsById.containsKey(id)) {
             recordsById[id] = Map<String, dynamic>.from(row);
           }
         }
@@ -483,20 +517,7 @@ class ScreeningPersistenceService with ChangeNotifier {
       debugPrint('LocalStore retrieval fallback: $e');
     }
 
-    // 2. Load from SharedPreferences
-    try {
-      final prefsList = await _loadFromPrefs();
-      for (final r in prefsList) {
-        final id = (r['local_screening_id'] ?? '').toString();
-        if (id.isNotEmpty && !recordsById.containsKey(id)) {
-          recordsById[id] = r;
-        }
-      }
-    } catch (e) {
-      debugPrint('Prefs retrieval error: $e');
-    }
-
-    // 3. Load from File Backup
+    // 3. Complement with File Backup
     try {
       final fileList = await _loadFromFileBackup();
       for (final r in fileList) {

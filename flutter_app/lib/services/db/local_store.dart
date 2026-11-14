@@ -316,6 +316,7 @@ class LocalStore {
   /// Updates clinical screening findings and notes in the local store.
   Future<void> updateScreeningRecord({
     required String localScreeningId,
+    String? localPatientId,
     int? drGradeNum,
     String? drLabel,
     int? requiresHumanReview,
@@ -335,26 +336,47 @@ class LocalStore {
     }
     if (eyeSide != null) values['eye_side'] = eyeSide;
 
-    await _db.update(
-      'screenings',
-      values,
-      where: 'local_screening_id = ?',
-      whereArgs: [localScreeningId],
-    );
-  }
-
-  /// Deletes a screening record manually from the local store.
-  Future<void> deleteScreeningRecord(String localScreeningId) async {
-    await _db.transaction((txn) async {
-      await txn.delete(
+    int count = 0;
+    if (localScreeningId.isNotEmpty) {
+      count = await _db.update(
         'screenings',
+        values,
         where: 'local_screening_id = ?',
         whereArgs: [localScreeningId],
       );
+    }
+    if (count == 0 && localPatientId != null && localPatientId.isNotEmpty) {
+      await _db.update(
+        'screenings',
+        values,
+        where: 'local_patient_id = ?',
+        whereArgs: [localPatientId],
+      );
+    }
+  }
+
+  /// Deletes a screening record manually from the local store.
+  Future<void> deleteScreeningRecord(
+    String localScreeningId, {
+    String? localPatientId,
+  }) async {
+    await _db.transaction((txn) async {
+      final whereClause = (localPatientId != null && localPatientId.isNotEmpty)
+          ? 'local_screening_id = ? OR local_patient_id = ?'
+          : 'local_screening_id = ?';
+      final whereArgs = (localPatientId != null && localPatientId.isNotEmpty)
+          ? [localScreeningId, localPatientId]
+          : [localScreeningId];
+
+      await txn.delete(
+        'screenings',
+        where: whereClause,
+        whereArgs: whereArgs,
+      );
       await txn.delete(
         'sync_queue',
-        where: 'local_screening_id = ?',
-        whereArgs: [localScreeningId],
+        where: whereClause,
+        whereArgs: whereArgs,
       );
     });
   }

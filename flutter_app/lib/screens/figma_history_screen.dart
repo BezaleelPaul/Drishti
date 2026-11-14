@@ -35,11 +35,17 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
   @override
   void initState() {
     super.initState();
+    ScreeningPersistenceService().addListener(_onDataChanged);
     unawaitedLoad();
+  }
+
+  void _onDataChanged() {
+    if (mounted) unawaitedLoad();
   }
 
   @override
   void dispose() {
+    ScreeningPersistenceService().removeListener(_onDataChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -866,6 +872,10 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                                     map['human_review_reason'] = reason.isNotEmpty
                                         ? reason
                                         : (selectedGrade > 0 ? 'Clinical findings require review' : '');
+                                    final sid = (map['local_screening_id'] ?? '').toString();
+                                    if (sid.isEmpty) {
+                                      map['local_screening_id'] = 'SCR-$finalPid-$selectedEye';
+                                    }
 
                                     try {
                                       if (isNew) {
@@ -873,11 +883,11 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                                       } else {
                                         await ScreeningPersistenceService().updateRecord(map);
                                       }
+                                      if (dlgCtx.mounted) {
+                                        Navigator.pop(dlgCtx);
+                                      }
                                       await unawaitedLoad();
                                       if (mounted) {
-                                        if (dlgCtx.mounted) {
-                                          Navigator.pop(dlgCtx);
-                                        }
                                         messenger.showSnackBar(
                                           SnackBar(
                                             backgroundColor: const Color(0xFF065F46),
@@ -961,7 +971,7 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
               try {
-                await ScreeningPersistenceService().deleteRecord(sid);
+                await ScreeningPersistenceService().deleteRecord(sid, localPatientId: pid);
                 await unawaitedLoad();
                 messenger.showSnackBar(
                   SnackBar(
