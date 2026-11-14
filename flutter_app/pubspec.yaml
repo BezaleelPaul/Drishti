@@ -72,6 +72,7 @@ dependencies:
   # from real result counts, never synthetic decoration.
   fl_chart: ^1.2.0
   flutter_layout_grid: ^2.0.8
+  pdf: ^3.13.1
 
 dev_dependencies:
   flutter_test:

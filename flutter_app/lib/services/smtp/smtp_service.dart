@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../screens/flow/flow_state.dart';
+import '../pdf/clinical_pdf_generator.dart';
 
 class SmtpConfig {
   String senderEmail;
@@ -135,13 +136,28 @@ class SmtpService {
     return await sendSpecialistAlert(state: state);
   }
 
-  /// Sends a clinical DR referral alert to the configured specialist doctor.
-  Future<SmtpResult> sendSpecialistAlert({required FlowState state}) async {
+  /// Sends a clinical DR referral alert to the configured specialist doctor (or override recipient).
+  Future<SmtpResult> sendSpecialistAlert({
+    required FlowState state,
+    String? overrideRecipient,
+  }) async {
     final config = await loadConfig();
-    if (!config.isConfigured) {
+
+    if (config.senderEmail.isEmpty || config.senderPassword.isEmpty) {
       return const SmtpResult(
         success: false,
-        message: 'SMTP not configured. Please set sender and specialist emails in Admin Portal.',
+        message: 'SMTP credentials missing. Please set sender email & Google App Password in Admin Portal.',
+      );
+    }
+
+    final effectiveRecipient = (overrideRecipient != null && overrideRecipient.trim().isNotEmpty)
+        ? overrideRecipient.trim()
+        : config.specialistEmail.trim();
+
+    if (effectiveRecipient.isEmpty) {
+      return const SmtpResult(
+        success: false,
+        message: 'Specialist recipient email not configured. Please enter an email or configure in Admin Portal.',
       );
     }
 
@@ -150,7 +166,7 @@ class SmtpService {
     final label = state.analysis?.drLabel ?? 'Diabetic Retinopathy Grade $grade';
     final eye = state.eyeSide;
     final confidence = ((state.analysis?.predictionScore ?? 0.95) * 100).toStringAsFixed(1);
-    final subject = '[DRISHTI CLINICAL ALERT] DR Detected: ${p.name} (${p.patientId}) — Grade $grade ($label)';
+    final subject = '[DRISHTI CLINICAL ALERT] DR Report: ${p.name} (${p.patientId}) — Grade $grade ($label)';
 
     final htmlBody = _buildClinicalHtml(
       patient: p,
@@ -167,13 +183,23 @@ class SmtpService {
       timestampIso: DateTime.now().toLocal().toString().split('.').first,
     );
 
+    // Generate official clinical A4 PDF dossier
+    Uint8List? pdfBytes;
+    try {
+      pdfBytes = await ClinicalPdfGenerator.generateReportPdf(state);
+    } catch (e) {
+      debugPrint('Warning: Could not generate PDF attachment: $e');
+    }
+
     return await _deliverEmail(
       config: config,
-      recipients: config.specialistEmail.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+      recipients: effectiveRecipient.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
       subject: subject,
       htmlBody: htmlBody,
       imageBytes: state.imageBytes,
       imageFilename: 'fundus_${p.patientId}_$eye.jpg',
+      pdfBytes: pdfBytes,
+      pdfFilename: 'Drishti_Report_${p.name.replaceAll(" ", "_")}_${p.patientId}.pdf',
     );
   }
 
@@ -249,6 +275,8 @@ class SmtpService {
     required String htmlBody,
     Uint8List? imageBytes,
     String? imageFilename,
+    Uint8List? pdfBytes,
+    String? pdfFilename,
   }) async {
     final transcript = StringBuffer();
     Socket? socket;
@@ -395,6 +423,22 @@ class SmtpService {
         for (var i = 0; i < b64Image.length; i += 76) {
           final end = (i + 76 < b64Image.length) ? i + 76 : b64Image.length;
           socket.write('${b64Image.substring(i, end)}\r\n');
+        }
+        socket.write('\r\n');
+      }
+
+      // Optional PDF Dossier Attachment
+      if (pdfBytes != null && pdfBytes.isNotEmpty) {
+        final filename = pdfFilename ?? 'clinical_screening_dossier.pdf';
+        socket.write('--$boundary\r\n');
+        socket.write('Content-Type: application/pdf; name="$filename"\r\n');
+        socket.write('Content-Disposition: attachment; filename="$filename"\r\n');
+        socket.write('Content-Transfer-Encoding: base64\r\n\r\n');
+
+        final b64Pdf = base64.encode(pdfBytes);
+        for (var i = 0; i < b64Pdf.length; i += 76) {
+          final end = (i + 76 < b64Pdf.length) ? i + 76 : b64Pdf.length;
+          socket.write('${b64Pdf.substring(i, end)}\r\n');
         }
         socket.write('\r\n');
       }
