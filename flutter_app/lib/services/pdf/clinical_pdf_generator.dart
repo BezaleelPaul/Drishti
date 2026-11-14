@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../screens/flow/flow_state.dart';
+import '../ml/pipeline/local_explanation_generator.dart';
 
 /// Hospital-grade clinical PDF screening dossier generator for Drishti.
 /// Generates A4 clinical documents compliant with Indian Tele-Ophthalmology standards.
@@ -37,6 +38,32 @@ class ClinicalPdfGenerator {
         fundusImage = pw.MemoryImage(state.imageBytes!);
       } catch (e) {
         debugPrint('Could not decode fundus image for PDF: $e');
+      }
+    }
+
+    // Load or generate Grad-CAM visual attention heatmap bytes
+    Uint8List? heatmapBytes = a?.gradcamOverlayBytes;
+    if (heatmapBytes == null && state.imageBytes != null && state.imageBytes!.isNotEmpty) {
+      try {
+        final explanation = generateLocalExplanationWorker(
+          LocalExplanationRequest(
+            imageBytes: state.imageBytes!,
+            predictedGrade: grade,
+            confidence: a?.predictionScore,
+          ),
+        );
+        heatmapBytes = explanation.overlayBytes;
+      } catch (e) {
+        debugPrint('Could not generate on-device heatmap overlay for PDF: $e');
+      }
+    }
+
+    pw.MemoryImage? heatmapImage;
+    if (heatmapBytes != null && heatmapBytes.isNotEmpty) {
+      try {
+        heatmapImage = pw.MemoryImage(heatmapBytes);
+      } catch (e) {
+        debugPrint('Could not decode heatmap image for PDF: $e');
       }
     }
 
@@ -182,7 +209,7 @@ class ClinicalPdfGenerator {
 
               pw.SizedBox(height: 10),
 
-              // AI Diagnostic Severity & Image Section (Row)
+              // AI Diagnostic Severity & Dual Retinal Imaging (Fundus + Heatmap) Section
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
@@ -297,52 +324,147 @@ class ClinicalPdfGenerator {
 
                   pw.SizedBox(width: 10),
 
-                  // Right side: Captured Fundus Image
+                  // Right side: Retinal Imaging Panel (Original Fundus + AI Grad-CAM Heatmap side-by-side)
                   pw.Expanded(
-                    flex: 4,
+                    flex: 6,
                     child: pw.Container(
-                      height: 190,
+                      padding: const pw.EdgeInsets.all(6),
                       decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: PdfColors.grey400),
+                        border: pw.Border.all(color: PdfColors.grey300),
                         borderRadius: pw.BorderRadius.circular(6),
-                        color: PdfColors.black,
+                        color: PdfColors.white,
                       ),
-                      child: fundusImage != null
-                          ? pw.Column(
-                              children: [
-                                pw.SizedBox(
-                                  height: 168,
-                                  child: pw.Image(
-                                    fundusImage,
-                                    fit: pw.BoxFit.contain,
-                                  ),
-                                ),
-                                pw.Container(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Row(
+                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                            children: [
+                              pw.Text(
+                                'RETINAL IMAGING & AI EXPLAINABILITY',
+                                style: pw.TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: pw.FontWeight.bold,
                                   color: PdfColor.fromHex('#090D1A'),
-                                  padding: const pw.EdgeInsets.symmetric(vertical: 3),
-                                  width: double.infinity,
-                                  child: pw.Center(
-                                    child: pw.Text(
-                                      'Fundus Capture (${state.eyeSide} Eye) · Quality: ${state.quality?.qualityGrade ?? "GOOD"}',
-                                      style: const pw.TextStyle(
-                                        fontSize: 7,
-                                        color: PdfColors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : pw.Center(
-                              child: pw.Text(
-                                'Fundus Photograph\n(Not attached)',
-                                textAlign: pw.TextAlign.center,
-                                style: const pw.TextStyle(
-                                  fontSize: 9,
-                                  color: PdfColors.grey500,
                                 ),
                               ),
+                              pw.Text(
+                                'Grad-CAM Attention',
+                                style: const pw.TextStyle(
+                                  fontSize: 7,
+                                  color: PdfColors.grey600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          pw.SizedBox(height: 5),
+                          pw.Row(
+                            children: [
+                              // 1. Original Fundus Photograph
+                              pw.Expanded(
+                                child: pw.Container(
+                                  height: 145,
+                                  decoration: pw.BoxDecoration(
+                                    border: pw.Border.all(color: PdfColors.grey400),
+                                    borderRadius: pw.BorderRadius.circular(4),
+                                    color: PdfColors.black,
+                                  ),
+                                  child: fundusImage != null
+                                      ? pw.Column(
+                                          children: [
+                                            pw.Expanded(
+                                              child: pw.Image(
+                                                fundusImage,
+                                                fit: pw.BoxFit.contain,
+                                              ),
+                                            ),
+                                            pw.Container(
+                                              color: PdfColor.fromHex('#090D1A'),
+                                              padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
+                                              width: double.infinity,
+                                              child: pw.Center(
+                                                child: pw.Text(
+                                                  'Original Fundus (${state.eyeSide})',
+                                                  style: const pw.TextStyle(
+                                                    fontSize: 6.5,
+                                                    color: PdfColors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : pw.Center(
+                                          child: pw.Text(
+                                            'Fundus Photograph\n(Not attached)',
+                                            textAlign: pw.TextAlign.center,
+                                            style: const pw.TextStyle(
+                                              fontSize: 7.5,
+                                              color: PdfColors.grey500,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              pw.SizedBox(width: 6),
+                              // 2. AI Attention Heatmap (Grad-CAM Saliency)
+                              pw.Expanded(
+                                child: pw.Container(
+                                  height: 145,
+                                  decoration: pw.BoxDecoration(
+                                    border: pw.Border.all(color: PdfColors.grey400),
+                                    borderRadius: pw.BorderRadius.circular(4),
+                                    color: PdfColors.black,
+                                  ),
+                                  child: heatmapImage != null
+                                      ? pw.Column(
+                                          children: [
+                                            pw.Expanded(
+                                              child: pw.Image(
+                                                heatmapImage,
+                                                fit: pw.BoxFit.contain,
+                                              ),
+                                            ),
+                                            pw.Container(
+                                              color: PdfColor.fromHex('#B91C1C'),
+                                              padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
+                                              width: double.infinity,
+                                              child: pw.Center(
+                                                child: pw.Text(
+                                                  'AI Visual Heatmap (Grad-CAM)',
+                                                  style: const pw.TextStyle(
+                                                    fontSize: 6.5,
+                                                    color: PdfColors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : pw.Center(
+                                          child: pw.Text(
+                                            'AI Heatmap\n(Not available)',
+                                            textAlign: pw.TextAlign.center,
+                                            style: const pw.TextStyle(
+                                              fontSize: 7.5,
+                                              color: PdfColors.grey500,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            'Left: Direct fundus capture (${state.quality?.qualityGrade ?? "GOOD"}) · Right: AI visual attention heatmap highlighting pathology.',
+                            style: const pw.TextStyle(
+                              fontSize: 6,
+                              color: PdfColors.grey600,
                             ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -449,14 +571,16 @@ class ClinicalPdfGenerator {
     final eye = state.eyeSide;
     final screeningId = state.analysis?.screeningId ?? 'SCR-${DateTime.now().millisecondsSinceEpoch}';
 
-    // Priority path: User's Downloads directory if accessible on desktop
-    String saveDir = '/Users/maha/Downloads';
+    // Priority path: User's Downloads directory if accessible across platforms
+    String saveDir = Directory.current.path;
     try {
-      final home = Platform.environment['HOME'];
+      final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
       if (home != null) {
         final downloads = Directory('$home/Downloads');
         if (downloads.existsSync()) {
           saveDir = downloads.path;
+        } else {
+          saveDir = home;
         }
       }
     } catch (_) {}

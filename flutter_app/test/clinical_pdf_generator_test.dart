@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:drishti/models/screening_models.dart';
 import 'package:drishti/screens/flow/flow_state.dart';
 import 'package:drishti/services/pdf/clinical_pdf_generator.dart';
@@ -73,6 +74,96 @@ void main() {
       // PDF Magic Header Check (%PDF-)
       final header = String.fromCharCodes(pdfBytes.take(5));
       expect(header, '%PDF-');
+    });
+
+    test('generateReportPdf embeds explicit gradcamOverlayBytes', () async {
+      final img.Image testImage = img.Image(width: 32, height: 32);
+      img.fill(testImage, color: img.ColorRgb8(200, 50, 50));
+      final testPng = Uint8List.fromList(img.encodePng(testImage));
+
+      final patient = PatientModel(
+        patientId: 'PT-1001',
+        name: 'Sunita Devi',
+        age: 52,
+        gender: 'Female',
+        phone: '9845012345',
+        abhaId: 'ABHA-1234',
+        village: 'Ramanagara PHC',
+        knownDiabetes: 'Yes',
+      );
+
+      final state = FlowState(patient: patient);
+      state.imageBytes = testPng;
+      state.analysis = ScreeningAnalysisModel(
+        screeningId: 'SCR-HEATMAP-TEST',
+        patientId: 'PT-1001',
+        eyeSide: 'Left',
+        cameraProfile: 'Forus 3nethra classic',
+        qualityGrade: 'GOOD',
+        qualityScore: 0.98,
+        qualityPassed: true,
+        rejectionReasons: const [],
+        drGrade: 3,
+        drLabel: 'Severe Non-Proliferative DR',
+        predictionScore: 0.965,
+        isReferable: true,
+        requiresHumanReview: true,
+        originalImageUrl: 'local',
+        gradcamOverlayBytes: testPng,
+        actionRecommendation: 'Urgent specialist ophthalmology consultation required within 48-72 hours.',
+        plainLanguageAdvice: 'Extensive microvascular anomalies identified.',
+        smsReferralSlip: 'SMS SLIP',
+      );
+
+      final pdfBytes = await ClinicalPdfGenerator.generateReportPdf(state);
+      expect(pdfBytes, isNotNull);
+      expect(pdfBytes.length, greaterThan(2000));
+      expect(String.fromCharCodes(pdfBytes.take(5)), '%PDF-');
+    });
+
+    test('generateReportPdf synthesizes heatmap on-device when gradcamOverlayBytes is null', () async {
+      final img.Image testImage = img.Image(width: 32, height: 32);
+      img.fill(testImage, color: img.ColorRgb8(180, 40, 40));
+      final testPng = Uint8List.fromList(img.encodePng(testImage));
+
+      final patient = PatientModel(
+        patientId: 'PT-1002',
+        name: 'Rajesh Kumar',
+        age: 60,
+        gender: 'Male',
+        phone: '9845099999',
+        abhaId: 'ABHA-5678',
+        village: 'Mandya PHC',
+        knownDiabetes: 'Yes',
+      );
+
+      final state = FlowState(patient: patient);
+      state.imageBytes = testPng;
+      state.analysis = ScreeningAnalysisModel(
+        screeningId: 'SCR-AUTO-HEATMAP',
+        patientId: 'PT-1002',
+        eyeSide: 'Right',
+        cameraProfile: 'Remidio FOP (Smartphone Handheld)',
+        qualityGrade: 'GOOD',
+        qualityScore: 0.92,
+        qualityPassed: true,
+        rejectionReasons: const [],
+        drGrade: 2,
+        drLabel: 'Moderate Non-Proliferative DR',
+        predictionScore: 0.89,
+        isReferable: true,
+        requiresHumanReview: true,
+        originalImageUrl: 'local',
+        gradcamOverlayBytes: null,
+        actionRecommendation: 'Referral to secondary eye hospital within 2-4 weeks.',
+        plainLanguageAdvice: 'Microaneurysms detected in macula.',
+        smsReferralSlip: 'SMS SLIP',
+      );
+
+      final pdfBytes = await ClinicalPdfGenerator.generateReportPdf(state);
+      expect(pdfBytes, isNotNull);
+      expect(pdfBytes.length, greaterThan(2000));
+      expect(String.fromCharCodes(pdfBytes.take(5)), '%PDF-');
     });
   });
 }
