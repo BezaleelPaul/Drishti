@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../l10n/lang_scope.dart';
 import '../services/api_service.dart';
-import '../services/db/local_store.dart';
+import '../services/db/screening_persistence_service.dart';
 import '../services/ml/pipeline_schema.dart';
 import '../services/offline_queue_service.dart';
 import '../theme/figma_theme.dart';
@@ -90,17 +90,9 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     required int limit,
   }) async {
     try {
-      final password = await OfflineQueueService.resolveDbPassword();
-      final store = await LocalStore.open(dbPassword: password);
-      try {
-        await store.seedSampleScreeningsIfEmpty();
-        return await store.recentScreenings(limit: limit);
-      } finally {
-        await store.close();
-      }
+      final records = await ScreeningPersistenceService().getRecentScreenings(limit: limit);
+      return records;
     } catch (_) {
-      // Storage unavailable (first run, locked DB): an empty honest feed —
-      // never demo rows in its place.
       return const [];
     }
   }

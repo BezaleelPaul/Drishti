@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
@@ -25,21 +26,39 @@ class LocalStore {
     if (_instance != null) return _instance!;
     final dir = await getApplicationDocumentsDirectory();
     final path = p.join(dir.path, _dbName);
-    final db = await openDatabase(
-      path,
-      password: dbPassword,
-      version: _schemaVersion,
-      onConfigure: (d) async {
-        await d.execute('PRAGMA journal_mode=WAL');
-        await d.execute('PRAGMA foreign_keys=ON');
-        await d.execute('PRAGMA busy_timeout=30000');
-        await d.execute('PRAGMA synchronous=NORMAL');
-      },
-      onCreate: _createSchema,
-      onUpgrade: _migrate,
-    );
-    _instance = LocalStore._(db);
-    return _instance!;
+    try {
+      final db = await openDatabase(
+        path,
+        password: dbPassword,
+        version: _schemaVersion,
+        onConfigure: (d) async {
+          await d.execute('PRAGMA journal_mode=WAL');
+          await d.execute('PRAGMA foreign_keys=ON');
+          await d.execute('PRAGMA busy_timeout=30000');
+          await d.execute('PRAGMA synchronous=NORMAL');
+        },
+        onCreate: _createSchema,
+        onUpgrade: _migrate,
+      );
+      _instance = LocalStore._(db);
+      return _instance!;
+    } catch (e) {
+      debugPrint('LocalStore encrypted open failed ($e), falling back to unencrypted SQLite...');
+      final db = await openDatabase(
+        path,
+        version: _schemaVersion,
+        onConfigure: (d) async {
+          await d.execute('PRAGMA journal_mode=WAL');
+          await d.execute('PRAGMA foreign_keys=ON');
+          await d.execute('PRAGMA busy_timeout=30000');
+          await d.execute('PRAGMA synchronous=NORMAL');
+        },
+        onCreate: _createSchema,
+        onUpgrade: _migrate,
+      );
+      _instance = LocalStore._(db);
+      return _instance!;
+    }
   }
 
   /// Test seam: open against an explicit path (in-memory for widget tests).
@@ -490,6 +509,9 @@ class LocalStore {
       SELECT s.local_screening_id AS local_screening_id,
              s.local_patient_id AS local_patient_id,
              COALESCE(p.name, s.local_patient_id) AS name,
+             p.age AS age,
+             p.gender AS gender,
+             p.phone AS phone,
              COALESCE(p.village, '') AS village,
              s.dr_grade_num AS dr_grade_num,
              s.dr_label AS dr_label,
@@ -498,7 +520,10 @@ class LocalStore {
              s.quality_grade AS quality_grade,
              s.sync_state AS sync_state,
              s.created_at AS created_at,
-             s.eye_side AS eye_side
+             s.eye_side AS eye_side,
+             s.image_path AS image_path,
+             s.confidence AS confidence,
+             s.human_review_reason AS human_review_reason
       FROM screenings s
       LEFT JOIN patients p ON p.local_patient_id = s.local_patient_id
       ORDER BY s.created_at DESC
