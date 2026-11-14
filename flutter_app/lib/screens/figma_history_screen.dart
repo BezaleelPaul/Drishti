@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/lang_scope.dart';
-import '../services/api_service.dart';
 import '../services/db/local_store.dart';
 import '../services/offline_queue_service.dart';
 import '../theme/figma_theme.dart';
@@ -23,7 +22,6 @@ class FigmaHistoryScreen extends StatefulWidget {
 
 class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
   bool _loading = true;
-  bool _fromServer = false;
   List<(String, String, String, String, FigmaStatus)> _rows = const [];
   String _searchQuery = '';
   String _selectedFilter = 'all';
@@ -75,14 +73,15 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
   }
 
   Future<void> unawaitedLoad() async {
-    // 1. Load local device screenings from encrypted SQLCipher vault
+    setState(() => _loading = true);
+    // Load local device screenings directly from encrypted SQLCipher vault
     List<(String, String, String, String, FigmaStatus)> localRows = const [];
     try {
       final password = await OfflineQueueService.resolveDbPassword();
       final store = await LocalStore.open(dbPassword: password);
       try {
         await store.seedSampleScreeningsIfEmpty();
-        final local = await store.recentScreenings(limit: 50);
+        final local = await store.recentScreenings(limit: 100);
         localRows = local.map(localScreeningRow).toList();
       } finally {
         await store.close();
@@ -91,53 +90,10 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
       debugPrint('LocalStore history load error: $e');
     }
 
-    // 2. Fetch remote server screenings if reachable
-    final api = ApiService();
-    List<(String, String, String, String, FigmaStatus)> serverRows = const [];
-    var fromServer = false;
-    try {
-      final isOnline = await api.ping();
-      if (isOnline) {
-        final remote = await api.getDashboardScreenings(limit: 30);
-        if (remote != null &&
-            remote['items'] is List &&
-            (remote['items'] as List).isNotEmpty) {
-          fromServer = true;
-          serverRows = (remote['items'] as List)
-              .whereType<Map<String, dynamic>>()
-              .map(
-                (item) => (
-                  (item['patient_id'] ?? '').toString(),
-                  (item['patient_name'] as String? ?? '').isNotEmpty
-                      ? (item['patient_name'] as String)
-                      : (item['patient_id'] ?? '').toString(),
-                  formatScreeningDate(item['created_at'] as String?),
-                  (item['result_text'] ?? '').toString(),
-                  liveStatusFor(item['status'] as String?),
-                ),
-              )
-              .toList();
-        }
-      }
-    } catch (_) {}
-
-    // 3. Merge: local device records (latest offline screenings) first, then server
-    final seen = <String>{};
-    final combined = <(String, String, String, String, FigmaStatus)>[];
-    for (final r in localRows) {
-      final key = '${r.$1}_${r.$3}';
-      if (seen.add(key)) combined.add(r);
-    }
-    for (final r in serverRows) {
-      final key = '${r.$1}_${r.$3}';
-      if (seen.add(key)) combined.add(r);
-    }
-
     if (!mounted) return;
     setState(() {
       _loading = false;
-      _rows = combined;
-      _fromServer = fromServer;
+      _rows = localRows;
     });
   }
 
@@ -157,6 +113,13 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
             color: Colors.white,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh Local Records',
+            icon: const Icon(Icons.refresh_rounded, color: ScannerHUDTheme.neonCyan),
+            onPressed: unawaitedLoad,
+          ),
+        ],
       ),
       body: Center(
         child: ConstrainedBox(
@@ -164,13 +127,44 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(
-                context.tr('screening_history'),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: Colors.white,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.tr('screening_history'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F2942),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF00E5FF).withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.shield_outlined, size: 13, color: Color(0xFF00E5FF)),
+                        SizedBox(width: 5),
+                        Text(
+                          'Local Encrypted Vault',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF00E5FF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               if (_loading)
@@ -381,12 +375,20 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                     },
                   ),
               ],
-              if (!_loading && _rows.isNotEmpty && !_fromServer)
-                const SizedBox(height: 8),
-              if (!_loading && _rows.isNotEmpty && !_fromServer)
-                const Text(
-                  'On-device records · sync pending',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              if (!_loading && _rows.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 14, bottom: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline, size: 12, color: Color(0xFF64748B)),
+                      SizedBox(width: 6),
+                      Text(
+                        'Stored locally on this device via encrypted SQLCipher database',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
                 ),
             ],
           ),

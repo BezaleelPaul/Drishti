@@ -1,18 +1,20 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../l10n/lang_scope.dart';
 import '../theme/figma_theme.dart';
+import '../widgets/scanner/scanner_theme.dart';
 
-/// Live fundus capture (Ticket: camera integration).
+/// Live fundus capture with cross-platform support.
 ///
-/// Full-screen back-camera preview with tap-to-capture and lens switch.
-/// Returns the captured JPEG bytes to the caller via Navigator.pop. The
-/// quality gate runs back on the capture screen (same on-device pipeline),
-/// so this screen does one thing only: put a well-framed frame in the circle.
+/// On mobile (Android / iOS): uses CameraController and CameraPreview.
+/// On desktop (Linux / V4L2): captures live frames from the device webcam via ffmpeg pipe.
+/// Provides tap-to-capture, centering retinal viewfinder HUD, and file fallback.
 class LiveFundusCameraScreen extends StatefulWidget {
   const LiveFundusCameraScreen({super.key});
 
@@ -27,6 +29,13 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
   bool _initializing = true;
   bool _capturing = false;
   String? _error;
+
+  // Desktop webcam streaming (Linux / V4L2)
+  bool _isDesktop = false;
+  String _desktopDevice = '/dev/video0';
+  Uint8List? _desktopFrameBytes;
+  Timer? _desktopStreamTimer;
+  bool _isFetchingDesktopFrame = false;
 
   double _minZoom = 1.0;
   double _maxZoom = 1.0;
@@ -46,10 +55,29 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
       _zoom = 1.0;
       _minZoom = 1.0;
       _maxZoom = 1.0;
+      _isDesktop = false;
     });
+
+    // 1. On Linux desktop, check for local video device (/dev/video*) first
+    if (Platform.isLinux) {
+      final videoDevice = _detectLinuxVideoDevice();
+      if (videoDevice != null) {
+        await _startDesktopCamera(videoDevice);
+        return;
+      }
+    }
+
+    // 2. Mobile or platform with standard camera plugin support
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
+        if (Platform.isLinux) {
+          final dev = _detectLinuxVideoDevice();
+          if (dev != null) {
+            await _startDesktopCamera(dev);
+            return;
+          }
+        }
         if (!mounted) return;
         setState(() {
           _initializing = false;
@@ -64,12 +92,78 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
       );
       if (_lens < 0) _lens = 0;
       await _open(_cameras[_lens]);
-    } on CameraException catch (e) {
+    } catch (e) {
+      debugPrint('Standard camera initialization error: $e');
+      if (Platform.isLinux) {
+        final dev = _detectLinuxVideoDevice();
+        if (dev != null) {
+          await _startDesktopCamera(dev);
+          return;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _initializing = false;
-        _error = 'Camera error: ${e.code} ${e.description ?? ''}'.trim();
+        _error = 'Camera error: $e'.trim();
       });
+    }
+  }
+
+  String? _detectLinuxVideoDevice() {
+    for (int i = 0; i < 4; i++) {
+      final path = '/dev/video$i';
+      if (File(path).existsSync()) {
+        return path;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _startDesktopCamera(String devicePath) async {
+    _isDesktop = true;
+    _desktopDevice = devicePath;
+    _initializing = false;
+    if (mounted) setState(() {});
+
+    await _fetchDesktopFrame();
+
+    _desktopStreamTimer?.cancel();
+    _desktopStreamTimer = Timer.periodic(
+      const Duration(milliseconds: 300),
+      (_) => _fetchDesktopFrame(),
+    );
+  }
+
+  Future<void> _fetchDesktopFrame() async {
+    if (_isFetchingDesktopFrame || !mounted || !_isDesktop) return;
+    _isFetchingDesktopFrame = true;
+    try {
+      final res = await Process.run(
+        'ffmpeg',
+        [
+          '-f', 'v4l2',
+          '-video_size', '640x480',
+          '-i', _desktopDevice,
+          '-vframes', '1',
+          '-f', 'image2',
+          '-vcodec', 'mjpeg',
+          'pipe:1',
+        ],
+        stdoutEncoding: null,
+      );
+      if (res.exitCode == 0 && res.stdout is List<int>) {
+        final bytes = Uint8List.fromList(res.stdout as List<int>);
+        if (bytes.isNotEmpty && mounted) {
+          setState(() {
+            _desktopFrameBytes = bytes;
+            _error = null;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Desktop frame grab error: $e');
+    } finally {
+      _isFetchingDesktopFrame = false;
     }
   }
 
@@ -161,19 +255,48 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
   }
 
   Future<void> _capture() async {
-    final controller = _controller;
-    if (controller == null || _capturing) return;
+    if (_capturing) return;
     setState(() => _capturing = true);
     try {
+      if (_isDesktop) {
+        if (_desktopFrameBytes != null && _desktopFrameBytes!.isNotEmpty) {
+          if (!mounted) return;
+          Navigator.pop(context, _desktopFrameBytes);
+          return;
+        }
+        // Force immediate snapshot if no buffered frame yet
+        final res = await Process.run(
+          'ffmpeg',
+          [
+            '-f', 'v4l2',
+            '-video_size', '1280x720',
+            '-i', _desktopDevice,
+            '-vframes', '1',
+            '-f', 'image2',
+            '-vcodec', 'mjpeg',
+            'pipe:1',
+          ],
+          stdoutEncoding: null,
+        );
+        if (res.exitCode == 0 && res.stdout is List<int>) {
+          final bytes = Uint8List.fromList(res.stdout as List<int>);
+          if (!mounted) return;
+          Navigator.pop(context, bytes);
+          return;
+        }
+      }
+
+      final controller = _controller;
+      if (controller == null) return;
       final file = await controller.takePicture();
       final bytes = await file.readAsBytes();
       if (!mounted) return;
       Navigator.pop(context, bytes);
-    } on CameraException catch (e) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Capture failed: ${e.code}'),
+          content: Text('Capture failed: $e'),
           backgroundColor: FigmaColors.danger,
         ),
       );
@@ -182,8 +305,26 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
     }
   }
 
+  Future<void> _pickFallbackFile() async {
+    try {
+      final files = await FilePicker.pickFiles(
+        dialogTitle: 'Select a fundus photo',
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png'],
+      );
+      if (files.isEmpty) return;
+      final bytes = await files.first.readAsBytes();
+      if (bytes.isNotEmpty && mounted) {
+        Navigator.pop(context, bytes);
+      }
+    } catch (e) {
+      debugPrint('Fallback file pick failed: $e');
+    }
+  }
+
   @override
   void dispose() {
+    _desktopStreamTimer?.cancel();
     _controller?.dispose();
     super.dispose();
   }
@@ -191,7 +332,7 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
-    final ready = controller != null && controller.value.isInitialized;
+    final ready = _isDesktop || (controller != null && controller.value.isInitialized);
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -203,7 +344,7 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
-          if (_cameras.length > 1)
+          if (!_isDesktop && _cameras.length > 1)
             IconButton(
               tooltip: 'Switch camera',
               onPressed: _initializing ? null : _switchLens,
@@ -234,15 +375,120 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
               style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _start,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _start,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: _pickFallbackFile,
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('Upload Photo'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ScannerHUDTheme.neonCyan,
+                    foregroundColor: Colors.black,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       );
     }
+
+    if (_isDesktop) {
+      final hasFrame = _desktopFrameBytes != null && _desktopFrameBytes!.isNotEmpty;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          if (hasFrame)
+            Center(
+              child: Image.memory(
+                _desktopFrameBytes!,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              ),
+            )
+          else
+            const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: ScannerHUDTheme.neonCyan),
+                  SizedBox(height: 12),
+                  Text(
+                    'Initializing Live Camera…',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          // Retinal circular viewfinder guide
+          IgnorePointer(
+            child: Center(
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: ScannerHUDTheme.neonCyan, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Live status badge
+          Positioned(
+            top: 14,
+            left: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F2942),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.videocam, size: 14, color: Color(0xFF00E5FF)),
+                  SizedBox(width: 6),
+                  Text(
+                    'LIVE CAMERA (ACTIVE)',
+                    style: TextStyle(
+                      color: Color(0xFF00E5FF),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 28),
+              child: _captureButton(),
+            ),
+          ),
+        ],
+      );
+    }
+
     if (_initializing || !ready || controller == null) {
       return const Center(
         child: Column(
@@ -258,6 +504,7 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
         ),
       );
     }
+
     return Stack(
       fit: StackFit.expand,
       children: [

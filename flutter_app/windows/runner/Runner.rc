@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "in.drishtiai" "\0"
-            VALUE "FileDescription", "netra_ai_mobile" "\0"
+            VALUE "FileDescription", "Drishti Autonomous Retinal Screening Platform" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "netra_ai_mobile" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 in.drishtiai. All rights reserved." "\0"
-            VALUE "OriginalFilename", "netra_ai_mobile.exe" "\0"
-            VALUE "ProductName", "netra_ai_mobile" "\0"
+            VALUE "InternalName", "drishti" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Drishti AI. All rights reserved." "\0"
+            VALUE "OriginalFilename", "drishti.exe" "\0"
+            VALUE "ProductName", "Drishti" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
