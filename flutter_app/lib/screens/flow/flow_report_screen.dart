@@ -335,14 +335,6 @@ class _FlowReportScreenState extends State<FlowReportScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      Text(
-                        context.tr('demo_report'),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: FigmaColors.warning,
-                        ),
-                      ),
                       const Divider(height: 20, color: Color(0xFF334155)),
                       _row(
                         context.tr('patient_details'),
