@@ -111,22 +111,13 @@ class QualityGateDart {
   }
 
   double _blurGood(bool s) => s ? kStrictBlurGood : kClinicalBlurGood;
-  double _blurBad(bool s) => s ? kStrictBlurBad : kBlurBadThreshold;
   double _minBrightnessGood(bool s) =>
       s ? kStrictMinBrightnessGood : kClinicalMinBrightnessGood;
-  double _minBrightnessBad(bool s) =>
-      s ? kStrictMinBrightnessBad : kMinBrightnessBad;
   double _maxBrightnessGood(bool s) =>
       s ? kStrictMaxBrightnessGood : kClinicalMaxBrightnessGood;
-  double _maxBrightnessBad(bool s) =>
-      s ? kStrictMaxBrightnessBad : kMaxBrightnessBad;
   double _minContrastGood(bool s) =>
       s ? kStrictMinContrastGood : kClinicalMinContrastGood;
-  double _minContrastBad(bool s) => s ? kStrictMinContrastBad : kMinContrastBad;
   double _minFovGood(bool s) => s ? kStrictMinFovGood : kClinicalMinFovGood;
-  double _minFovBad(bool s) => s ? kStrictMinFovBad : kMinFovRatioBad;
-  double _minMlGood(bool s) => s ? kStrictMinMlGood : kMinMlQualityGood;
-  double _minMlBad(bool s) => s ? kStrictMinMlBad : kMinMlQualityBad;
 
   _DomainDecision _domainGate(Uint8List rgb, int w, int h) {
     if (_channelStdDevs(rgb).every((v) => v < kFundusMinVariance)) {
