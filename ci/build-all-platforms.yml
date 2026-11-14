@@ -1,0 +1,292 @@
+name: Drishti Multi-Platform CI/CD Build & Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Publish artifacts to GitHub Releases"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Android Release APK
+  # ---------------------------------------------------------------------------
+  build-android:
+    name: Build Android Release APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.50.0"
+          channel: "stable"
+          cache: true
+
+      - name: Configure Android Release Signing
+        run: |
+          cat << 'EOF' > flutter_app/android/key.properties
+          storeFile=../../mobile_keystore/drishti-release.jks
+          storePassword=drishti123
+          keyAlias=drishti
+          keyPassword=drishti123
+          EOF
+
+      - name: Accept Android SDK Licenses
+        run: yes | flutter doctor --android-licenses || true
+
+      - name: Install Flutter Dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Build Android Release APK
+        working-directory: flutter_app
+        run: flutter build apk --release --android-skip-build-dependency-validation
+
+      - name: Stage Android Release Artifact
+        run: |
+          cp flutter_app/build/app/outputs/flutter-apk/app-release.apk Drishti_mobile_release.apk
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Drishti_mobile_release
+          path: Drishti_mobile_release.apk
+
+  # ---------------------------------------------------------------------------
+  # 2. Linux Desktop Bundle
+  # ---------------------------------------------------------------------------
+  build-linux:
+    name: Build Linux x86_64 Desktop Bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Linux Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.50.0"
+          channel: "stable"
+          cache: true
+
+      - name: Enable Linux Desktop
+        run: flutter config --enable-linux-desktop
+
+      - name: Install Flutter Dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Build Linux Release Bundle
+        working-directory: flutter_app
+        run: flutter build linux --release
+
+      - name: Package Linux Standalone Tarball
+        run: |
+          tar -czvf Drishti_linux_release.tar.gz -C flutter_app/build/linux/x64/release/bundle .
+
+      - name: Upload Linux Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Drishti_linux_release
+          path: Drishti_linux_release.tar.gz
+
+  # ---------------------------------------------------------------------------
+  # 3. Windows Desktop Executable
+  # ---------------------------------------------------------------------------
+  build-windows:
+    name: Build Windows x86_64 Standalone Executable
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.50.0"
+          channel: "stable"
+          cache: true
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install Flutter Dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Build Windows Release Executable
+        working-directory: flutter_app
+        run: flutter build windows --release
+
+      - name: Package Windows Release Archive
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "flutter_app\build\windows\x64\runner\Release\*" -DestinationPath "Drishti_windows_release.zip" -Force
+
+      - name: Upload Windows Archive Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Drishti_windows_release
+          path: Drishti_windows_release.zip
+
+  # ---------------------------------------------------------------------------
+  # 4. macOS Universal App Bundle
+  # ---------------------------------------------------------------------------
+  build-macos:
+    name: Build macOS Universal App Bundle
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.50.0"
+          channel: "stable"
+          cache: true
+
+      - name: Enable macOS Desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install Flutter Dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Build macOS Release Bundle
+        working-directory: flutter_app
+        run: flutter build macos --release
+
+      - name: Package macOS Application Archive
+        run: |
+          APP_PATH=$(find flutter_app/build/macos/Build/Products/Release -name "*.app" | head -n 1)
+          echo "Packaging macOS App from: $APP_PATH"
+          ditto -c -k --keepParent "$APP_PATH" Drishti_macos_release.zip
+
+      - name: Upload macOS Archive Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Drishti_macos_release
+          path: Drishti_macos_release.zip
+
+  # ---------------------------------------------------------------------------
+  # 5. iOS Unsigned Application Bundle
+  # ---------------------------------------------------------------------------
+  build-ios:
+    name: Build iOS Unsigned Bundle
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.50.0"
+          channel: "stable"
+          cache: true
+
+      - name: Install Flutter Dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Build iOS Release Bundle (Unsigned)
+        working-directory: flutter_app
+        run: flutter build ios --release --no-codesign
+
+      - name: Package iOS Application Archive
+        run: |
+          ditto -c -k --keepParent flutter_app/build/ios/iphoneos/Runner.app Drishti_ios_unsigned_release.zip
+
+      - name: Upload iOS Archive Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Drishti_ios_unsigned_release
+          path: Drishti_ios_unsigned_release.zip
+
+  # ---------------------------------------------------------------------------
+  # 6. Automated GitHub Release Attachment
+  # ---------------------------------------------------------------------------
+  publish-release:
+    name: Publish Multi-Platform Release Assets
+    needs: [build-android, build-linux, build-windows, build-macos, build-ios]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_release == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Drishti_mobile_release
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Drishti_linux_release
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Drishti_windows_release
+
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Drishti_macos_release
+
+      - name: Download iOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Drishti_ios_unsigned_release
+
+      - name: Tag or Release Resolution
+        id: resolve_tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            TAG_NAME="v1.9.1"
+          fi
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Upload Binaries to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.resolve_tag.outputs.tag }}
+          files: |
+            Drishti_mobile_release.apk
+            Drishti_linux_release.tar.gz
+            Drishti_windows_release.zip
+            Drishti_macos_release.zip
+            Drishti_ios_unsigned_release.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
