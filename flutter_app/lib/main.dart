@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'l10n/lang_scope.dart';
@@ -12,6 +15,9 @@ import 'theme/figma_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb && Platform.isMacOS) {
+    unawaited(FilePicker.skipEntitlementsChecks().catchError((_) {}));
+  }
   // Ticket B-2: open the durable offline queue (SQLCipher, key in Keystore)
   // and rehydrate the in-memory mirrors. On any failure the queue degrades
   // to memory-only with an honest isPersisted=false flag — the app never

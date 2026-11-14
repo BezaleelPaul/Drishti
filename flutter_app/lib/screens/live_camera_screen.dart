@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../l10n/lang_scope.dart';
@@ -307,13 +308,26 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
 
   Future<void> _pickFallbackFile() async {
     try {
+      if (!kIsWeb && Platform.isMacOS) {
+        await FilePicker.skipEntitlementsChecks().catchError((_) {});
+      }
       final files = await FilePicker.pickFiles(
         dialogTitle: 'Select a fundus photo',
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png'],
       );
       if (files.isEmpty) return;
-      final bytes = await files.first.readAsBytes();
+      final picked = files.first;
+      Uint8List? bytes;
+      if (picked.path != null && picked.path!.isNotEmpty) {
+        final f = File(picked.path!);
+        if (await f.exists()) {
+          try {
+            bytes = await f.readAsBytes();
+          } catch (_) {}
+        }
+      }
+      bytes ??= await picked.readAsBytes();
       if (bytes.isNotEmpty && mounted) {
         Navigator.pop(context, bytes);
       }

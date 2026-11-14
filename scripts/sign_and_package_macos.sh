@@ -57,6 +57,22 @@ EOF
 
 # 4. Canonical inside-out code signing
 echo "✍️ 4/6: Executing inside-out cryptographic code signing..."
+ENTITLEMENTS_PATH="/tmp/drishti_macos_entitlements.plist"
+cat <<'EOF' > "$ENTITLEMENTS_PATH"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.files.user-selected.read-only</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>
+EOF
+
 # Sign nested dylibs
 find "$APP_PATH" -name "*.dylib" | while read -r dylib; do
     codesign --force --sign - --timestamp=none "$dylib"
@@ -76,13 +92,13 @@ fi
 
 # Sign main executable
 if [ -f "$APP_PATH/Contents/MacOS/Drishti" ]; then
-    codesign --force --sign - --timestamp=none "$APP_PATH/Contents/MacOS/Drishti"
+    codesign --force --sign - --entitlements "$ENTITLEMENTS_PATH" --timestamp=none "$APP_PATH/Contents/MacOS/Drishti"
 elif [ -f "$APP_PATH/Contents/MacOS/netra_ai_mobile" ]; then
-    codesign --force --sign - --timestamp=none "$APP_PATH/Contents/MacOS/netra_ai_mobile"
+    codesign --force --sign - --entitlements "$ENTITLEMENTS_PATH" --timestamp=none "$APP_PATH/Contents/MacOS/netra_ai_mobile"
 fi
 
 # Sign outer app bundle
-codesign --force --sign - --timestamp=none "$APP_PATH"
+codesign --force --sign - --entitlements "$ENTITLEMENTS_PATH" --timestamp=none "$APP_PATH"
 
 # 5. Strict verification
 echo "🔍 5/6: Verifying sealed bundle integrity..."

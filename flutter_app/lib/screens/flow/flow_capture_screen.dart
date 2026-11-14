@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../l10n/lang_scope.dart';
@@ -43,6 +45,9 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
   @override
   void initState() {
     super.initState();
+    if (!kIsWeb && Platform.isMacOS) {
+      unawaited(FilePicker.skipEntitlementsChecks().catchError((_) {}));
+    }
     // Fresh operator session starts EMPTY at the viewfinder ('RETINAL
     // VIEWFINDER READY'): a bundled sample is loaded only by explicit
     // dropdown selection (demo/kiosk mode). A restored in-flight capture
@@ -77,6 +82,9 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
 
   Future<void> _upload() async {
     try {
+      if (!kIsWeb && Platform.isMacOS) {
+        await FilePicker.skipEntitlementsChecks().catchError((_) {});
+      }
       final files = await FilePicker.pickFiles(
         dialogTitle: 'Select a fundus photo',
         type: FileType.custom,
@@ -85,7 +93,16 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
       if (files.isEmpty) return; // user cancelled the picker
       if (!mounted) return;
       final picked = files.first;
-      final bytes = await picked.readAsBytes();
+      Uint8List? bytes;
+      if (picked.path != null && picked.path!.isNotEmpty) {
+        final f = File(picked.path!);
+        if (await f.exists()) {
+          try {
+            bytes = await f.readAsBytes();
+          } catch (_) {}
+        }
+      }
+      bytes ??= await picked.readAsBytes();
       if (bytes.isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,7 +110,8 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
         );
         return;
       }
-      await _useCapturedBytes(bytes, 'camera_capture.jpg');
+      final filename = picked.name.isNotEmpty ? picked.name : 'camera_capture.jpg';
+      await _useCapturedBytes(bytes, filename);
     } catch (e) {
       debugPrint('Photo picker failed: $e');
       if (!mounted) return;
