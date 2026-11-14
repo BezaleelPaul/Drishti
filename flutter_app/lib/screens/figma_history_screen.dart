@@ -927,9 +927,10 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
   }
 
   void _confirmDeleteRecord(Map<String, dynamic> record) {
-    final sid = (record['local_screening_id'] ?? record['screening_id'] ?? '').toString();
-    final pid = (record['local_patient_id'] ?? record['patient_id'] ?? '').toString();
-    final name = (record['name'] ?? pid.isNotEmpty ? pid : 'Patient').toString();
+    final sid = (record['local_screening_id'] ?? record['screening_id'] ?? '').toString().trim();
+    final pid = (record['local_patient_id'] ?? record['patient_id'] ?? '').toString().trim();
+    final rawName = (record['name'] ?? '').toString().trim();
+    final name = rawName.isNotEmpty ? rawName : (pid.isNotEmpty ? pid : 'Patient');
 
     showDialog(
       context: context,
@@ -1305,6 +1306,17 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                 onPressed: () => _showEditPatientDialog(record),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: Color(0xFFEF4444),
+                                  size: 19,
+                                ),
+                                tooltip: 'Delete Patient Record',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                onPressed: () => _confirmDeleteRecord(record),
                               ),
                               const Icon(
                                 Icons.chevron_right_rounded,
