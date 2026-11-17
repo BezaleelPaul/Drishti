@@ -147,7 +147,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Drishti_mobile_release
-          path: Drishti_mobile_*-release.apk
+          path: Drishti_mobile_*_release.apk
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
