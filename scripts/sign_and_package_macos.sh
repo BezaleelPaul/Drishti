@@ -8,7 +8,7 @@ set -euo pipefail
 
 APP_PATH="${1:-$(pwd)/flutter_app/build/macos/Build/Products/Release/Drishti.app}"
 OUTPUT_DIR="${2:-$(pwd)/binaries}"
-VERSION="${3:-1.9.2}"
+VERSION="${3:-1.10.0}"
 
 if [ ! -d "$APP_PATH" ]; then
     echo "❌ Error: App bundle not found at '$APP_PATH'"

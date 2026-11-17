@@ -34,3 +34,8 @@ server/results/api_screenings/
 server/results/*audit*
 server/results/full_test_execution/
 
+
+# Android signing material — release keys live in CI secrets, never in git.
+*.jks
+*.keystore
+flutter_app/android/key.properties

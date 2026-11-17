@@ -11,6 +11,12 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    // Demo seeding is opt-in in clinical builds; this suite exercises it.
+    ScreeningPersistenceService.seedDemoRecords = true;
+  });
+
+  tearDown(() {
+    ScreeningPersistenceService.seedDemoRecords = false;
   });
 
   group('ScreeningPersistenceService Tests', () {
@@ -139,6 +145,24 @@ void main() {
 
       records = await service.getRecentScreenings();
       expect(records.any((r) => r['local_screening_id'] == 'SCR-MANUAL-12345'), isFalse);
+    });
+
+    test('clinical mode never fabricates patient records', () async {
+      ScreeningPersistenceService.seedDemoRecords = false;
+      SharedPreferences.setMockInitialValues({});
+      final records = await ScreeningPersistenceService().getRecentScreenings();
+      expect(records, isEmpty);
+    });
+
+    test('encrypted cache does not contain plaintext PHI', () async {
+      final service = ScreeningPersistenceService();
+      await service.getRecentScreenings(); // seeds demo data
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('drishti_screenings_cache_v3_encrypted');
+      expect(raw, isNotNull);
+      expect(raw!.startsWith('DENC1:'), isTrue);
+      expect(raw.contains('Ramesh Patil'), isFalse);
+      expect(raw.contains('9822058112'), isFalse);
     });
 
     test('deleteRecord permanently deletes record and never resurrects on refresh', () async {

@@ -435,6 +435,43 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
     }
   }
 
+  Future<void> _showCameraHelp() async {
+    final install = Platform.isMacOS
+        ? 'brew install ffmpeg'
+        : Platform.isWindows
+            ? 'winget install ffmpeg'
+            : 'sudo apt install ffmpeg';
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        title: const Text(
+          'Live desktop camera',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+        ),
+        content: Text(
+          'Drishti uses the native camera plugin on Android/iOS and ffmpeg for '
+          'desktop capture.\n\n'
+          '1. Install ffmpeg: $install\n'
+          '2. Grant camera permission to the terminal/app in system settings.\n'
+          '3. Retry, or use Upload Photo for an existing fundus image.\n\n'
+          'Android/iOS do not need ffmpeg.',
+          style: const TextStyle(
+            color: Color(0xFFCBD5E1),
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickFallbackFile() async {
     try {
       final result = await PlatformFileService.pickFundusImage(
@@ -525,6 +562,15 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
                 ),
               ],
             ),
+            if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _showCameraHelp,
+                icon: const Icon(Icons.help_outline, size: 16),
+                label: const Text('Live camera setup help'),
+                style: TextButton.styleFrom(foregroundColor: Colors.white70),
+              ),
+            ],
           ],
         ),
       );

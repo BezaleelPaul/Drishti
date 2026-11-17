@@ -1,7 +1,15 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/lang_scope.dart';
+import '../../models/specialist_models.dart';
+import '../../services/db/local_store.dart';
+import '../../services/db/screening_persistence_service.dart';
+import '../../services/offline_queue_service.dart';
 import '../../services/referral_uplink_service.dart';
+import '../../services/smtp/smtp_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/scanner/scanner.dart';
 import '../../widgets/workflow_bar.dart';
@@ -29,7 +37,10 @@ class FlowReferralScreen extends StatefulWidget {
 class _FlowReferralScreenState extends State<FlowReferralScreen> {
   bool _smsSent = false;
   bool _uploading = false;
+  bool _emailing = false;
   ReferralUplinkService? _uplink;
+
+  ReferralPlan? get _plan => widget.state.referralPlan;
 
   @override
   void initState() {
@@ -72,7 +83,7 @@ class _FlowReferralScreenState extends State<FlowReferralScreen> {
     }
   }
 
-  Future<void> _sendReferral() async {
+  Future<bool> _requestConsent() async {
     final granted = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -82,8 +93,8 @@ class _FlowReferralScreenState extends State<FlowReferralScreen> {
         ),
       ),
     );
-    if (granted != true || !mounted) {
-      if (granted == false && mounted) {
+    if (granted != true && mounted) {
+      if (granted == false) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Consent refused — data stays on this device only.'),
@@ -91,8 +102,13 @@ class _FlowReferralScreenState extends State<FlowReferralScreen> {
           ),
         );
       }
-      return;
+      return false;
     }
+    return granted == true;
+  }
+
+  Future<void> _sendReferral() async {
+    if (!await _requestConsent() || !mounted) return;
 
     final uplink = _uplink;
     if (uplink == null || !mounted) return;
@@ -150,6 +166,171 @@ class _FlowReferralScreenState extends State<FlowReferralScreen> {
       );
     } finally {
       if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _sendSpecialistEmail() async {
+    final plan = _plan;
+    final specialist = plan?.primary.specialist;
+    final smtp = SmtpService();
+    final config = await smtp.loadConfig();
+    if (!mounted) return;
+
+    if (config.senderEmail.isEmpty ||
+        config.senderPassword.isEmpty ||
+        config.smtpHost.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'SMTP sender credentials are not configured. Add them in '
+            'Admin Portal → SMTP Gateway.',
+          ),
+          backgroundColor: FigmaColors.danger,
+        ),
+      );
+      return;
+    }
+
+    final recipient = (specialist?.email.trim().isNotEmpty ?? false)
+        ? specialist!.email.trim()
+        : config.specialistEmail.trim();
+    if (recipient.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No specialist email is configured for this route.'),
+          backgroundColor: FigmaColors.danger,
+        ),
+      );
+      return;
+    }
+
+    // PHI leaves the device only after the patient's explicit consent.
+    if (!await _requestConsent() || !mounted) return;
+
+    setState(() => _emailing = true);
+    try {
+      final result = await smtp.sendSpecialistAlert(
+        state: widget.state,
+        overrideRecipient: recipient,
+        addressedTo: specialist,
+      );
+      if (!mounted) return;
+      if (result.success) {
+        widget.state.specialistEmailSent = true;
+        _auditReferralEmail(recipient);
+        final sid = widget.state.analysis?.screeningId ??
+            'LOC-${DateTime.now().millisecondsSinceEpoch}';
+        unawaited(
+          ScreeningPersistenceService().updateRecord({
+            'local_screening_id': sid,
+            'local_patient_id': widget.state.patient.patientId,
+            'specialist_email_sent': 1,
+            'referral_plan_json':
+                plan == null ? null : jsonEncode(plan.toJson()),
+          }),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Clinical dossier sent to ${specialist?.displayName ?? recipient}'
+              '${plan != null ? ' · ${plan.primary.mode.label}' : ''}.',
+            ),
+            backgroundColor: FigmaColors.success,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: FigmaColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _emailing = false);
+    }
+  }
+
+  void _auditReferralEmail(String recipient) {
+    final sid = widget.state.analysis?.screeningId ??
+        'LOC-${DateTime.now().millisecondsSinceEpoch}';
+    () async {
+      try {
+        final store = await LocalStore.open(
+          dbPassword: await OfflineQueueService.resolveDbPassword(),
+        );
+        await store.recordAudit(
+          action: 'referral_email_sent',
+          resource: sid,
+          detail: 'recipient=$recipient; plan=${_plan?.algorithm ?? "manual"}',
+        );
+      } catch (_) {
+        // Audit is best-effort; the email path must not fail because of it.
+      }
+    }();
+  }
+
+  Future<void> _startTeleconsult() async {
+    final url = _plan?.primary.specialist.teleconsultUrl.trim() ?? '';
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No teleconsult link is configured for this specialist.'),
+          backgroundColor: FigmaColors.danger,
+        ),
+      );
+      return;
+    }
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open the teleconsult link.'),
+          backgroundColor: FigmaColors.danger,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openDirections() async {
+    final specialist = _plan?.primary.specialist;
+    final location = specialist?.location;
+    if (location == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No facility location is configured for this specialist.'),
+          backgroundColor: FigmaColors.danger,
+        ),
+      );
+      return;
+    }
+    final label = Uri.encodeComponent(specialist!.facilityName);
+    final geo = Uri.parse(
+      'geo:${location.latitude},${location.longitude}?q=${location.latitude},${location.longitude}($label)',
+    );
+    var ok = false;
+    try {
+      ok = await launchUrl(geo, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok) {
+      ok = await launchUrl(
+        Uri.parse(
+          'https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}',
+        ),
+        mode: LaunchMode.externalApplication,
+      );
+    }
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open a maps application.'),
+          backgroundColor: FigmaColors.danger,
+        ),
+      );
     }
   }
 
@@ -212,6 +393,148 @@ class _FlowReferralScreenState extends State<FlowReferralScreen> {
         ),
       );
     }
+  }
+
+  Widget _routedSpecialistCard() {
+    final plan = _plan;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B2239), Color(0xFF0C1428)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.55),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.alt_route, color: ScannerHUDTheme.neonCyan, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'ROUTED SPECIALIST · ADDRESSED REFERRAL',
+                style: TextStyle(
+                  fontSize: 11,
+                  letterSpacing: 0.6,
+                  fontWeight: FontWeight.w800,
+                  color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.95),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (plan == null) ...[
+            const Text(
+              'No specialist route is available. Configure the specialist '
+              'directory and screening-centre location in Admin Portal → '
+              'Specialist Routing.',
+              style: TextStyle(fontSize: 12, color: Color(0xFFF59E0B), height: 1.4),
+            ),
+          ] else ...[
+            Text(
+              plan.specialist.displayName,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              plan.specialist.fullAddress,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _referralChip(plan.urgency.shortLabel, const Color(0xFFEF4444)),
+                _referralChip(plan.primary.mode.label, ScannerHUDTheme.neonCyan),
+                _referralChip(plan.primary.distanceLabel, const Color(0xFFA78BFA)),
+                _referralChip(plan.primary.travelLabel, const Color(0xFF34D399)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              plan.primary.rationale,
+              style: const TextStyle(fontSize: 11, color: Color(0xFFCBD5E1), height: 1.4),
+            ),
+            if (plan.alternates.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Escalation alternates: ${plan.alternates.map((r) => '${r.specialist.displayName} (${r.specialist.facilityName})').join(' · ')}',
+                style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), height: 1.4),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (plan.specialist.canTeleconsult)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _startTeleconsult,
+                      icon: const Icon(Icons.video_call_outlined, size: 16),
+                      label: const Text('Teleconsult'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ScannerHUDTheme.neonCyan,
+                        side: BorderSide(
+                          color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.5),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                      ),
+                    ),
+                  ),
+                if (plan.specialist.canTeleconsult && plan.specialist.location != null)
+                  const SizedBox(width: 8),
+                if (plan.specialist.location != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _openDirections,
+                      icon: const Icon(Icons.map_outlined, size: 16),
+                      label: const Text('Directions'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF34D399),
+                        side: const BorderSide(color: Color(0x6634D399)),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _referralChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700),
+      ),
+    );
   }
 
   @override
@@ -305,56 +628,42 @@ class _FlowReferralScreenState extends State<FlowReferralScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF111C38),
-                        Color(0xFF0C1428),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF1E2D4A), width: 1.2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+                _routedSpecialistCard(),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _emailing ? null : _sendSpecialistEmail,
+                  icon: _emailing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(
+                          st.specialistEmailSent
+                              ? Icons.mark_email_read_rounded
+                              : Icons.outgoing_mail,
+                        ),
+                  label: Text(
+                    st.specialistEmailSent
+                        ? 'Clinical dossier sent to specialist'
+                        : _plan == null
+                            ? 'Email clinical dossier'
+                            : 'Email dossier to ${_plan!.specialist.displayName}',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.tr('recommended_specialist'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'District Eye Care Centre — Retina & Vitreous Clinic',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF94A3B8),
-                        ),
-                      ),
-                      Text(
-                        '${st.patient.name} • ${st.patient.phone}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ],
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0E7490),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 ElevatedButton.icon(
                   onPressed: (st.referralSent || _uploading)
                       ? null

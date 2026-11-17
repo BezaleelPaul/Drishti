@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../l10n/lang_scope.dart';
+import '../../models/specialist_models.dart';
 import '../../services/api_service.dart';
 import '../../services/db/screening_persistence_service.dart';
+import '../../services/routing/specialist_directory_service.dart';
 import '../../services/smtp/smtp_service.dart';
 import '../../widgets/scanner/scanner.dart';
 import '../../widgets/workflow_bar.dart';
 import '../admin/admin_portal_screen.dart';
+import '../admin/specialist_routing_screen.dart';
 import 'flow_referral_screen.dart';
 import 'flow_state.dart';
 
@@ -29,12 +32,163 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
   int _correctedGrade = 2;
   bool _busy = false;
   String _specialistEmail = '';
-  bool _autoSendEnabled = true;
+  bool _autoSendEnabled = false;
+
+  ReferralPlan? _plan;
+  bool _routingLoading = true;
+  String? _routingHint;
+
+  int get _effectiveGrade {
+    if (_decision == 'CHANGE') return _correctedGrade;
+    return widget.state.analysis?.drGrade ?? 0;
+  }
 
   @override
   void initState() {
     super.initState();
     _loadSpecialistRecipient();
+    unawaited(_loadRouting());
+  }
+
+  Future<void> _loadRouting() async {
+    final directory = SpecialistDirectoryService.instance;
+    await directory.load(reload: true);
+    final plan = directory.planForGrade(_effectiveGrade);
+    if (!mounted) return;
+    setState(() {
+      _plan = plan;
+      widget.state.referralPlan = plan;
+      _routingLoading = false;
+      if (directory.specialists.isEmpty) {
+        _routingHint = 'No specialist directory configured yet.';
+      } else if (directory.origin == null || directory.origin!.isRoutable == false) {
+        _routingHint = 'Set the screening-centre location to enable offline routing.';
+      } else if (plan == null) {
+        _routingHint =
+            'No configured specialist accepts Grade $_effectiveGrade patients.';
+      } else {
+        _routingHint = null;
+      }
+    });
+  }
+
+  void _refreshPlanForGrade() {
+    final directory = SpecialistDirectoryService.instance;
+    final plan = directory.planForGrade(_effectiveGrade);
+    setState(() {
+      _plan = plan;
+      widget.state.referralPlan = plan;
+      _routingHint = plan == null
+          ? 'No configured specialist accepts Grade $_effectiveGrade patients.'
+          : null;
+    });
+  }
+
+  Future<void> _changeSpecialist() async {
+    final directory = SpecialistDirectoryService.instance;
+    final routes = directory.rankForGrade(_effectiveGrade);
+    if (routes.isEmpty) {
+      await _openRoutingDirectory();
+      return;
+    }
+    final selected = await showModalBottomSheet<SpecialistRoute>(
+      context: context,
+      backgroundColor: ScannerHUDTheme.darkSurface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Assign Specialist',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Ranked offline by travel time, retinal capability and teleconsult availability.',
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: routes.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) {
+                    final route = routes[i];
+                    final isCurrent = _plan?.primary.specialist.id == route.specialist.id;
+                    return ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: isCurrent
+                              ? ScannerHUDTheme.neonCyan
+                              : const Color(0xFF1E2D4A),
+                        ),
+                      ),
+                      tileColor: const Color(0xFF111C38),
+                      title: Text(
+                        route.specialist.displayName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${route.specialist.facilityName}\n'
+                        '${route.distanceLabel} · ${route.travelLabel} · ${route.mode.label}',
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                      trailing: isCurrent
+                          ? const Icon(Icons.check_circle,
+                              color: ScannerHUDTheme.neonCyan)
+                          : null,
+                      onTap: () => Navigator.pop(ctx, route),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+    final next = _plan?.withPrimary(selected) ??
+        ReferralPlan(
+          origin: directory.origin!,
+          grade: _effectiveGrade,
+          urgency: ReferralUrgency.forGrade(_effectiveGrade),
+          primary: selected,
+          alternates: const [],
+          generatedAt: DateTime.now().toUtc(),
+        );
+    setState(() {
+      _plan = next;
+      widget.state.referralPlan = next;
+    });
+  }
+
+  Future<void> _openRoutingDirectory() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SpecialistRoutingScreen()),
+    );
+    await _loadRouting();
   }
 
   Future<void> _loadSpecialistRecipient() async {
@@ -158,6 +312,7 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
           ? _correctedGrade
           : null;
       widget.state.specialistNotes = _notes.text.trim();
+      widget.state.referralPlan = _plan;
       // Best-effort server verdict: find the pending review for this
       // screening and record the decision. Offline/unknown → local only.
       try {
@@ -184,7 +339,8 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
         // Local verdict stands; sync covers the rest.
       }
       unawaited(ScreeningPersistenceService().saveScreening(widget.state));
-      unawaited(SmtpService().handleScreeningCompleted(widget.state));
+      // PHI is not emailed automatically here. The referral screen shows the
+      // routed recipient and sends the dossier only after explicit consent.
       if (!mounted) return;
       unawaited(
         Navigator.push(
@@ -295,6 +451,8 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                _routingCard(),
+                const SizedBox(height: 12),
                 _specialistRecipientCard(),
                 const SizedBox(height: 14),
                 Text(
@@ -354,7 +512,10 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
                           ),
                         ),
                     ],
-                    onChanged: (v) => setState(() => _correctedGrade = v ?? 2),
+                    onChanged: (v) {
+                      setState(() => _correctedGrade = v ?? 2);
+                      _refreshPlanForGrade();
+                    },
                   ),
                 ],
                 const SizedBox(height: 8),
@@ -432,7 +593,10 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
   ) {
     final selected = _decision == value;
     return InkWell(
-      onTap: () => setState(() => _decision = value),
+      onTap: () {
+        setState(() => _decision = value);
+        _refreshPlanForGrade();
+      },
       borderRadius: BorderRadius.circular(14),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -506,6 +670,226 @@ class _FlowSpecialistScreenState extends State<FlowSpecialistScreen> {
                 size: 20,
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _routingCard() {
+    final plan = _plan;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B2239), Color(0xFF0A1729)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.55),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.alt_route, color: ScannerHUDTheme.neonCyan, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'NEAREST SPECIALIST · OFFLINE ROUTING',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: _openRoutingDirectory,
+                child: const Text(
+                  'Manage',
+                  style: TextStyle(
+                    color: ScannerHUDTheme.neonCyan,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (_routingLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: ScannerHUDTheme.neonCyan,
+                  ),
+                ),
+              ),
+            )
+          else if (plan != null) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              plan.primary.specialist.displayName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          if (plan.primary.specialist.isDemo) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFF59E0B)),
+                              ),
+                              child: const Text(
+                                'DEMO',
+                                style: TextStyle(
+                                  color: Color(0xFFF59E0B),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        plan.primary.specialist.facilityName,
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _routeChip(
+                            plan.urgency.shortLabel,
+                            plan.urgency == ReferralUrgency.urgent
+                                ? const Color(0xFFEF4444)
+                                : plan.urgency == ReferralUrgency.priority
+                                    ? const Color(0xFFF59E0B)
+                                    : const Color(0xFF38BDF8),
+                          ),
+                          _routeChip(plan.primary.mode.label, ScannerHUDTheme.neonCyan),
+                          _routeChip(plan.primary.distanceLabel, const Color(0xFFA78BFA)),
+                          _routeChip(plan.primary.travelLabel, const Color(0xFF34D399)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        plan.summary,
+                        style: const TextStyle(
+                          color: Color(0xFFCBD5E1),
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                      if (plan.alternates.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Alternates: ${plan.alternates.map((r) => r.specialist.displayName).join(', ')}',
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                OutlinedButton(
+                  onPressed: _changeSpecialist,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ScannerHUDTheme.neonCyan,
+                    side: BorderSide(
+                      color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.6),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  ),
+                  child: const Text('Change', style: TextStyle(fontSize: 11)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Route estimate uses the offline facility graph (Haversine road '
+              'factor). No internet or patient data leaves the device.',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 10, height: 1.4),
+            ),
+          ] else ...[
+            Text(
+              _routingHint ?? 'No routing destination is configured.',
+              style: const TextStyle(
+                color: Color(0xFFF59E0B),
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _openRoutingDirectory,
+              icon: const Icon(Icons.settings_ethernet, size: 16),
+              label: const Text('Configure Specialist Directory'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ScannerHUDTheme.neonCyan,
+                side: BorderSide(
+                  color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _routeChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

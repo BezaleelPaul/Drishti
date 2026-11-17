@@ -50,10 +50,12 @@ The app's Online badge goes green when `/status` answers with the key.
 
 - `DRISHTI_API_KEYS` (Render env) and repo secret of the same name hold
   `operator,doctor,admin` keys. Release builds embed the **operator** key.
-- Android `key.properties` + `drishti-release.jks` live only on the release
-  machine and in CI secrets — losing the keystore ends Play update continuity.
+- Android signing is provided exclusively by GitHub Actions secrets
+  (`ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+  `ANDROID_KEY_PASSWORD`). The v1.10.0 key replaced the compromised v1.9.x
+  keystore; losing the new key ends Play update continuity.
 - Rotate any key that ever appears in chat/logs: regenerate, update Render +
-  repo secret, rebuild.
+  repo secret, rebuild. Never commit a `.jks` or `key.properties`.
 
 ## 6. Rebuild everything (release checklist)
 

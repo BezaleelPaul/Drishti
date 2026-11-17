@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../models/specialist_models.dart';
 import '../../screens/flow/flow_state.dart';
 import '../ml/pipeline/local_explanation_generator.dart';
 import '../platform/app_paths.dart';
@@ -208,6 +209,11 @@ class ClinicalPdfGenerator {
                   ],
                 ),
               ),
+
+              if (state.referralPlan != null) ...[
+                pw.SizedBox(height: 10),
+                _referralRoutingBlock(state.referralPlan!),
+              ],
 
               pw.SizedBox(height: 10),
 
@@ -572,19 +578,86 @@ class ClinicalPdfGenerator {
   /// read-only profile prevents the write. Android/iOS write into the app
   /// documents directory, which is exposed through the iOS Files app and can
   /// be opened with the native viewer from the screening screen.
+  /// De-identified file stem used for the PDF on disk and as the email
+  /// attachment name. It deliberately contains no patient name, phone, ABHA
+  /// or village: a filename in a shared Downloads folder must not disclose PHI.
+  static String reportFileStem(FlowState state) {
+    final rawId = state.analysis?.screeningId ??
+        'LOC-${DateTime.now().millisecondsSinceEpoch}';
+    final safeId = rawId
+        .replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    final eye = state.eyeSide == 'Left' ? 'OS' : 'OD';
+    return '${safeId.isEmpty ? 'SCREENING' : safeId}_$eye';
+  }
+
+  static pw.Widget _referralRoutingBlock(ReferralPlan plan) {
+    final route = plan.primary;
+    final specialist = route.specialist;
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        color: PdfColor.fromHex('#E0F2FE'),
+        border: pw.Border.all(color: PdfColor.fromHex('#0E7490')),
+        borderRadius: pw.BorderRadius.circular(6),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'REFERRAL ROUTING — ADDRESSED TO',
+            style: pw.TextStyle(
+              fontSize: 8.5,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColor.fromHex('#0E7490'),
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            plan.addressedTo,
+            style: pw.TextStyle(
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.black,
+            ),
+          ),
+          if (specialist.fullAddress.isNotEmpty) ...[
+            pw.SizedBox(height: 2),
+            pw.Text(
+              specialist.fullAddress,
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+            ),
+          ],
+          pw.SizedBox(height: 4),
+          pw.Row(
+            children: [
+              _pdfField('Urgency', plan.urgency.label, flex: 3),
+              _pdfField('Recommended Mode', route.mode.label, flex: 2),
+              _pdfField('Distance', route.distanceLabel, flex: 2),
+              _pdfField('Travel', route.travelLabel, flex: 3),
+            ],
+          ),
+          pw.SizedBox(height: 2),
+          pw.Text(
+            'Selected by ${plan.algorithm} · ${plan.summary}',
+            style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700),
+          ),
+          if (route.mode == ReferralMode.teleconsult &&
+              specialist.teleconsultUrl.isNotEmpty) ...[
+            pw.SizedBox(height: 2),
+            pw.Text(
+              'Teleconsult: ${specialist.teleconsultUrl}',
+              style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.blue800),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   static Future<String> saveReportToFile(FlowState state) async {
     final bytes = await generateReportPdf(state);
-    final patient = state.patient;
-    final eye = state.eyeSide;
-    final screeningId = state.analysis?.screeningId ??
-        'SCR-${DateTime.now().millisecondsSinceEpoch}';
-
-    final safeName = patient.name
-        .trim()
-        .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_')
-        .replaceAll(RegExp(r'^_+|_+$'), '');
-    final filename =
-        'Drishti_Report_${safeName.isEmpty ? 'Patient' : safeName}_${screeningId}_$eye.pdf';
+    final filename = 'Drishti_Report_${reportFileStem(state)}.pdf';
 
     Object? lastError;
     for (final dir in await AppPaths.reportDirectories()) {

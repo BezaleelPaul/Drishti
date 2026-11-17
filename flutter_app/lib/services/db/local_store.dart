@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common/sqlite_api.dart';
 
+import '../app_config.dart';
 import 'database_backend.dart';
 
 /// Encrypted local store (Ticket B-1). All PHI lives here and NEVER leaves
@@ -18,7 +19,7 @@ import 'database_backend.dart';
 class LocalStore {
   LocalStore._(this._db);
 
-  static const int _schemaVersion = 1;
+  static const int _schemaVersion = 2;
   static const String _dbName = 'drishti_ai.db';
 
   final Database _db;
@@ -145,6 +146,8 @@ class LocalStore {
         created_at TEXT NOT NULL,
         captured_at TEXT NOT NULL,
         image_path TEXT NOT NULL,
+        referral_plan_json TEXT,
+        specialist_email_sent INTEGER NOT NULL DEFAULT 0,
         updated_at_seq INTEGER NOT NULL,
         sync_state TEXT NOT NULL DEFAULT 'local_only'
           CHECK (sync_state IN ('local_only','queued','syncing','sync_failed',
@@ -205,7 +208,18 @@ class LocalStore {
 
   static Future<void> _migrate(Database db, int oldV, int newV) async {
     // Idempotent column-add migration pattern, mirroring api/database.py.
-    // v1 is the first shipped schema; future columns append here.
+    if (oldV < 2) {
+      final columns = await db.rawQuery('PRAGMA table_info(screenings)');
+      final names = columns.map((c) => '${c['name']}').toSet();
+      if (!names.contains('referral_plan_json')) {
+        await db.execute('ALTER TABLE screenings ADD COLUMN referral_plan_json TEXT');
+      }
+      if (!names.contains('specialist_email_sent')) {
+        await db.execute(
+          'ALTER TABLE screenings ADD COLUMN specialist_email_sent INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+    }
   }
 
   // ------------------------------------------------------------------
@@ -238,6 +252,8 @@ class LocalStore {
     String? qualityMetricsJson,
     required String capturedAtIso,
     required String imagePath,
+    String? referralPlanJson,
+    bool specialistEmailSent = false,
     bool enqueueForSync = false,
   }) async {
     final now = DateTime.now().toUtc().toIso8601String();
@@ -268,6 +284,8 @@ class LocalStore {
         'created_at': now,
         'captured_at': capturedAtIso,
         'image_path': imagePath,
+        'referral_plan_json': referralPlanJson,
+        'specialist_email_sent': specialistEmailSent ? 1 : 0,
         'updated_at_seq': DateTime.now().microsecondsSinceEpoch,
         'sync_state': enqueueForSync ? 'queued' : 'local_only',
       }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -328,10 +346,18 @@ class LocalStore {
     int? requiresHumanReview,
     String? humanReviewReason,
     String? eyeSide,
+    bool? specialistEmailSent,
+    String? referralPlanJson,
   }) async {
     final values = <String, Object?>{
       'updated_at_seq': DateTime.now().microsecondsSinceEpoch,
     };
+    if (specialistEmailSent != null) {
+      values['specialist_email_sent'] = specialistEmailSent ? 1 : 0;
+    }
+    if (referralPlanJson != null) {
+      values['referral_plan_json'] = referralPlanJson;
+    }
     if (drGradeNum != null) values['dr_grade_num'] = drGradeNum;
     if (drLabel != null) values['dr_label'] = drLabel;
     if (requiresHumanReview != null) {
@@ -505,6 +531,9 @@ class LocalStore {
   /// Seeds clinical PHC sample historical records if the device database is empty,
   /// ensuring the operator always has visible reference history from day one.
   Future<void> seedSampleScreeningsIfEmpty() async {
+    // Clinical builds never fabricate patients. Only an explicit demo build
+    // may seed the synthetic reference records.
+    if (!AppConfig.demoMode) return;
     final rows = await _db.rawQuery('SELECT COUNT(*) AS c FROM screenings');
     final count = (rows.isEmpty ? 0 : (rows.first['c'] as num?)?.toInt()) ?? 0;
     if (count > 0) return;
@@ -603,7 +632,9 @@ class LocalStore {
              s.eye_side AS eye_side,
              s.image_path AS image_path,
              s.confidence AS confidence,
-             s.human_review_reason AS human_review_reason
+             s.human_review_reason AS human_review_reason,
+             s.referral_plan_json AS referral_plan_json,
+             s.specialist_email_sent AS specialist_email_sent
       FROM screenings s
       LEFT JOIN patients p ON p.local_patient_id = s.local_patient_id
       ORDER BY s.created_at DESC
@@ -611,6 +642,30 @@ class LocalStore {
     ''',
       [limit],
     );
+  }
+
+  /// Number of screenings waiting for a successful sync receipt.
+  Future<int> pendingSyncCount() async {
+    final rows = await _db.rawQuery(
+      "SELECT COUNT(*) AS c FROM sync_queue WHERE state IN ('PENDING','RETRY_WAIT','IN_FLIGHT')",
+    );
+    return (rows.isEmpty ? 0 : (rows.first['c'] as num?)?.toInt()) ?? 0;
+  }
+
+  /// Append-only local audit entry (referral routing, email dispatch, edits).
+  Future<void> recordAudit({
+    required String action,
+    String? actor,
+    String? resource,
+    String? detail,
+  }) async {
+    await _db.insert('audit_log_local', {
+      'actor': actor ?? 'device',
+      'action': action,
+      'resource': resource,
+      'detail': detail,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 
   Future<Map<String, Object?>?> getMeta(String key) async {

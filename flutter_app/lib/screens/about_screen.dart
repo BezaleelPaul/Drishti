@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/app_config.dart';
 import 'district_simulation_screen.dart';
 import 'system_specs_screen.dart';
 import '../widgets/fx/particle_field.dart';
@@ -100,7 +101,7 @@ class AboutScreen extends StatelessWidget {
                                     ),
                                     SizedBox(width: 8),
                                     Text(
-                                      'v1.9.2',
+                                      'v${AppConfig.version}',
                                       style: TextStyle(
                                         color: ScannerHUDTheme.neonCyan,
                                         fontSize: 11,

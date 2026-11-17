@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.9.2+9
+version: 1.10.0+10
 
 environment:
   sdk: ^3.12.0
@@ -53,6 +53,9 @@ dependencies:
   # Native "Open report" handler for PDF exports on every OS, replacing the
   # macOS-only `Process.run('open', ...)` shortcut.
   open_filex: ^5.0.0
+  # AES-256-GCM envelope for the local JSON cache/backup so secondary
+  # persistence tiers never contain plaintext PHI.
+  cryptography: ^2.9.0
   path_provider: ^2.1.4
   path: ^1.9.0
   flutter_secure_storage: ^11.2.0

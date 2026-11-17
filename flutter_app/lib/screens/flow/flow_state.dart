@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '../../models/retinal_markers.dart';
 import '../../models/screening_models.dart';
+import '../../models/specialist_models.dart';
 
 /// Shared mutable state for the Figma 7-step screening flow
 /// (register → capture → ai-analysis → ai-result → specialist →
@@ -32,6 +33,15 @@ class FlowState {
   String specialistNotes;
   bool referralSent;
 
+  /// Offline referral routing decision (nearest suitable specialist, mode,
+  /// distance/travel estimate and alternates). Null until the specialist
+  /// screen computes it or the directory/origin is not configured.
+  ReferralPlan? referralPlan;
+
+  /// True after the clinical dossier has been delivered to the routed
+  /// specialist over SMTP (with consent).
+  bool specialistEmailSent;
+
   FlowState({
     required this.patient,
     this.risk,
@@ -46,5 +56,7 @@ class FlowState {
     this.correctedGrade,
     this.specialistNotes = '',
     this.referralSent = false,
+    this.referralPlan,
+    this.specialistEmailSent = false,
   });
 }

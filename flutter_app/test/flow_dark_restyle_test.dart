@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:drishti/models/screening_models.dart';
+import 'package:drishti/models/specialist_models.dart';
 import 'package:drishti/screens/flow/flow_capture_screen.dart';
 import 'package:drishti/screens/flow/flow_referral_screen.dart';
 import 'package:drishti/screens/flow/flow_register_screen.dart';
@@ -158,6 +159,45 @@ void main() {
         await tester.tap(confirm);
         await tester.pump(const Duration(milliseconds: 300));
         expect(find.byType(DropdownButtonFormField<int>), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'specialist screen routes to the nearest configured specialist',
+      (tester) async {
+        final origin = const ScreeningCentre(
+          name: 'PHC Bhor',
+          location: GeoPoint(18.1700, 73.8450),
+        );
+        final specialist = Specialist(
+          id: 'route-test',
+          name: 'Ananya Deshmukh',
+          facilityName: 'Sassoon Retina Clinic',
+          city: 'Pune',
+          location: const GeoPoint(18.5196, 73.8553),
+          email: 'retina@example.org',
+          teleconsultUrl: 'https://tele.example.org/room',
+          capabilities: const {'retina'},
+          maxGrade: 4,
+          averageWaitDays: 1,
+        );
+        SharedPreferences.setMockInitialValues({
+          'drishti_screening_centre_v1': jsonEncode(origin.toJson()),
+          'drishti_specialist_directory_v1':
+              jsonEncode([specialist.toJson()]),
+        });
+
+        final state = FlowState(patient: patient(), analysis: analysis());
+        await tester.pumpWidget(
+          MaterialApp(home: FlowSpecialistScreen(state: state)),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('NEAREST SPECIALIST · OFFLINE ROUTING'), findsOneWidget);
+        expect(find.textContaining('Dr. Ananya Deshmukh'), findsWidgets);
+        expect(state.referralPlan, isNotNull);
+        expect(state.referralPlan!.primary.specialist.facilityName,
+            'Sassoon Retina Clinic');
       },
     );
 

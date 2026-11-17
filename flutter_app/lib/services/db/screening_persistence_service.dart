@@ -6,8 +6,10 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../screens/flow/flow_state.dart';
+import '../app_config.dart';
 import '../offline_queue_service.dart';
 import '../platform/app_paths.dart';
+import '../security/encrypted_payload.dart';
 import 'local_store.dart';
 
 /// Central persistence orchestrator for screening workflows.
@@ -22,28 +24,58 @@ class ScreeningPersistenceService with ChangeNotifier {
   factory ScreeningPersistenceService() => _instance;
   ScreeningPersistenceService._internal();
 
-  static const String _prefsKey = 'drishti_screenings_cache_v2';
-  static const String _deletedIdsKey = 'drishti_deleted_record_ids_v1';
-  static const String _backupFileName = 'drishti_screenings_backup.json';
+  static const String _prefsKey = 'drishti_screenings_cache_v3_encrypted';
+  static const String _legacyPrefsKey = 'drishti_screenings_cache_v2';
+  static const String _deletedIdsKey = 'drishti_deleted_record_ids_v2_encrypted';
+  static const String _legacyDeletedIdsKey = 'drishti_deleted_record_ids_v1';
+  static const String _backupFileName = 'drishti_screenings_backup.enc';
+
+  /// Demo records are opt-in only. Clinical builds start empty and never
+  /// fabricate patients. Kiosk/demo builds use
+  /// `--dart-define=DRISHTI_DEMO_MODE=true`; widget tests set this directly.
+  @visibleForTesting
+  static bool seedDemoRecords = AppConfig.demoMode;
 
   Future<Set<String>> _loadDeletedIds() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final list = prefs.getStringList(_deletedIdsKey) ?? [];
-      return list.toSet();
+      final raw = prefs.getString(_deletedIdsKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = await EncryptedPayload.readOrLegacy(raw) ?? '[]';
+        final list = _decodeList(decoded).map((e) => e.toString()).toSet();
+        if (!EncryptedPayload.isEncrypted(raw)) {
+          await _writeDeletedIds(list);
+        }
+        return list;
+      }
+
+      // Migrate the legacy plaintext StringList once.
+      final legacy = prefs.getStringList(_legacyDeletedIdsKey) ?? [];
+      if (legacy.isNotEmpty) {
+        final set = legacy.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+        await _writeDeletedIds(set);
+        await prefs.remove(_legacyDeletedIdsKey);
+        return set;
+      }
+      return {};
     } catch (_) {
       return {};
     }
+  }
+
+  Future<void> _writeDeletedIds(Set<String> ids) async {
+    final prefs = await SharedPreferences.getInstance();
+    final encrypted = await EncryptedPayload.encrypt(jsonEncode(ids.toList()));
+    await prefs.setString(_deletedIdsKey, encrypted);
   }
 
   Future<void> _recordDeletedIds(Iterable<String> ids) async {
     final clean = ids.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
     if (clean.isEmpty) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final set = (prefs.getStringList(_deletedIdsKey) ?? []).toSet();
+      final set = await _loadDeletedIds();
       set.addAll(clean);
-      await prefs.setStringList(_deletedIdsKey, set.toList());
+      await _writeDeletedIds(set);
     } catch (_) {}
   }
 
@@ -51,15 +83,12 @@ class ScreeningPersistenceService with ChangeNotifier {
     final clean = ids.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
     if (clean.isEmpty) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final set = (prefs.getStringList(_deletedIdsKey) ?? []).toSet();
+      final set = await _loadDeletedIds();
       bool changed = false;
       for (final id in clean) {
         if (set.remove(id)) changed = true;
       }
-      if (changed) {
-        await prefs.setStringList(_deletedIdsKey, set.toList());
-      }
+      if (changed) await _writeDeletedIds(set);
     } catch (_) {}
   }
 
@@ -215,6 +244,10 @@ class ScreeningPersistenceService with ChangeNotifier {
       'model_backend': state.analysis?.modelBackend ?? 'tflite-fp32',
       'created_at': DateTime.now().toUtc().toIso8601String(),
       'image_path': imagePath,
+      'referral_plan_json': state.referralPlan == null
+          ? null
+          : jsonEncode(state.referralPlan!.toJson()),
+      'specialist_email_sent': state.specialistEmailSent ? 1 : 0,
       'sync_state': 'offline',
     };
 
@@ -272,6 +305,8 @@ class ScreeningPersistenceService with ChangeNotifier {
         modelBackend: state.analysis?.modelBackend ?? 'tflite-fp32',
         capturedAtIso: record['created_at'] as String,
         imagePath: imagePath,
+        referralPlanJson: record['referral_plan_json']?.toString(),
+        specialistEmailSent: state.specialistEmailSent,
         enqueueForSync: true,
       );
     } catch (e) {
@@ -296,16 +331,9 @@ class ScreeningPersistenceService with ChangeNotifier {
 
     await _unmarkDeletedIds([sid, pid]);
 
-    // Tier 1: SharedPreferences (Immediate persistent client cache)
+    // Tier 1: encrypted SharedPreferences cache
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final existingJson = prefs.getString(_prefsKey);
-      List<dynamic> list = [];
-      if (existingJson != null && existingJson.isNotEmpty) {
-        try {
-          list = jsonDecode(existingJson) as List<dynamic>;
-        } catch (_) {}
-      }
+      final list = await _readPrefsList();
       final idx = list.indexWhere((item) =>
           item is Map &&
           ((sid.isNotEmpty && (item['local_screening_id'] == sid || item['screening_id'] == sid)) ||
@@ -317,72 +345,61 @@ class ScreeningPersistenceService with ChangeNotifier {
       } else {
         list.insert(0, updatedRecord);
       }
-      await prefs.setString(_prefsKey, jsonEncode(list));
+      await _writePrefsList(list);
     } catch (e) {
       debugPrint('Error updating SharedPreferences record: $e');
     }
 
-    // Tier 2: File Backup
+    // Tier 2: encrypted filesystem backup
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dir.path, _backupFileName));
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        List<dynamic> list = [];
-        try {
-          list = jsonDecode(content) as List<dynamic>;
-        } catch (_) {}
-        final idx = list.indexWhere((item) =>
-            item is Map &&
-            ((sid.isNotEmpty && (item['local_screening_id'] == sid || item['screening_id'] == sid)) ||
-             (pid.isNotEmpty && (item['local_patient_id'] == pid || item['patient_id'] == pid))));
-        if (idx >= 0) {
-          final existing = Map<String, dynamic>.from(list[idx] as Map);
-          existing.addAll(updatedRecord);
-          list[idx] = existing;
-        } else {
-          list.insert(0, updatedRecord);
-        }
-        await file.writeAsString(jsonEncode(list), flush: true);
+      final list = await _readFileBackupList();
+      final idx = list.indexWhere((item) =>
+          item is Map &&
+          ((sid.isNotEmpty && (item['local_screening_id'] == sid || item['screening_id'] == sid)) ||
+           (pid.isNotEmpty && (item['local_patient_id'] == pid || item['patient_id'] == pid))));
+      if (idx >= 0) {
+        final existing = Map<String, dynamic>.from(list[idx] as Map);
+        existing.addAll(updatedRecord);
+        list[idx] = existing;
       } else {
-        // First edit on an install whose backup file was never created:
-        // create it instead of silently dropping the update.
-        await _saveToFileBackup(updatedRecord);
+        list.insert(0, updatedRecord);
       }
+      await _writeFileBackupList(list);
     } catch (e) {
       debugPrint('Error updating File backup record: $e');
     }
 
-    // Tier 3: LocalStore SQLCipher / SQLite
+    // Tier 3: LocalStore vault (kept open for the app lifetime; closing and
+    // reopening on every read/write added latency and database churn).
     try {
       final password = await OfflineQueueService.resolveDbPassword();
       final store = await LocalStore.open(dbPassword: password);
-      try {
-        if (pid.isNotEmpty) {
-          await store.upsertPatient(
-            localPatientId: pid,
-            name: updatedRecord['name']?.toString(),
-            age: (updatedRecord['age'] as num?)?.toInt(),
-            gender: updatedRecord['gender']?.toString(),
-            phone: updatedRecord['phone']?.toString(),
-            village: updatedRecord['village']?.toString(),
-          );
-        }
-        final grade = (updatedRecord['dr_grade_num'] as num?)?.toInt();
-        final reviewReq = (updatedRecord['requires_human_review'] as num?)?.toInt() ??
-            (grade != null && grade > 0 ? 1 : 0);
-        await store.updateScreeningRecord(
-          localScreeningId: sid,
+      if (pid.isNotEmpty) {
+        await store.upsertPatient(
           localPatientId: pid,
-          drGradeNum: grade,
-          drLabel: updatedRecord['dr_label']?.toString(),
-          requiresHumanReview: reviewReq,
-          humanReviewReason: updatedRecord['human_review_reason']?.toString(),
-          eyeSide: updatedRecord['eye_side']?.toString(),
+          name: updatedRecord['name']?.toString(),
+          age: (updatedRecord['age'] as num?)?.toInt(),
+          gender: updatedRecord['gender']?.toString(),
+          phone: updatedRecord['phone']?.toString(),
+          village: updatedRecord['village']?.toString(),
         );
-      } finally {
-        await store.close();
       }
+      final grade = (updatedRecord['dr_grade_num'] as num?)?.toInt();
+      final reviewReq = (updatedRecord['requires_human_review'] as num?)?.toInt() ??
+          (grade != null && grade > 0 ? 1 : 0);
+      await store.updateScreeningRecord(
+        localScreeningId: sid,
+        localPatientId: pid,
+        drGradeNum: grade,
+        drLabel: updatedRecord['dr_label']?.toString(),
+        requiresHumanReview: reviewReq,
+        humanReviewReason: updatedRecord['human_review_reason']?.toString(),
+        eyeSide: updatedRecord['eye_side']?.toString(),
+        specialistEmailSent: updatedRecord.containsKey('specialist_email_sent')
+            ? ((updatedRecord['specialist_email_sent'] as num?)?.toInt() ?? 0) == 1
+            : null,
+        referralPlanJson: updatedRecord['referral_plan_json']?.toString(),
+      );
     } catch (e) {
       debugPrint('Error updating LocalStore record: $e');
     }
@@ -408,44 +425,31 @@ class ScreeningPersistenceService with ChangeNotifier {
       return false;
     }
 
-    // Tier 1: SharedPreferences
+    // Tier 1: encrypted SharedPreferences cache
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final existingJson = prefs.getString(_prefsKey);
-      if (existingJson != null && existingJson.isNotEmpty) {
-        final list = (jsonDecode(existingJson) as List<dynamic>)
-            .where((item) => item is! Map || !matches(item))
-            .toList();
-        await prefs.setString(_prefsKey, jsonEncode(list));
-      }
+      final list = await _readPrefsList();
+      await _writePrefsList(
+        list.where((item) => item is! Map || !matches(item)).toList(),
+      );
     } catch (e) {
       debugPrint('Error deleting from SharedPreferences: $e');
     }
 
-    // Tier 2: File Backup
+    // Tier 2: encrypted filesystem backup
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dir.path, _backupFileName));
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        final list = (jsonDecode(content) as List<dynamic>)
-            .where((item) => item is! Map || !matches(item))
-            .toList();
-        await file.writeAsString(jsonEncode(list));
-      }
+      final list = await _readFileBackupList();
+      await _writeFileBackupList(
+        list.where((item) => item is! Map || !matches(item)).toList(),
+      );
     } catch (e) {
       debugPrint('Error deleting from File backup: $e');
     }
 
-    // Tier 3: LocalStore SQLCipher
+    // Tier 3: LocalStore vault
     try {
       final password = await OfflineQueueService.resolveDbPassword();
       final store = await LocalStore.open(dbPassword: password);
-      try {
-        await store.deleteScreeningRecord(sid, localPatientId: pid);
-      } finally {
-        await store.close();
-      }
+      await store.deleteScreeningRecord(sid, localPatientId: pid);
     } catch (e) {
       debugPrint('Error deleting from LocalStore: $e');
     }
@@ -486,42 +490,38 @@ class ScreeningPersistenceService with ChangeNotifier {
     try {
       final password = await OfflineQueueService.resolveDbPassword();
       final store = await LocalStore.open(dbPassword: password);
-      try {
-        await store.upsertPatient(
-          localPatientId: pid,
-          name: record['name']?.toString(),
-          age: (record['age'] as num?)?.toInt(),
-          gender: record['gender']?.toString(),
-          phone: record['phone']?.toString(),
-          village: record['village']?.toString(),
-        );
-        final grade = (record['dr_grade_num'] as num?)?.toInt() ?? 0;
-        final label = (record['dr_label'] ??
-            (grade == 0
-                ? 'No Diabetic Retinopathy'
-                : 'Diabetic Retinopathy Grade $grade'))
-            .toString();
-        await store.recordScreening(
-          localScreeningId: sid,
-          localPatientId: pid,
-          eyeSide: (record['eye_side'] ?? 'Right').toString(),
-          cameraProfile: 'Manual Entry',
-          qualityGrade: 'GOOD',
-          recaptureAttemptCount: 0,
-          drGradeNum: grade,
-          drLabel: label,
-          confidence: (record['confidence'] as num?)?.toDouble() ?? 1.0,
-          requiresHumanReview: grade > 0,
-          humanReviewType: grade >= 3 ? 'URGENT' : (grade > 0 ? 'ROUTINE' : null),
-          humanReviewReason: record['human_review_reason']?.toString(),
-          modelBackend: 'manual-clinical-entry',
-          capturedAtIso: now,
-          imagePath: (record['image_path'] ?? '').toString(),
-          enqueueForSync: false,
-        );
-      } finally {
-        await store.close();
-      }
+      await store.upsertPatient(
+        localPatientId: pid,
+        name: record['name']?.toString(),
+        age: (record['age'] as num?)?.toInt(),
+        gender: record['gender']?.toString(),
+        phone: record['phone']?.toString(),
+        village: record['village']?.toString(),
+      );
+      final grade = (record['dr_grade_num'] as num?)?.toInt() ?? 0;
+      final label = (record['dr_label'] ??
+          (grade == 0
+              ? 'No Diabetic Retinopathy'
+              : 'Diabetic Retinopathy Grade $grade'))
+          .toString();
+      await store.recordScreening(
+        localScreeningId: sid,
+        localPatientId: pid,
+        eyeSide: (record['eye_side'] ?? 'Right').toString(),
+        cameraProfile: 'Manual Entry',
+        qualityGrade: 'GOOD',
+        recaptureAttemptCount: 0,
+        drGradeNum: grade,
+        drLabel: label,
+        confidence: (record['confidence'] as num?)?.toDouble() ?? 1.0,
+        requiresHumanReview: grade > 0,
+        humanReviewType: grade >= 3 ? 'URGENT' : (grade > 0 ? 'ROUTINE' : null),
+        humanReviewReason: record['human_review_reason']?.toString(),
+        modelBackend: 'manual-clinical-entry',
+        capturedAtIso: now,
+        imagePath: (record['image_path'] ?? '').toString(),
+        enqueueForSync: false,
+      );
     } catch (e) {
       debugPrint('Error saving manual record to LocalStore: $e');
     }
@@ -560,18 +560,14 @@ class ScreeningPersistenceService with ChangeNotifier {
     try {
       final password = await OfflineQueueService.resolveDbPassword();
       final store = await LocalStore.open(dbPassword: password);
-      try {
-        final dbRows = await store.recentScreenings(limit: limit);
-        for (final row in dbRows) {
-          final rowMap = Map<String, dynamic>.from(row);
-          if (isDeleted(rowMap)) continue;
-          final id = (row['local_screening_id'] ?? '').toString();
-          if (id.isNotEmpty && !recordsById.containsKey(id)) {
-            recordsById[id] = rowMap;
-          }
+      final dbRows = await store.recentScreenings(limit: limit);
+      for (final row in dbRows) {
+        final rowMap = Map<String, dynamic>.from(row);
+        if (isDeleted(rowMap)) continue;
+        final id = (row['local_screening_id'] ?? '').toString();
+        if (id.isNotEmpty && !recordsById.containsKey(id)) {
+          recordsById[id] = rowMap;
         }
-      } finally {
-        await store.close();
       }
     } catch (e) {
       debugPrint('LocalStore retrieval fallback: $e');
@@ -591,11 +587,16 @@ class ScreeningPersistenceService with ChangeNotifier {
       debugPrint('File backup retrieval error: $e');
     }
 
-    // Only seed sample records on a truly pristine app install (never initialized and no deletions)
+    // Only seed sample records when demo mode is explicitly enabled. A
+    // clinical install must never fabricate patients or diagnoses.
     final prefs = await SharedPreferences.getInstance();
-    final hasPrefsInitialized = prefs.containsKey(_prefsKey);
-    if (recordsById.isEmpty && !hasPrefsInitialized && deletedIds.isEmpty) {
-      debugPrint('Initial clean install — seeding default clinical sample records.');
+    final hasPrefsInitialized =
+        prefs.containsKey(_prefsKey) || prefs.containsKey(_legacyPrefsKey);
+    if (seedDemoRecords &&
+        recordsById.isEmpty &&
+        !hasPrefsInitialized &&
+        deletedIds.isEmpty) {
+      debugPrint('Demo mode — seeding sample clinical records.');
       final samples = sampleRecords;
       for (final s in samples) {
         if (!isDeleted(s)) {
@@ -603,7 +604,7 @@ class ScreeningPersistenceService with ChangeNotifier {
         }
       }
       try {
-        await prefs.setString(_prefsKey, jsonEncode(samples));
+        await _writePrefsList(samples);
       } catch (_) {}
     }
 
@@ -621,70 +622,102 @@ class ScreeningPersistenceService with ChangeNotifier {
     return list;
   }
 
-  // --- Private Tier Helpers ---
+  // --- Private Tier Helpers (all secondary tiers are encrypted) ---
 
   Future<void> _saveToPrefs(Map<String, dynamic> record) async {
-    final prefs = await SharedPreferences.getInstance();
-    final existingJson = prefs.getString(_prefsKey);
-    List<dynamic> list = [];
-    if (existingJson != null && existingJson.isNotEmpty) {
-      try {
-        list = jsonDecode(existingJson) as List<dynamic>;
-      } catch (_) {
-        list = [];
-      }
-    }
+    final list = await _readPrefsList();
     final screeningId = record['local_screening_id'];
-    list.removeWhere((item) => item is Map && item['local_screening_id'] == screeningId);
+    list.removeWhere(
+      (item) => item is Map && item['local_screening_id'] == screeningId,
+    );
     list.insert(0, record);
-    // Keep top 200
-    if (list.length > 200) list = list.sublist(0, 200);
-    await prefs.setString(_prefsKey, jsonEncode(list));
+    await _writePrefsList(list);
   }
 
-  Future<List<Map<String, dynamic>>> _loadFromPrefs() async {
+  Future<List<Map<String, dynamic>>> _loadFromPrefs() async =>
+      _toRecords(await _readPrefsList());
+
+  Future<List<dynamic>> _readPrefsList() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString(_prefsKey);
-    if (jsonStr == null || jsonStr.isEmpty) return const [];
-    try {
-      final raw = jsonDecode(jsonStr) as List<dynamic>;
-      return raw.whereType<Map<String, dynamic>>().toList();
-    } catch (_) {
-      return const [];
+    final current = prefs.getString(_prefsKey);
+    final legacy = current == null ? prefs.getString(_legacyPrefsKey) : null;
+    final raw = current ?? legacy;
+    if (raw == null || raw.isEmpty) return <dynamic>[];
+
+    final decoded = await EncryptedPayload.readOrLegacy(raw);
+    final list = _decodeList(decoded);
+    // Migrate plaintext/legacy cache to the encrypted key on first read.
+    if (current == null || !EncryptedPayload.isEncrypted(raw)) {
+      await _writePrefsList(list);
+      if (legacy != null) await prefs.remove(_legacyPrefsKey);
     }
+    return list;
+  }
+
+  Future<void> _writePrefsList(List<dynamic> list) async {
+    if (list.length > 200) list = list.sublist(0, 200);
+    final prefs = await SharedPreferences.getInstance();
+    final encrypted = await EncryptedPayload.encrypt(jsonEncode(list));
+    await prefs.setString(_prefsKey, encrypted);
   }
 
   Future<void> _saveToFileBackup(Map<String, dynamic> record) async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dir.path, _backupFileName));
-      List<dynamic> list = [];
-      if (await file.exists()) {
-        try {
-          final content = await file.readAsString();
-          list = jsonDecode(content) as List<dynamic>;
-        } catch (_) {
-          list = [];
-        }
-      }
+      final list = await _readFileBackupList();
       final screeningId = record['local_screening_id'];
-      list.removeWhere((item) => item is Map && item['local_screening_id'] == screeningId);
+      list.removeWhere(
+        (item) => item is Map && item['local_screening_id'] == screeningId,
+      );
       list.insert(0, record);
-      if (list.length > 200) list = list.sublist(0, 200);
-      await file.writeAsString(jsonEncode(list));
-    } catch (_) {}
+      await _writeFileBackupList(list);
+    } catch (e) {
+      debugPrint('Encrypted backup write failed: $e');
+    }
   }
 
-  Future<List<Map<String, dynamic>>> _loadFromFileBackup() async {
+  Future<List<Map<String, dynamic>>> _loadFromFileBackup() async =>
+      _toRecords(await _readFileBackupList());
+
+  Future<List<dynamic>> _readFileBackupList() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dir.path, _backupFileName));
+    final legacyFile = File(p.join(dir.path, 'drishti_screenings_backup.json'));
+    if (!await file.exists() && !await legacyFile.exists()) {
+      return <dynamic>[];
+    }
+    final source = await file.exists() ? file : legacyFile;
+    final content = await source.readAsString();
+    final decoded = await EncryptedPayload.readOrLegacy(content);
+    final list = _decodeList(decoded);
+    if (source.path == legacyFile.path || !EncryptedPayload.isEncrypted(content)) {
+      await _writeFileBackupList(list);
+      if (source.path == legacyFile.path && await legacyFile.exists()) {
+        await legacyFile.delete();
+      }
+    }
+    return list;
+  }
+
+  Future<void> _writeFileBackupList(List<dynamic> list) async {
+    if (list.length > 200) list = list.sublist(0, 200);
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dir.path, _backupFileName));
+    final encrypted = await EncryptedPayload.encrypt(jsonEncode(list));
+    await file.writeAsString(encrypted, flush: true);
+  }
+
+  List<Map<String, dynamic>> _toRecords(List<dynamic> raw) => raw
+      .whereType<Map>()
+      .map((e) => Map<String, dynamic>.from(e))
+      .toList();
+
+  List<dynamic> _decodeList(String? jsonStr) {
+    if (jsonStr == null || jsonStr.isEmpty) return <dynamic>[];
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dir.path, _backupFileName));
-      if (!await file.exists()) return const [];
-      final content = await file.readAsString();
-      final raw = jsonDecode(content) as List<dynamic>;
-      return raw.whereType<Map<String, dynamic>>().toList();
+      final raw = jsonDecode(jsonStr);
+      return raw is List ? raw : <dynamic>[];
     } catch (_) {
-      return const [];
+      return <dynamic>[];
     }
   }
 }

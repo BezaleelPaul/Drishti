@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../l10n/lang_scope.dart';
 import '../models/screening_models.dart';
+import '../models/specialist_models.dart';
 import '../services/db/screening_persistence_service.dart';
 import '../services/pdf/clinical_pdf_generator.dart';
 import '../services/platform/platform_files.dart';
@@ -154,7 +156,20 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
       } catch (_) {}
     }
 
+    ReferralPlan? plan;
+    final rawPlan = r['referral_plan_json'];
+    if (rawPlan is Map) {
+      plan = ReferralPlan.tryParse(rawPlan);
+    } else if (rawPlan is String && rawPlan.isNotEmpty) {
+      try {
+        plan = ReferralPlan.tryParse(jsonDecode(rawPlan));
+      } catch (_) {}
+    }
+
     return FlowState(
+      referralPlan: plan,
+      specialistEmailSent:
+          ((r['specialist_email_sent'] as num?)?.toInt() ?? 0) == 1,
       patient: PatientModel(
         patientId: pid,
         name: name,

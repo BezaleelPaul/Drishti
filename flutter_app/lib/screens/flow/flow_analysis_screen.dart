@@ -6,7 +6,6 @@ import '../../models/screening_models.dart';
 import '../../services/api_service.dart';
 import '../../services/db/screening_persistence_service.dart';
 import '../../services/ml/on_device_pipeline.dart';
-import '../../services/smtp/smtp_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/fx/particle_field.dart';
 import '../../widgets/orbit/orbit.dart';
@@ -174,8 +173,9 @@ class _FlowAnalysisScreenState extends State<FlowAnalysisScreen> {
       // Automatically persist to local SQLite/SQLCipher database so it appears in Patient History
       unawaited(ScreeningPersistenceService().saveScreening(widget.state));
 
-      // Automated SMTP referral to specialist if DR is detected
-      unawaited(SmtpService().handleScreeningCompleted(widget.state));
+      // PHI is never emailed from the analysis screen. The referral screen
+      // computes the offline specialist route and sends the dossier only
+      // after the patient's explicit consent.
 
       // Brief transition delay so the user experiences the calm completion state
       Future.delayed(const Duration(milliseconds: 700), () {

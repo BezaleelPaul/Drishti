@@ -89,7 +89,12 @@ class _FlowReportScreenState extends State<FlowReportScreen> {
     final config = await smtp.loadConfig();
     if (!mounted) return;
 
-    final emailController = TextEditingController(text: config.specialistEmail);
+    final routed = widget.state.referralPlan?.primary.specialist;
+    final emailController = TextEditingController(
+      text: (routed?.email.trim().isNotEmpty ?? false)
+          ? routed!.email.trim()
+          : config.specialistEmail,
+    );
     final formKey = GlobalKey<FormState>();
 
     final shouldSend = await showDialog<bool>(
@@ -214,10 +219,12 @@ class _FlowReportScreenState extends State<FlowReportScreen> {
       final result = await smtp.sendSpecialistAlert(
         state: widget.state,
         overrideRecipient: targetRecipient,
+        addressedTo: routed,
       );
 
       if (!mounted) return;
       if (result.success) {
+        widget.state.specialistEmailSent = true;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF065F46),

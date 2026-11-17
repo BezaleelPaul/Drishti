@@ -1,9 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../services/db/local_store.dart';
+import '../../services/offline_queue_service.dart';
 import '../../services/smtp/smtp_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/scanner/scanner_theme.dart';
+import 'specialist_routing_screen.dart';
 
 class AdminPortalScreen extends StatefulWidget {
   const AdminPortalScreen({super.key});
@@ -25,7 +28,7 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
   late final TextEditingController _testRecipient;
 
   bool _useSsl = true;
-  bool _autoSendOnDr = true;
+  bool _autoSendOnDr = false;
   int _minGrade = 1;
   bool _obscurePassword = true;
 
@@ -33,6 +36,12 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
   bool _saving = false;
   String? _testResult;
   String? _testTranscript;
+
+  bool _syncLoading = false;
+  bool _syncPersisted = false;
+  int _queuedScreenings = 0;
+  int _queuedPatients = 0;
+  int _pendingSync = 0;
 
   @override
   void initState() {
@@ -52,6 +61,32 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
     });
 
     _loadExistingConfig();
+    _loadSyncHealth();
+  }
+
+  Future<void> _loadSyncHealth() async {
+    if (_syncLoading) return;
+    setState(() => _syncLoading = true);
+    try {
+      final queue = OfflineQueueService.instance;
+      final entries = await queue.restoreAll();
+      var pending = 0;
+      try {
+        final store = await LocalStore.open(
+          dbPassword: await OfflineQueueService.resolveDbPassword(),
+        );
+        pending = await store.pendingSyncCount();
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _syncPersisted = queue.isPersisted;
+        _queuedScreenings = entries.screenings.length;
+        _queuedPatients = entries.patients.length;
+        _pendingSync = pending;
+      });
+    } finally {
+      if (mounted) setState(() => _syncLoading = false);
+    }
   }
 
   Future<void> _loadExistingConfig() async {
@@ -255,11 +290,132 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Whenever a patient is diagnosed with Diabetic Retinopathy, the system automatically dispatches the full clinical report and fundus photograph to the specialist doctor.',
+                                'When automatic dispatch is explicitly enabled, the clinical report and fundus photograph are emailed to the routed specialist after consent. Otherwise dispatch stays manual.',
                                 style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                               ),
                             ],
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SpecialistRoutingScreen(),
+                      ),
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0B2239),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.alt_route,
+                              color: ScannerHUDTheme.neonCyan, size: 26),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Specialist Routing Directory',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Configure referral destinations and the screening-centre origin used by the offline Dijkstra router.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right,
+                              color: ScannerHUDTheme.neonCyan),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF1E293B)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _syncPersisted
+                              ? Icons.cloud_done_outlined
+                              : Icons.cloud_off_outlined,
+                          color: _syncPersisted
+                              ? const Color(0xFF34D399)
+                              : const Color(0xFFF59E0B),
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'SYNC & QUEUE HEALTH',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${_syncPersisted ? "Durable queue active" : "Memory-only queue"}'
+                                ' · $_queuedScreenings screening(s) queued'
+                                ' · $_queuedPatients patient(s)'
+                                ' · $_pendingSync pending sync receipt(s)',
+                                style: const TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 11,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Refresh queue health',
+                          onPressed: _syncLoading ? null : _loadSyncHealth,
+                          icon: _syncLoading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: ScannerHUDTheme.neonCyan,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.refresh,
+                                  color: ScannerHUDTheme.neonCyan,
+                                  size: 18,
+                                ),
                         ),
                       ],
                     ),

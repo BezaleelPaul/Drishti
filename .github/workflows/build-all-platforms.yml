@@ -19,7 +19,7 @@ on:
       release_tag:
         description: "Release tag to publish (defaults to the latest v* tag)"
         required: false
-        default: "v1.9.2"
+        default: "v1.10.0"
         type: string
 
 permissions:
@@ -31,6 +31,7 @@ concurrency:
 
 env:
   FLUTTER_CHANNEL: stable
+  FLUTTER_VERSION: 3.50.0
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -48,6 +49,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Install Flutter Dependencies
@@ -70,7 +72,11 @@ jobs:
             test/offline_queue_service_test.dart \
             test/clinical_pdf_generator_test.dart \
             test/quality_gate_test.dart \
-            test/deidentify_test.dart
+            test/deidentify_test.dart \
+            test/encrypted_payload_test.dart \
+            test/specialist_routing_test.dart \
+            test/smtp_service_test.dart \
+            test/flow_dark_restyle_test.dart
 
   # ---------------------------------------------------------------------------
   # 1. Android Release APK
@@ -78,6 +84,9 @@ jobs:
   build-android:
     name: Build Android Release APK
     needs: quality
+    # Fork PRs cannot read repository secrets; the signed Android job is
+    # skipped there instead of failing. Internal PRs/tags/main always run.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -94,15 +103,27 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
-      - name: Configure Android Release Signing
+      - name: Restore Android Release Signing Key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::Android signing secrets are missing (ANDROID_KEYSTORE_BASE64)."
+            exit 1
+          fi
+          KEYSTORE="$RUNNER_TEMP/drishti-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
           cat << EOF > flutter_app/android/key.properties
-          storeFile=$GITHUB_WORKSPACE/mobile_keystore/drishti-release.jks
-          storePassword=drishti123
-          keyAlias=drishti
-          keyPassword=drishti123
+          storeFile=$KEYSTORE
+          storePassword=$ANDROID_STORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
           EOF
 
       - name: Accept Android SDK Licenses
@@ -112,19 +133,21 @@ jobs:
         working-directory: flutter_app
         run: flutter pub get
 
-      - name: Build Android Release APK
+      - name: Build Android Release APKs (per ABI)
         working-directory: flutter_app
-        run: flutter build apk --release --android-skip-build-dependency-validation
+        run: flutter build apk --release --split-per-abi --android-skip-build-dependency-validation
 
-      - name: Stage Android Release Artifact
+      - name: Stage Android Release Artifacts
         run: |
-          cp flutter_app/build/app/outputs/flutter-apk/app-release.apk Drishti_mobile_release.apk
+          cp flutter_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk Drishti_mobile_arm64-v8a_release.apk
+          cp flutter_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk Drishti_mobile_armeabi-v7a_release.apk
+          cp flutter_app/build/app/outputs/flutter-apk/app-x86_64-release.apk Drishti_mobile_x86_64_release.apk
 
-      - name: Upload Android APK Artifact
+      - name: Upload Android APK Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Drishti_mobile_release
-          path: Drishti_mobile_release.apk
+          path: Drishti_mobile_*-release.apk
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -148,6 +171,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Enable Linux Desktop
@@ -197,6 +221,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Enable Windows Desktop
@@ -246,6 +271,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Enable macOS Desktop
@@ -298,6 +324,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Install Flutter Dependencies
@@ -365,7 +392,7 @@ jobs:
           elif [[ -n "${{ github.event.inputs.release_tag }}" ]]; then
             TAG_NAME="${{ github.event.inputs.release_tag }}"
           else
-            TAG_NAME="v1.9.2"
+            TAG_NAME="v1.10.0"
           fi
           echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
@@ -379,12 +406,15 @@ jobs:
       - name: Version Release Asset Names
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
-          mv Drishti_mobile_release.apk "Drishti_mobile_${TAG}.apk"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            mv "Drishti_mobile_${abi}_release.apk" "Drishti_mobile_${TAG}_${abi}.apk"
+          done
           mv Drishti_linux_release.tar.gz "Drishti_linux_${TAG}.tar.gz"
           mv Drishti_windows_release.zip "Drishti_windows_${TAG}.zip"
           mv Drishti_macos_release.zip "Drishti_macos_${TAG}.zip"
           mv Drishti_ios_unsigned_release.zip "Drishti_ios_unsigned_${TAG}.zip"
-          ls -lh Drishti_*
+          sha256sum Drishti_* > SHA256SUMS.txt
+          ls -lh Drishti_* SHA256SUMS.txt
 
       - name: Upload Binaries to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -399,5 +429,6 @@ jobs:
             Drishti_windows_v*.zip
             Drishti_macos_v*.zip
             Drishti_ios_unsigned_v*.zip
+            SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

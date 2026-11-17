@@ -4,8 +4,10 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/specialist_models.dart';
 import '../../screens/flow/flow_state.dart';
 import '../pdf/clinical_pdf_generator.dart';
+import '../security/secret_store.dart';
 
 class SmtpConfig {
   String senderEmail;
@@ -26,7 +28,7 @@ class SmtpConfig {
     this.useSsl = true,
     this.specialistEmail = '',
     this.senderName = 'Drishti AI Screening System',
-    this.autoSendOnDr = true,
+    this.autoSendOnDr = false,
     this.minSeverityGrade = 1,
   });
 
@@ -76,15 +78,25 @@ class SmtpService with ChangeNotifier {
   Future<SmtpConfig> loadConfig() async {
     if (_cachedConfig != null) return _cachedConfig!;
     final prefs = await SharedPreferences.getInstance();
+
+    var password = await SecretStore.read(_kPassword) ?? '';
+    // Migrate a legacy plaintext password once, then remove it.
+    final legacy = prefs.getString(_kPassword);
+    if (password.isEmpty && legacy != null && legacy.isNotEmpty) {
+      password = legacy;
+      await SecretStore.write(_kPassword, legacy);
+    }
+    if (legacy != null) await prefs.remove(_kPassword);
+
     _cachedConfig = SmtpConfig(
       senderEmail: prefs.getString(_kSenderEmail) ?? '',
-      senderPassword: prefs.getString(_kPassword) ?? '',
+      senderPassword: password,
       smtpHost: prefs.getString(_kHost) ?? 'smtp.gmail.com',
       smtpPort: prefs.getInt(_kPort) ?? 465,
       useSsl: prefs.getBool(_kUseSsl) ?? true,
       specialistEmail: prefs.getString(_kSpecialistEmail) ?? '',
       senderName: prefs.getString(_kSenderName) ?? 'Drishti AI Screening System',
-      autoSendOnDr: prefs.getBool(_kAutoSend) ?? true,
+      autoSendOnDr: prefs.getBool(_kAutoSend) ?? false,
       minSeverityGrade: prefs.getInt(_kMinGrade) ?? 1,
     );
     return _cachedConfig!;
@@ -94,7 +106,9 @@ class SmtpService with ChangeNotifier {
     _cachedConfig = config;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSenderEmail, config.senderEmail.trim());
-    await prefs.setString(_kPassword, config.senderPassword.trim());
+    // Credentials go to the OS keychain, never to SharedPreferences.
+    await SecretStore.write(_kPassword, config.senderPassword.trim());
+    await prefs.remove(_kPassword);
     await prefs.setString(_kHost, config.smtpHost.trim());
     await prefs.setInt(_kPort, config.smtpPort);
     await prefs.setBool(_kUseSsl, config.useSsl);
@@ -141,6 +155,7 @@ class SmtpService with ChangeNotifier {
   Future<SmtpResult> sendSpecialistAlert({
     required FlowState state,
     String? overrideRecipient,
+    Specialist? addressedTo,
   }) async {
     final config = await loadConfig();
 
@@ -167,7 +182,11 @@ class SmtpService with ChangeNotifier {
     final label = state.analysis?.drLabel ?? 'Diabetic Retinopathy Grade $grade';
     final eye = state.eyeSide;
     final confidence = ((state.analysis?.predictionScore ?? 0.95) * 100).toStringAsFixed(1);
-    final subject = '[DRISHTI CLINICAL ALERT] DR Report: ${p.name} (${p.patientId}) — Grade $grade ($label)';
+    final recipientLabel = addressedTo == null
+        ? 'Specialist'
+        : '${addressedTo.displayName} · ${addressedTo.facilityName}';
+    final subject =
+        '[DRISHTI CLINICAL ALERT] $recipientLabel — ${p.name} (${p.patientId}) — Grade $grade ($label)';
 
     final htmlBody = _buildClinicalHtml(
       patient: p,
@@ -182,6 +201,10 @@ class SmtpService with ChangeNotifier {
               ? 'Urgent specialist intervention recommended within 48-72 hours.'
               : 'Referral to ophthalmology clinic within 1-2 weeks.'),
       timestampIso: DateTime.now().toLocal().toString().split('.').first,
+      addressedToName: addressedTo?.displayName,
+      addressedToFacility: addressedTo?.fullAddress,
+      routingSummary: state.referralPlan?.summary,
+      greeting: addressedTo == null ? 'Dear Specialist,' : 'Dear ${addressedTo.displayName},',
     );
 
     // Generate official clinical A4 PDF dossier
@@ -200,7 +223,8 @@ class SmtpService with ChangeNotifier {
       imageBytes: state.imageBytes,
       imageFilename: 'fundus_${p.patientId}_$eye.jpg',
       pdfBytes: pdfBytes,
-      pdfFilename: 'Drishti_Report_${p.name.replaceAll(" ", "_")}_${p.patientId}.pdf',
+      pdfFilename:
+          'Drishti_Report_${ClinicalPdfGenerator.reportFileStem(state)}.pdf',
     );
   }
 
@@ -493,6 +517,10 @@ class SmtpService with ChangeNotifier {
     required String specialistNotes,
     required String recommendation,
     required String timestampIso,
+    String? addressedToName,
+    String? addressedToFacility,
+    String? routingSummary,
+    String greeting = 'Dear Specialist,',
   }) {
     final gradeColor = grade >= 3
         ? '#ef4444'
@@ -525,9 +553,18 @@ class SmtpService with ChangeNotifier {
       </table>
     </div>
 
+    ${addressedToName != null && addressedToName.isNotEmpty ? '''
+    <div style="padding: 16px 24px; background: #082f49; border-bottom: 1px solid #0e7490;">
+      <p style="margin: 0; color: #67e8f9; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Referral addressed to</p>
+      <p style="margin: 4px 0 0 0; color: #f8fafc; font-size: 16px; font-weight: 800;">$addressedToName &bull; ${addressedToFacility ?? ''}</p>
+      ${routingSummary != null && routingSummary.isNotEmpty ? '<p style="margin: 6px 0 0 0; color: #bae6fd; font-size: 12px;">$routingSummary</p>' : ''}
+    </div>
+    ''' : ''}
+
     <!-- Diagnosis Highlight Card -->
     <div style="padding: 24px; background: #131d36; border-bottom: 1px solid #1e293b;">
       <p style="margin: 0 0 6px 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; font-weight: 700;">AI Screening Result &bull; $eyeSide Eye (O${eyeSide == 'Right' ? 'D' : 'S'})</p>
+      <p style="margin: 0 0 12px 0; color: #e2e8f0; font-size: 14px; font-weight: 600;">$greeting</p>
       <h1 style="margin: 0 0 10px 0; color: $gradeColor; font-size: 24px;">Grade $grade: $gradeLabel</h1>
       <table style="width: 100%; font-size: 13px;">
         <tr>

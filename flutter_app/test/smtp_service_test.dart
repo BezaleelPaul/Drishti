@@ -17,7 +17,7 @@ void main() {
       expect(config.smtpHost, 'smtp.gmail.com');
       expect(config.smtpPort, 465);
       expect(config.useSsl, isTrue);
-      expect(config.autoSendOnDr, isTrue);
+      expect(config.autoSendOnDr, isFalse);
       expect(config.minSeverityGrade, 1);
       expect(config.isConfigured, isFalse);
     });
@@ -32,7 +32,7 @@ void main() {
       expect(config.isConfigured, isTrue);
     });
 
-    test('loadConfig and saveConfig persist to SharedPreferences', () async {
+    test('loadConfig and saveConfig persist without plaintext password', () async {
       final service = SmtpService();
       final config = SmtpConfig(
         senderEmail: 'dr.sharma@health.gov.in',
@@ -47,6 +47,8 @@ void main() {
       );
 
       await service.saveConfig(config);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('drishti_smtp_password'), isNull);
       final loaded = await service.loadConfig();
 
       expect(loaded.senderEmail, 'dr.sharma@health.gov.in');
