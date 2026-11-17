@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../screens/flow/flow_state.dart';
 import '../ml/pipeline/local_explanation_generator.dart';
+import '../platform/app_paths.dart';
 
 /// Hospital-grade clinical PDF screening dossier generator for Drishti.
 /// Generates A4 clinical documents compliant with Indian Tele-Ophthalmology standards.
@@ -563,33 +565,47 @@ class ClinicalPdfGenerator {
     return await pdf.save();
   }
 
-  /// Saves the report PDF directly to disk (e.g. ~/Downloads or App Support).
-  /// Returns the saved absolute file path.
+  /// Saves the report PDF to a writable, user-visible location on every OS.
+  ///
+  /// Desktop prefers `~/Downloads` (matching the existing macOS behaviour) and
+  /// falls back to the documents/support containers when sandboxing or a
+  /// read-only profile prevents the write. Android/iOS write into the app
+  /// documents directory, which is exposed through the iOS Files app and can
+  /// be opened with the native viewer from the screening screen.
   static Future<String> saveReportToFile(FlowState state) async {
     final bytes = await generateReportPdf(state);
-    final p = state.patient;
+    final patient = state.patient;
     final eye = state.eyeSide;
-    final screeningId = state.analysis?.screeningId ?? 'SCR-${DateTime.now().millisecondsSinceEpoch}';
+    final screeningId = state.analysis?.screeningId ??
+        'SCR-${DateTime.now().millisecondsSinceEpoch}';
 
-    // Priority path: User's Downloads directory if accessible across platforms
-    String saveDir = Directory.current.path;
-    try {
-      final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-      if (home != null) {
-        final downloads = Directory('$home/Downloads');
-        if (downloads.existsSync()) {
-          saveDir = downloads.path;
-        } else {
-          saveDir = home;
+    final safeName = patient.name
+        .trim()
+        .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    final filename =
+        'Drishti_Report_${safeName.isEmpty ? 'Patient' : safeName}_${screeningId}_$eye.pdf';
+
+    Object? lastError;
+    for (final dir in await AppPaths.reportDirectories()) {
+      try {
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
         }
+        final targetFile = File(p.join(dir.path, filename));
+        await targetFile.writeAsBytes(bytes, flush: true);
+        debugPrint('PDF saved to: ${targetFile.path}');
+        return targetFile.path;
+      } catch (e) {
+        lastError = e;
+        debugPrint('PDF save failed in ${dir.path}: $e');
       }
-    } catch (_) {}
-
-    final filename = 'Drishti_Report_${p.name.replaceAll(" ", "_")}_${screeningId}_$eye.pdf';
-    final targetFile = File('$saveDir/$filename');
-    await targetFile.writeAsBytes(bytes);
-    debugPrint('PDF saved to: ${targetFile.path}');
-    return targetFile.path;
+    }
+    throw FileSystemException(
+      'No writable report directory was available for this device',
+      null,
+      lastError is OSError ? lastError : null,
+    );
   }
 
   static pw.Widget _pdfField(

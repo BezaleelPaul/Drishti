@@ -100,7 +100,7 @@ class AboutScreen extends StatelessWidget {
                                     ),
                                     SizedBox(width: 8),
                                     Text(
-                                      'v1.9.1',
+                                      'v1.9.2',
                                       style: TextStyle(
                                         color: ScannerHUDTheme.neonCyan,
                                         fontSize: 11,

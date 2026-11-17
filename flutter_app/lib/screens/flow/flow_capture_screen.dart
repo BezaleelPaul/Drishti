@@ -1,8 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../l10n/lang_scope.dart';
@@ -10,6 +7,7 @@ import '../../l10n/evidence_strings.dart';
 import '../../models/screening_models.dart';
 import '../../services/api_service.dart';
 import '../../services/ml/on_device_pipeline.dart';
+import '../../services/platform/platform_files.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/orbit/orbit.dart';
 import '../../widgets/review/zoomable_fundus_screen.dart';
@@ -45,9 +43,7 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb && Platform.isMacOS) {
-      unawaited(FilePicker.skipEntitlementsChecks().catchError((_) {}));
-    }
+    unawaited(PlatformFileService.preparePicker());
     // Fresh operator session starts EMPTY at the viewfinder ('RETINAL
     // VIEWFINDER READY'): a bundled sample is loaded only by explicit
     // dropdown selection (demo/kiosk mode). A restored in-flight capture
@@ -82,36 +78,19 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
 
   Future<void> _upload() async {
     try {
-      if (!kIsWeb && Platform.isMacOS) {
-        await FilePicker.skipEntitlementsChecks().catchError((_) {});
-      }
-      final files = await FilePicker.pickFiles(
+      final result = await PlatformFileService.pickFundusImage(
         dialogTitle: 'Select a fundus photo',
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png'],
       );
-      if (files.isEmpty) return; // user cancelled the picker
+      if (result.cancelled) return;
       if (!mounted) return;
-      final picked = files.first;
-      Uint8List? bytes;
-      if (picked.path != null && picked.path!.isNotEmpty) {
-        final f = File(picked.path!);
-        if (await f.exists()) {
-          try {
-            bytes = await f.readAsBytes();
-          } catch (_) {}
-        }
-      }
-      bytes ??= await picked.readAsBytes();
-      if (bytes.isEmpty) {
-        if (!mounted) return;
+      final bytes = result.bytes;
+      if (bytes == null || bytes.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.ev('capture_empty_file'))),
         );
         return;
       }
-      final filename = picked.name.isNotEmpty ? picked.name : 'camera_capture.jpg';
-      await _useCapturedBytes(bytes, filename);
+      await _useCapturedBytes(bytes, result.name);
     } catch (e) {
       debugPrint('Photo picker failed: $e');
       if (!mounted) return;

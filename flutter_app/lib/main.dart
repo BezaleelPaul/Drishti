@@ -1,8 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'l10n/lang_scope.dart';
@@ -10,14 +7,14 @@ import 'screens/splash/futuristic_splash_screen.dart';
 import 'services/api_service.dart';
 import 'services/db/local_store.dart';
 import 'services/offline_queue_service.dart';
+import 'services/platform/platform_files.dart';
 import 'services/referral_uplink_service.dart';
 import 'theme/figma_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  if (!kIsWeb && Platform.isMacOS) {
-    unawaited(FilePicker.skipEntitlementsChecks().catchError((_) {}));
-  }
+  // macOS entitlement pre-flight; a no-op on every other platform.
+  unawaited(PlatformFileService.preparePicker());
   // Ticket B-2: open the durable offline queue (SQLCipher, key in Keystore)
   // and rehydrate the in-memory mirrors. On any failure the queue degrades
   // to memory-only with an honest isPersisted=false flag — the app never

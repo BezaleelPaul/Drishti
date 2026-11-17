@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../l10n/lang_scope.dart';
 import '../../services/db/screening_persistence_service.dart';
 import '../../services/pdf/clinical_pdf_generator.dart';
+import '../../services/platform/platform_files.dart';
 import '../../services/smtp/smtp_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/scanner/scanner.dart';
@@ -39,13 +39,10 @@ class _FlowReportScreenState extends State<FlowReportScreen> {
       final savedPath = await ClinicalPdfGenerator.saveReportToFile(widget.state);
       if (!mounted) return;
 
-      // On macOS/desktop, automatically open in Preview/default PDF viewer
-      try {
-        if (Platform.isMacOS) {
-          await Process.run('open', [savedPath]);
-        }
-      } catch (_) {}
-
+      // Open with the native PDF handler on every OS (Preview on macOS,
+      // xdg-open on Linux, ShellExecute on Windows, document viewer on
+      // Android/iOS). Failure is non-fatal: the path is always reported.
+      final opened = await PlatformFileService.openFile(savedPath);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -62,15 +59,15 @@ class _FlowReportScreenState extends State<FlowReportScreen> {
               ),
             ],
           ),
-          action: SnackBarAction(
-            label: 'Open',
-            textColor: ScannerHUDTheme.neonCyan,
-            onPressed: () {
-              if (Platform.isMacOS) {
-                Process.run('open', [savedPath]);
-              }
-            },
-          ),
+          action: opened
+              ? null
+              : SnackBarAction(
+                  label: 'Open',
+                  textColor: ScannerHUDTheme.neonCyan,
+                  onPressed: () {
+                    unawaited(PlatformFileService.openFile(savedPath));
+                  },
+                ),
           duration: const Duration(seconds: 6),
         ),
       );

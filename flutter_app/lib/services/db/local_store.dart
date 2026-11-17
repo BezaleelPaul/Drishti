@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'package:sqflite_common/sqlite_api.dart';
+
+import 'database_backend.dart';
 
 /// Encrypted local store (Ticket B-1). All PHI lives here and NEVER leaves
 /// the device without the consent flow (docs/PRIVACY.md contract).
@@ -22,37 +24,41 @@ class LocalStore {
   final Database _db;
   static LocalStore? _instance;
 
+  /// True when the host can encrypt the database at rest (Android/iOS/macOS).
+  /// Windows and Linux use the SQLite FFI backend with the same schema.
+  static bool get isEncryptedAtRest => DatabaseBackend.supportsEncryption;
+
   static Future<LocalStore> open({required String dbPassword}) async {
     if (_instance != null) return _instance!;
     final dir = await getApplicationDocumentsDirectory();
     final path = p.join(dir.path, _dbName);
+
+    Future<void> configure(Database d) async {
+      await d.execute('PRAGMA journal_mode=WAL');
+      await d.execute('PRAGMA foreign_keys=ON');
+      await d.execute('PRAGMA busy_timeout=30000');
+      await d.execute('PRAGMA synchronous=NORMAL');
+    }
+
     try {
-      final db = await openDatabase(
-        path,
+      final db = await DatabaseBackend.open(
+        path: path,
         password: dbPassword,
         version: _schemaVersion,
-        onConfigure: (d) async {
-          await d.execute('PRAGMA journal_mode=WAL');
-          await d.execute('PRAGMA foreign_keys=ON');
-          await d.execute('PRAGMA busy_timeout=30000');
-          await d.execute('PRAGMA synchronous=NORMAL');
-        },
+        onConfigure: configure,
         onCreate: _createSchema,
         onUpgrade: _migrate,
       );
       _instance = LocalStore._(db);
       return _instance!;
     } catch (e) {
-      debugPrint('LocalStore encrypted open failed ($e), falling back to unencrypted SQLite...');
-      final db = await openDatabase(
-        path,
+      debugPrint(
+        'LocalStore encrypted open failed ($e), falling back to unencrypted SQLite...',
+      );
+      final db = await DatabaseBackend.open(
+        path: path,
         version: _schemaVersion,
-        onConfigure: (d) async {
-          await d.execute('PRAGMA journal_mode=WAL');
-          await d.execute('PRAGMA foreign_keys=ON');
-          await d.execute('PRAGMA busy_timeout=30000');
-          await d.execute('PRAGMA synchronous=NORMAL');
-        },
+        onConfigure: configure,
         onCreate: _createSchema,
         onUpgrade: _migrate,
       );
@@ -63,8 +69,8 @@ class LocalStore {
 
   /// Test seam: open against an explicit path (in-memory for widget tests).
   static Future<LocalStore> openForTest(String path, String dbPassword) async {
-    final db = await openDatabase(
-      path,
+    final db = await DatabaseBackend.open(
+      path: path,
       password: dbPassword,
       version: _schemaVersion,
       onConfigure: (d) async {
@@ -499,9 +505,8 @@ class LocalStore {
   /// Seeds clinical PHC sample historical records if the device database is empty,
   /// ensuring the operator always has visible reference history from day one.
   Future<void> seedSampleScreeningsIfEmpty() async {
-    final count = Sqflite.firstIntValue(
-      await _db.rawQuery('SELECT COUNT(*) FROM screenings'),
-    ) ?? 0;
+    final rows = await _db.rawQuery('SELECT COUNT(*) AS c FROM screenings');
+    final count = (rows.isEmpty ? 0 : (rows.first['c'] as num?)?.toInt()) ?? 0;
     if (count > 0) return;
 
     final now = DateTime.now().toUtc();

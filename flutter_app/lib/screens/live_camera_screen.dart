@@ -3,13 +3,38 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../l10n/lang_scope.dart';
+import '../services/platform/platform_files.dart';
 import '../theme/figma_theme.dart';
 import '../widgets/scanner/scanner_theme.dart';
+
+/// A desktop video source resolved for `ffmpeg`.
+///
+/// Linux uses V4L2 (`/dev/video*`), macOS uses AVFoundation device indexes,
+/// and Windows uses a DirectShow device name. Keeping the prefix/device split
+/// lets each platform receive the correct input-option ordering.
+class _DesktopVideoSource {
+  const _DesktopVideoSource({
+    required this.label,
+    required this.formatArgs,
+    required this.device,
+  });
+
+  final String label;
+  final List<String> formatArgs;
+  final String device;
+
+  List<String> inputArgs(String size) => [
+        ...formatArgs,
+        '-video_size',
+        size,
+        '-i',
+        device,
+      ];
+}
 
 /// Live fundus capture with cross-platform support.
 ///
@@ -31,12 +56,14 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
   bool _capturing = false;
   String? _error;
 
-  // Desktop webcam streaming (Linux / V4L2)
+  // Desktop webcam streaming (Linux V4L2 / macOS AVFoundation / Windows DirectShow)
   bool _isDesktop = false;
-  String _desktopDevice = '/dev/video0';
+  _DesktopVideoSource? _desktopSource;
   Uint8List? _desktopFrameBytes;
   Timer? _desktopStreamTimer;
+  Timer? _desktopStartupTimer;
   bool _isFetchingDesktopFrame = false;
+  bool? _ffmpegAvailableCache;
 
   double _minZoom = 1.0;
   double _maxZoom = 1.0;
@@ -50,6 +77,8 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
   }
 
   Future<void> _start() async {
+    _desktopStreamTimer?.cancel();
+    _desktopStartupTimer?.cancel();
     setState(() {
       _initializing = true;
       _error = null;
@@ -57,57 +86,56 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
       _minZoom = 1.0;
       _maxZoom = 1.0;
       _isDesktop = false;
+      _desktopSource = null;
+      _desktopFrameBytes = null;
     });
 
-    // 1. On Linux desktop, check for local video device (/dev/video*) first
+    // 1. On Linux, prefer a directly attached V4L2 device. The `camera`
+    //    plugin has no Linux implementation, so probing it first only adds a
+    //    noisy MissingPluginException to the log.
     if (Platform.isLinux) {
-      final videoDevice = _detectLinuxVideoDevice();
-      if (videoDevice != null) {
-        await _startDesktopCamera(videoDevice);
+      final source = await _resolveDesktopSource();
+      if (source != null) {
+        await _startDesktopCamera(source);
         return;
       }
     }
 
-    // 2. Mobile or platform with standard camera plugin support
+    // 2. Native camera plugin (Android/iOS, plus platforms that add an
+    //    implementation such as Windows/macOS community packages).
     try {
       final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        if (Platform.isLinux) {
-          final dev = _detectLinuxVideoDevice();
-          if (dev != null) {
-            await _startDesktopCamera(dev);
-            return;
-          }
-        }
-        if (!mounted) return;
-        setState(() {
-          _initializing = false;
-          _error = 'No camera available on this device.';
-        });
+      if (cameras.isNotEmpty) {
+        _cameras = cameras;
+        // Prefer the back camera for fundus capture.
+        _lens = cameras.indexWhere(
+          (c) => c.lensDirection == CameraLensDirection.back,
+        );
+        if (_lens < 0) _lens = 0;
+        await _open(_cameras[_lens]);
         return;
       }
-      _cameras = cameras;
-      // Prefer the back camera for fundus capture.
-      _lens = cameras.indexWhere(
-        (c) => c.lensDirection == CameraLensDirection.back,
-      );
-      if (_lens < 0) _lens = 0;
-      await _open(_cameras[_lens]);
     } catch (e) {
       debugPrint('Standard camera initialization error: $e');
-      if (Platform.isLinux) {
-        final dev = _detectLinuxVideoDevice();
-        if (dev != null) {
-          await _startDesktopCamera(dev);
-          return;
-        }
-      }
-      if (!mounted) return;
-      setState(() {
-        _initializing = false;
-        _error = 'Camera error: $e'.trim();
-      });
     }
+
+    // 3. Desktop fallback: ffmpeg capture for V4L2 / AVFoundation / DirectShow.
+    if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+      final source = await _resolveDesktopSource();
+      if (source != null) {
+        await _startDesktopCamera(source);
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _initializing = false;
+      _error = Platform.isMacOS || Platform.isWindows || Platform.isLinux
+          ? 'No camera was detected. Install ffmpeg for live desktop capture, '
+              'or choose Upload Photo to analyse an existing fundus image.'
+          : 'No camera available on this device.';
+    });
   }
 
   String? _detectLinuxVideoDevice() {
@@ -120,9 +148,99 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
     return null;
   }
 
-  Future<void> _startDesktopCamera(String devicePath) async {
+  Future<bool> _ffmpegAvailable() async {
+    if (_ffmpegAvailableCache != null) return _ffmpegAvailableCache!;
+    try {
+      final result = await Process.run('ffmpeg', ['-version']);
+      _ffmpegAvailableCache = result.exitCode == 0;
+    } catch (_) {
+      _ffmpegAvailableCache = false;
+    }
+    return _ffmpegAvailableCache!;
+  }
+
+  /// Resolves the best available desktop capture source for this OS.
+  Future<_DesktopVideoSource?> _resolveDesktopSource() async {
+    if (!await _ffmpegAvailable()) return null;
+
+    if (Platform.isLinux) {
+      final device = _detectLinuxVideoDevice();
+      if (device == null) return null;
+      return _DesktopVideoSource(
+        label: device,
+        formatArgs: const ['-f', 'v4l2'],
+        device: device,
+      );
+    }
+
+    if (Platform.isMacOS) {
+      final index = await _firstAvFoundationVideoIndex();
+      return _DesktopVideoSource(
+        label: 'AVFoundation camera $index',
+        formatArgs: const ['-f', 'avfoundation', '-framerate', '30'],
+        device: index,
+      );
+    }
+
+    if (Platform.isWindows) {
+      final device = await _firstDirectShowVideoDevice();
+      if (device == null) return null;
+      return _DesktopVideoSource(
+        label: device,
+        formatArgs: const ['-f', 'dshow'],
+        device: 'video=$device',
+      );
+    }
+
+    return null;
+  }
+
+  Future<String> _firstAvFoundationVideoIndex() async {
+    try {
+      final result = await Process.run(
+        'ffmpeg',
+        ['-f', 'avfoundation', '-list_devices', 'true', '-i', ''],
+      );
+      final output = '${result.stderr}';
+      var inVideoSection = false;
+      final pattern = RegExp(r'\[(\d+)\]\s+(.+)$');
+      for (final line in output.split('\n')) {
+        if (line.contains('AVFoundation video devices')) {
+          inVideoSection = true;
+          continue;
+        }
+        if (line.contains('AVFoundation audio devices')) {
+          inVideoSection = false;
+          continue;
+        }
+        if (!inVideoSection) continue;
+        final match = pattern.firstMatch(line.trim());
+        if (match != null) return match.group(1)!;
+      }
+    } catch (e) {
+      debugPrint('AVFoundation device probe failed: $e');
+    }
+    return '0'; // ffmpeg's default device index
+  }
+
+  Future<String?> _firstDirectShowVideoDevice() async {
+    try {
+      final result = await Process.run(
+        'ffmpeg',
+        ['-list_devices', 'true', '-f', 'dshow', '-i', 'dummy'],
+      );
+      final output = '${result.stderr}';
+      final match = RegExp(r'"([^"]+)"\s*\(video\)').firstMatch(output);
+      if (match != null) return match.group(1);
+    } catch (e) {
+      debugPrint('DirectShow device probe failed: $e');
+    }
+    return null;
+  }
+
+  Future<void> _startDesktopCamera(_DesktopVideoSource source) async {
+    _desktopSource = source;
     _isDesktop = true;
-    _desktopDevice = devicePath;
     _initializing = false;
     if (mounted) setState(() {});
 
@@ -133,18 +251,32 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
       const Duration(milliseconds: 300),
       (_) => _fetchDesktopFrame(),
     );
+
+    // Never leave the operator on an endless spinner when ffmpeg cannot open
+    // the device (permission denied, camera busy, wrong device name).
+    _desktopStartupTimer?.cancel();
+    _desktopStartupTimer = Timer(const Duration(seconds: 10), () {
+      if (!mounted || _desktopFrameBytes != null) return;
+      _desktopStreamTimer?.cancel();
+      setState(() {
+        _isDesktop = false;
+        _desktopSource = null;
+        _initializing = false;
+        _error =
+            'Could not read frames from ${source.label}. Check the camera '
+            'permission and use Upload Photo as a fallback.';
+      });
+    });
   }
 
-  Future<void> _fetchDesktopFrame() async {
-    if (_isFetchingDesktopFrame || !mounted || !_isDesktop) return;
-    _isFetchingDesktopFrame = true;
+  Future<Uint8List?> _grabDesktopFrame(String size) async {
+    final source = _desktopSource;
+    if (source == null) return null;
     try {
       final res = await Process.run(
         'ffmpeg',
         [
-          '-f', 'v4l2',
-          '-video_size', '640x480',
-          '-i', _desktopDevice,
+          ...source.inputArgs(size),
           '-vframes', '1',
           '-f', 'image2',
           '-vcodec', 'mjpeg',
@@ -154,15 +286,26 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
       );
       if (res.exitCode == 0 && res.stdout is List<int>) {
         final bytes = Uint8List.fromList(res.stdout as List<int>);
-        if (bytes.isNotEmpty && mounted) {
-          setState(() {
-            _desktopFrameBytes = bytes;
-            _error = null;
-          });
-        }
+        return bytes.isEmpty ? null : bytes;
       }
+      debugPrint('ffmpeg frame grab exited ${res.exitCode}: ${res.stderr}');
     } catch (e) {
       debugPrint('Desktop frame grab error: $e');
+    }
+    return null;
+  }
+
+  Future<void> _fetchDesktopFrame() async {
+    if (_isFetchingDesktopFrame || !mounted || !_isDesktop) return;
+    _isFetchingDesktopFrame = true;
+    try {
+      final bytes = await _grabDesktopFrame('640x480');
+      if (bytes != null && mounted) {
+        setState(() {
+          _desktopFrameBytes = bytes;
+          _error = null;
+        });
+      }
     } finally {
       _isFetchingDesktopFrame = false;
     }
@@ -265,23 +408,9 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
           Navigator.pop(context, _desktopFrameBytes);
           return;
         }
-        // Force immediate snapshot if no buffered frame yet
-        final res = await Process.run(
-          'ffmpeg',
-          [
-            '-f', 'v4l2',
-            '-video_size', '1280x720',
-            '-i', _desktopDevice,
-            '-vframes', '1',
-            '-f', 'image2',
-            '-vcodec', 'mjpeg',
-            'pipe:1',
-          ],
-          stdoutEncoding: null,
-        );
-        if (res.exitCode == 0 && res.stdout is List<int>) {
-          final bytes = Uint8List.fromList(res.stdout as List<int>);
-          if (!mounted) return;
+        // Force an immediate higher-resolution snapshot if no buffered frame.
+        final bytes = await _grabDesktopFrame('1280x720');
+        if (bytes != null && mounted) {
           Navigator.pop(context, bytes);
           return;
         }
@@ -308,27 +437,12 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
 
   Future<void> _pickFallbackFile() async {
     try {
-      if (!kIsWeb && Platform.isMacOS) {
-        await FilePicker.skipEntitlementsChecks().catchError((_) {});
-      }
-      final files = await FilePicker.pickFiles(
+      final result = await PlatformFileService.pickFundusImage(
         dialogTitle: 'Select a fundus photo',
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png'],
       );
-      if (files.isEmpty) return;
-      final picked = files.first;
-      Uint8List? bytes;
-      if (picked.path != null && picked.path!.isNotEmpty) {
-        final f = File(picked.path!);
-        if (await f.exists()) {
-          try {
-            bytes = await f.readAsBytes();
-          } catch (_) {}
-        }
-      }
-      bytes ??= await picked.readAsBytes();
-      if (bytes.isNotEmpty && mounted) {
+      if (result.cancelled) return;
+      final bytes = result.bytes;
+      if (bytes != null && bytes.isNotEmpty && mounted) {
         Navigator.pop(context, bytes);
       }
     } catch (e) {
@@ -339,6 +453,7 @@ class _LiveFundusCameraScreenState extends State<LiveFundusCameraScreen> {
   @override
   void dispose() {
     _desktopStreamTimer?.cancel();
+    _desktopStartupTimer?.cancel();
     _controller?.dispose();
     super.dispose();
   }

@@ -9,13 +9,12 @@ Drishti is a self-contained, offline-first **Clinical Production Package** for a
 
 ```
 Drishti/
-├── binaries/                       # Standalone binaries (distributed via GitHub Releases v1.9.1)
-│   ├── drishti_macos_v1.9.1.zip    # macOS clinic application bundle (v1.9.1 latest)
-│   ├── Drishti_mobile_v1.9.0.apk   # Android release APK (offline INT8 edge engine)
-│   ├── Drishti_windows_v1.9.0.zip  # Windows desktop clinic bundle
-│   ├── Drishti_linux_v1.9.0.tar.gz # Linux workstation clinic bundle
-│   ├── Drishti_macos_v1.9.0.zip    # macOS clinic application bundle (v1.9.0)
-│   └── Drishti_ios_unsigned_v1.9.0.zip # iOS release bundle
+├── binaries/                       # Standalone binaries (distributed via GitHub Releases v1.9.2)
+│   ├── Drishti_mobile_v1.9.2.apk   # Android release APK (offline INT8 edge engine)
+│   ├── Drishti_windows_v1.9.2.zip  # Windows desktop clinic bundle
+│   ├── Drishti_linux_v1.9.2.tar.gz # Linux workstation clinic bundle
+│   ├── Drishti_macos_v1.9.2.zip    # macOS clinic application bundle
+│   └── Drishti_ios_unsigned_v1.9.2.zip # iOS release bundle
 │
 ├── models/                         # Calibrated clinical & edge model weights
 │   ├── dr_efficientnet_b0_tuned_int8.tflite # 5.08 MB INT8 edge model (96.28% recall)
@@ -37,7 +36,9 @@ Drishti/
 │   ├── JUDGES_QA_DEFENSE.md        # Winning defense script for hard technical questions
 │   ├── PITCH_AND_SLIDES_OUTLINE.md # 30-sec pitch, 3-min pitch, and slide notes
 │   ├── final_report.md             # Comprehensive engineering & clinical report
-│   ├── RELEASE_NOTES_v1.9.0.md     # Official v1.9.0 release notes
+│   ├── RELEASE_NOTES_v1.9.2.md     # Official v1.9.2 cross-platform release notes
+│   ├── RELEASE_NOTES_v1.9.1.md     # Historical v1.9.1 release notes
+│   ├── RELEASE_NOTES_v1.9.0.md     # Historical v1.9.0 release notes
 │   ├── RELEASE_NOTES_v1.8.0.md     # Historical v1.8.0 release notes
 │   ├── RELEASE_NOTES_v1.7.2.md     # Historical v1.7.2 release notes
 │   └── rendered_slides/            # High-res PNG slide previews
@@ -102,12 +103,13 @@ Drishti/
 
 ---
 
-## 📱 Cross-Platform Standalone Downloads (Release v1.9.1)
+## 📱 Cross-Platform Standalone Downloads (Release v1.9.2)
 
 Pre-built binaries are packaged and downloadable from [GitHub Releases](https://github.com/BezaleelPaul/Drishti/releases):
-- **macOS (Latest v1.9.1):** `drishti_macos_v1.9.1.zip` — Extract and double-click `run_macos.command` (or open `Drishti.app`). Includes local SQLCipher patient history, automatic specialist SMTP alerts, Admin portal, and complete Drishti rebranding.
-- **Linux:** `Drishti_linux_v1.9.0.tar.gz` — Extract and run `./run_linux.sh` or `./bundle/drishti`.
-- **Windows:** `Drishti_windows_v1.9.0.zip` — Extract and run `run_drishti.bat` or `drishti.exe`.
-- **macOS (v1.9.0):** `Drishti_macos_v1.9.0.zip` — Extract and double-click `run_macos.command`.
-- **Android:** `Drishti_mobile_v1.9.0.apk` — Sideload onto any Android phone or tablet (dual v2/v3 signed, bundled offline INT8 model).
-- **iOS:** `Drishti_ios_unsigned_v1.9.0.zip` — Unsigned iOS release archive for sideloading / TestFlight.
+- **macOS (Latest v1.9.2):** `Drishti_macos_v1.9.2.zip` — Extract and double-click `run_macos.command` (or open `Drishti.app`). Same patient-history, SMTP alert and Admin Portal workflow as mobile, with native camera/Downloads entitlements.
+- **Linux:** `Drishti_linux_v1.9.2.tar.gz` — Extract and run `./run_drishti.sh` (or `./drishti`). Now includes the persistent SQLite patient-history backend.
+- **Windows:** `Drishti_windows_v1.9.2.zip` — Extract and run `run_drishti.bat` or `drishti.exe`. Now includes the persistent SQLite patient-history backend.
+- **Android:** `Drishti_mobile_v1.9.2.apk` — Sideload onto any Android phone or tablet (v2/v3 signed, bundled offline INT8 model).
+- **iOS:** `Drishti_ios_unsigned_v1.9.2.zip` — Unsigned iOS release archive for sideloading / TestFlight.
+
+> **v1.9.2 cross-platform update:** the macOS reliability fixes (sandbox-safe file picking, persistent local images, graceful PDF export and native report opening) now apply to every operating system through one shared implementation. See [`presentation/RELEASE_NOTES_v1.9.2.md`](presentation/RELEASE_NOTES_v1.9.2.md).

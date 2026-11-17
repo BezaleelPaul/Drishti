@@ -5,7 +5,6 @@ import 'package:drishti/screens/figma_dashboard_screen.dart';
 import 'package:drishti/screens/flow/flow_state.dart';
 import 'package:drishti/services/db/screening_persistence_service.dart';
 import 'package:drishti/theme/figma_theme.dart';
-import 'package:drishti/widgets/status_badge.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

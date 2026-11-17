@@ -28,6 +28,14 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is required to capture retinal (fundus) images for diabetic retinopathy screening. Images are processed on-device and only shared with a clinician through your consent.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo library access is only used when you choose an existing retinal photograph for screening. Images are processed on-device.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Drishti saves generated clinical reports to your device so you can share them with the treating clinician.</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

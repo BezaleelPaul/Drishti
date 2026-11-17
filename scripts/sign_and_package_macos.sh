@@ -6,9 +6,9 @@
 # ==============================================================================
 set -euo pipefail
 
-APP_PATH="${1:-/Users/maha/Downloads/Drishti.app}"
+APP_PATH="${1:-$(pwd)/flutter_app/build/macos/Build/Products/Release/Drishti.app}"
 OUTPUT_DIR="${2:-$(pwd)/binaries}"
-VERSION="${3:-1.7.1}"
+VERSION="${3:-1.9.2}"
 
 if [ ! -d "$APP_PATH" ]; then
     echo "❌ Error: App bundle not found at '$APP_PATH'"
@@ -67,6 +67,8 @@ cat <<'EOF' > "$ENTITLEMENTS_PATH"
 	<true/>
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
+	<key>com.apple.security.files.downloads.read-write</key>
+	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.security.device.camera</key>
@@ -113,14 +115,26 @@ mkdir -p "$OUTPUT_DIR"
 PARENT_DIR="$(dirname "$APP_PATH")"
 APP_NAME="$(basename "$APP_PATH")"
 
+# One-click launcher: strips quarantine from the locally extracted bundle and
+# opens it, matching the other platform launch scripts.
+LAUNCHER="$(mktemp -d)/run_macos.command"
+cat <<'EOF' > "$LAUNCHER"
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+xattr -dr com.apple.quarantine Drishti.app 2>/dev/null || true
+open Drishti.app
+EOF
+chmod +x "$LAUNCHER"
+
 (
     cd "$PARENT_DIR"
-    zip -r -y -q "$OUTPUT_DIR/drishti_macos_v${VERSION}.zip" "$APP_NAME"
-    zip -r -y -q "$OUTPUT_DIR/drishti_macos_v1.7.0.zip" "$APP_NAME"
+    cp "$LAUNCHER" ./run_macos.command
+    zip -r -y -q "$OUTPUT_DIR/Drishti_macos_v${VERSION}.zip" "$APP_NAME" run_macos.command
+    rm -f ./run_macos.command
 )
 
 echo "=================================================="
-echo "✅ SUCCESS: macOS release packages created:"
-echo "   - $OUTPUT_DIR/drishti_macos_v${VERSION}.zip"
-echo "   - $OUTPUT_DIR/drishti_macos_v1.7.0.zip"
+echo "✅ SUCCESS: macOS release package created:"
+echo "   - $OUTPUT_DIR/Drishti_macos_v${VERSION}.zip"
 echo "=================================================="

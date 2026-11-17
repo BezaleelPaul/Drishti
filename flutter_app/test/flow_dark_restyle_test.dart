@@ -199,9 +199,11 @@ void main() {
 
         expectDarkChrome(tester);
         expect(find.text('DRISHTI Screening Report'), findsOneWidget);
+        // v1.9.1 removed the demo banner from the production report screen.
+        // The report must render the real clinical result without it.
         expect(
           find.text('Demo Report — Not a clinical document'),
-          findsOneWidget,
+          findsNothing,
         );
         expect(find.textContaining('Moderate NPDR'), findsOneWidget);
         expect(find.text('SERVICE CONFIRMED'), findsNothing);

@@ -16,17 +16,70 @@ on:
         required: false
         default: false
         type: boolean
+      release_tag:
+        description: "Release tag to publish (defaults to the latest v* tag)"
+        required: false
+        default: "v1.9.2"
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: drishti-release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_CHANNEL: stable
+
 jobs:
+  # ---------------------------------------------------------------------------
+  # 0. Cross-platform quality gate
+  # ---------------------------------------------------------------------------
+  quality:
+    name: Analyze & Core Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Install Flutter Dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Static Analysis
+        working-directory: flutter_app
+        # Warnings fail the gate; informational Flutter SDK deprecation hints
+        # (the framework's 3.50 material_ui migration) are reported but do
+        # not block a clinical build.
+        run: flutter analyze --no-pub --no-fatal-infos
+
+      - name: Core Persistence, PDF & Queue Tests
+        working-directory: flutter_app
+        run: |
+          flutter test --no-pub \
+            test/local_store_backend_test.dart \
+            test/screening_persistence_test.dart \
+            test/offline_queue_service_test.dart \
+            test/clinical_pdf_generator_test.dart \
+            test/quality_gate_test.dart \
+            test/deidentify_test.dart
+
   # ---------------------------------------------------------------------------
   # 1. Android Release APK
   # ---------------------------------------------------------------------------
   build-android:
     name: Build Android Release APK
+    needs: quality
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -40,7 +93,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
+          channel: ${{ env.FLUTTER_CHANNEL }}
           cache: true
 
       - name: Configure Android Release Signing
@@ -72,13 +125,16 @@ jobs:
         with:
           name: Drishti_mobile_release
           path: Drishti_mobile_release.apk
+          if-no-files-found: error
 
   # ---------------------------------------------------------------------------
   # 2. Linux Desktop Bundle
   # ---------------------------------------------------------------------------
   build-linux:
     name: Build Linux x86_64 Desktop Bundle
+    needs: quality
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -91,7 +147,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
+          channel: ${{ env.FLUTTER_CHANNEL }}
           cache: true
 
       - name: Enable Linux Desktop
@@ -107,20 +163,32 @@ jobs:
 
       - name: Package Linux Standalone Tarball
         run: |
-          tar -czvf Drishti_linux_release.tar.gz -C flutter_app/build/linux/x64/release/bundle .
+          mkdir -p dist/linux
+          cp -a flutter_app/build/linux/x64/release/bundle/. dist/linux/
+          cat << 'EOF' > dist/linux/run_drishti.sh
+          #!/usr/bin/env bash
+          set -euo pipefail
+          cd "$(dirname "$0")"
+          exec ./drishti "$@"
+          EOF
+          chmod +x dist/linux/run_drishti.sh
+          tar -czvf Drishti_linux_release.tar.gz -C dist/linux .
 
       - name: Upload Linux Bundle Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Drishti_linux_release
           path: Drishti_linux_release.tar.gz
+          if-no-files-found: error
 
   # ---------------------------------------------------------------------------
   # 3. Windows Desktop Executable
   # ---------------------------------------------------------------------------
   build-windows:
     name: Build Windows x86_64 Standalone Executable
+    needs: quality
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -128,7 +196,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
+          channel: ${{ env.FLUTTER_CHANNEL }}
           cache: true
 
       - name: Enable Windows Desktop
@@ -145,20 +213,31 @@ jobs:
       - name: Package Windows Release Archive
         shell: pwsh
         run: |
-          Compress-Archive -Path "flutter_app\build\windows\x64\runner\Release\*" -DestinationPath "Drishti_windows_release.zip" -Force
+          $release = "flutter_app\build\windows\x64\runner\Release"
+          New-Item -ItemType Directory -Force -Path "dist\windows" | Out-Null
+          Copy-Item -Path "$release\*" -Destination "dist\windows" -Recurse -Force
+          @"
+          @echo off
+          cd /d "%~dp0"
+          start "" "drishti.exe"
+          "@ | Set-Content -Encoding ASCII "dist\windows\run_drishti.bat"
+          Compress-Archive -Path "dist\windows\*" -DestinationPath "Drishti_windows_release.zip" -Force
 
       - name: Upload Windows Archive Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Drishti_windows_release
           path: Drishti_windows_release.zip
+          if-no-files-found: error
 
   # ---------------------------------------------------------------------------
   # 4. macOS Universal App Bundle
   # ---------------------------------------------------------------------------
   build-macos:
     name: Build macOS Universal App Bundle
+    needs: quality
     runs-on: macos-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -166,7 +245,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
+          channel: ${{ env.FLUTTER_CHANNEL }}
           cache: true
 
       - name: Enable macOS Desktop
@@ -182,22 +261,35 @@ jobs:
 
       - name: Package macOS Application Archive
         run: |
-          APP_PATH=$(find flutter_app/build/macos/Build/Products/Release -name "*.app" | head -n 1)
+          APP_PATH=$(find flutter_app/build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
           echo "Packaging macOS App from: $APP_PATH"
-          ditto -c -k --keepParent "$APP_PATH" Drishti_macos_release.zip
+          mkdir -p dist/macos
+          ditto "$APP_PATH" "dist/macos/Drishti.app"
+          cat << 'EOF' > dist/macos/run_macos.command
+          #!/usr/bin/env bash
+          set -euo pipefail
+          cd "$(dirname "$0")"
+          xattr -dr com.apple.quarantine Drishti.app 2>/dev/null || true
+          open Drishti.app
+          EOF
+          chmod +x dist/macos/run_macos.command
+          ditto -c -k --keepParent dist/macos Drishti_macos_release.zip
 
       - name: Upload macOS Archive Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Drishti_macos_release
           path: Drishti_macos_release.zip
+          if-no-files-found: error
 
   # ---------------------------------------------------------------------------
   # 5. iOS Unsigned Application Bundle
   # ---------------------------------------------------------------------------
   build-ios:
     name: Build iOS Unsigned Bundle
+    needs: quality
     runs-on: macos-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -205,7 +297,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
+          channel: ${{ env.FLUTTER_CHANNEL }}
           cache: true
 
       - name: Install Flutter Dependencies
@@ -225,6 +317,7 @@ jobs:
         with:
           name: Drishti_ios_unsigned_release
           path: Drishti_ios_unsigned_release.zip
+          if-no-files-found: error
 
   # ---------------------------------------------------------------------------
   # 6. Automated GitHub Release Attachment
@@ -234,6 +327,7 @@ jobs:
     needs: [build-android, build-linux, build-windows, build-macos, build-ios]
     if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_release == true
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -263,25 +357,47 @@ jobs:
         with:
           name: Drishti_ios_unsigned_release
 
-      - name: Tag or Release Resolution
-        id: resolve_tag
+      - name: Resolve Tag and Release Notes
+        id: meta
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
+          elif [[ -n "${{ github.event.inputs.release_tag }}" ]]; then
+            TAG_NAME="${{ github.event.inputs.release_tag }}"
           else
-            TAG_NAME="v1.9.1"
+            TAG_NAME="v1.9.2"
           fi
-          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+          NOTES="presentation/RELEASE_NOTES_${TAG_NAME}.md"
+          if [[ -f "$NOTES" ]]; then
+            cp "$NOTES" release_body.md
+          else
+            printf 'Automated multi-platform build for Drishti %s.\n' "$TAG_NAME" > release_body.md
+          fi
+
+      - name: Version Release Asset Names
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          mv Drishti_mobile_release.apk "Drishti_mobile_${TAG}.apk"
+          mv Drishti_linux_release.tar.gz "Drishti_linux_${TAG}.tar.gz"
+          mv Drishti_windows_release.zip "Drishti_windows_${TAG}.zip"
+          mv Drishti_macos_release.zip "Drishti_macos_${TAG}.zip"
+          mv Drishti_ios_unsigned_release.zip "Drishti_ios_unsigned_${TAG}.zip"
+          ls -lh Drishti_*
 
       - name: Upload Binaries to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.resolve_tag.outputs.tag }}
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: Drishti ${{ steps.meta.outputs.tag }} — Multi-OS Clinical Release
+          body_path: release_body.md
+          generate_release_notes: true
           files: |
-            Drishti_mobile_release.apk
-            Drishti_linux_release.tar.gz
-            Drishti_windows_release.zip
-            Drishti_macos_release.zip
-            Drishti_ios_unsigned_release.zip
+            Drishti_mobile_v*.apk
+            Drishti_linux_v*.tar.gz
+            Drishti_windows_v*.zip
+            Drishti_macos_v*.zip
+            Drishti_ios_unsigned_v*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

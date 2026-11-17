@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../screens/flow/flow_state.dart';
 import '../offline_queue_service.dart';
+import '../platform/app_paths.dart';
 import 'local_store.dart';
 
 /// Central persistence orchestrator for screening workflows.
@@ -165,17 +166,17 @@ class ScreeningPersistenceService with ChangeNotifier {
             ? 'No Diabetic Retinopathy'
             : 'Diabetic Retinopathy (Grade $grade)');
 
-    // Save fundus image to local storage if available
+    // Save fundus image to the persistent application-support container.
+    // The OS temp directory used previously is wiped on macOS and Android and
+    // is not writable in the iOS sandbox, which broke report image previews
+    // after a restart. AppPaths keeps the image next to the encrypted vault on
+    // every operating system.
     String imagePath = '';
     if (state.imageBytes != null && state.imageBytes!.isNotEmpty) {
       try {
-        final tempDir = Directory.systemTemp;
-        final imagesDir = Directory('${tempDir.path}/drishti_screenings');
-        if (!await imagesDir.exists()) {
-          await imagesDir.create(recursive: true);
-        }
+        final imagesDir = await AppPaths.screeningImagesDirectory();
         final file = File('${imagesDir.path}/$screeningId.jpg');
-        await file.writeAsBytes(state.imageBytes!);
+        await file.writeAsBytes(state.imageBytes!, flush: true);
         imagePath = file.path;
       } catch (e) {
         debugPrint('Failed to save screening image file: $e');
@@ -342,7 +343,11 @@ class ScreeningPersistenceService with ChangeNotifier {
         } else {
           list.insert(0, updatedRecord);
         }
-        await file.writeAsString(jsonEncode(list));
+        await file.writeAsString(jsonEncode(list), flush: true);
+      } else {
+        // First edit on an install whose backup file was never created:
+        // create it instead of silently dropping the update.
+        await _saveToFileBackup(updatedRecord);
       }
     } catch (e) {
       debugPrint('Error updating File backup record: $e');

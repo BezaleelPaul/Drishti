@@ -2,8 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'package:sqflite_common/sqlite_api.dart';
+
+import 'db/database_backend.dart';
 
 /// Persistence contract for the offline screening queue (Ticket B-2).
 /// Implementations must be kill-safe: every mutation is durable on return.
@@ -75,8 +78,10 @@ class SqliteQueuePersistence implements QueuePersistence {
   final Database _db;
 
   static Future<SqliteQueuePersistence> open(String password) async {
-    final db = await openDatabase(
-      _dbName,
+    final directory = await DatabaseBackend.queueDatabaseDirectory();
+    final path = p.join(directory, _dbName);
+    final db = await DatabaseBackend.open(
+      path: path,
       password: password,
       version: 1,
       onConfigure: (d) async {

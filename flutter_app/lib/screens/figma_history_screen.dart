@@ -6,6 +6,7 @@ import '../l10n/lang_scope.dart';
 import '../models/screening_models.dart';
 import '../services/db/screening_persistence_service.dart';
 import '../services/pdf/clinical_pdf_generator.dart';
+import '../services/platform/platform_files.dart';
 import '../services/smtp/smtp_service.dart';
 import '../theme/figma_theme.dart';
 import '../widgets/scanner/scanner_theme.dart';
@@ -377,13 +378,15 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                                     setModalState(() => isExportingPdf = true);
                                     try {
                                       final path = await ClinicalPdfGenerator.saveReportToFile(flowState);
-                                      if (Platform.isMacOS) {
-                                        await Process.run('open', [path]);
-                                      }
+                                      final opened = await PlatformFileService.openFile(path);
                                       messenger.showSnackBar(
                                         SnackBar(
                                           backgroundColor: const Color(0xFF065F46),
-                                          content: Text('Report saved to: $path'),
+                                          content: Text(
+                                            opened
+                                                ? 'Clinical report opened · $path'
+                                                : 'Report saved to: $path',
+                                          ),
                                         ),
                                       );
                                     } catch (e) {

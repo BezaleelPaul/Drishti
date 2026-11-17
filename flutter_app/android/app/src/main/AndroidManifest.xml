@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Release builds previously had NO permissions here (INTERNET only
          existed in debug/profile manifests), so the referral uplink and
          sync silently failed on release APKs. INTERNET is the single
@@ -6,6 +7,14 @@
          required for live fundus capture (Ticket: camera integration). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- open_filex contributes broad media-library permissions for generic
+         file managers. Drishti only opens PDFs it created in its own app
+         storage, so remove them to preserve the zero-unnecessary-permissions
+         clinical privacy posture. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
     <application
         android:label="DRISHTI"
         android:name="${applicationName}"
@@ -52,6 +61,12 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11+ package visibility for the native PDF viewer used by
+             the "Open report" action after a clinical PDF is generated. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="application/pdf"/>
         </intent>
     </queries>
 </manifest>
