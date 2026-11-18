@@ -9,7 +9,9 @@ name: Drishti Test Gates
 #
 # The backend job installs the lean runtime plus the CPU PyTorch backend
 # (requirements-torch.txt), matching the environment the suite was green in.
-# TensorFlow/Keras is not installed, so the three Keras checkpoint tests skip
+# Two research extras are also installed because tests exercise exports and
+# the RETFound classifier: onnx (torch.onnx export) and timm (backbone).
+# TensorFlow/Keras is not installed, so the Keras checkpoint tests skip
 # exactly as they do on a developer machine without that backend.
 
 on:
@@ -90,7 +92,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-runtime.txt -r requirements-torch.txt
-          pip install pytest
+          pip install pytest onnx==1.23.2 timm==1.0.31
 
       - name: Run Test Suites
         env:
