@@ -7,9 +7,10 @@ name: Drishti Test Gates
 #   * Flutter: static analysis + the FULL widget/unit suite
 #   * Backend: pytest over contract/integration/red-team/unit suites
 #
-# Research-only tests that import torch (mBRSET multimodal, RetFound, DINOv3)
-# are excluded here because the gate installs the lean runtime (no DL
-# backend). They remain runnable locally with requirements-dev.txt.
+# The backend job installs the lean runtime plus the CPU PyTorch backend
+# (requirements-torch.txt), matching the environment the suite was green in.
+# TensorFlow/Keras is not installed, so the three Keras checkpoint tests skip
+# exactly as they do on a developer machine without that backend.
 
 on:
   push:
@@ -81,12 +82,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: requirements-runtime.txt
+          cache-dependency-path: |
+            requirements-runtime.txt
+            requirements-torch.txt
 
       - name: Install Runtime Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-runtime.txt
+          pip install -r requirements-runtime.txt -r requirements-torch.txt
           pip install pytest
 
       - name: Run Test Suites
@@ -94,9 +97,4 @@ jobs:
           # Tests import both root modules (src.*) and server modules (api.*).
           PYTHONPATH: ".:server"
           ENV: dev
-        run: |
-          pytest -q \
-            --ignore=tests/unit/test_multimodal_pipeline.py \
-            --ignore=tests/unit/test_retfound_classifier.py \
-            --ignore=tests/unit/test_dinov3_classifier.py \
-            tests
+        run: pytest -q tests

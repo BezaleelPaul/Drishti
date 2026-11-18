@@ -25,3 +25,4 @@ requests==2.34.2
 # Human identity (specialist/admin sign-in). Optional at runtime: the server
 # records it as unavailable and keeps API-key auth working.
 google-auth==2.35.0
+PyJWT==2.10.1
