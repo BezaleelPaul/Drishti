@@ -30,6 +30,8 @@ from api.routes.results import router as results_router
 from api.routes.retinal import router as retinal_router
 from api.routes.review import router as review_router
 from api.routes.risk import router as risk_router
+from api.routes.specialists import admin_router as specialist_admin_router
+from api.routes.specialists import router as specialists_router
 from api.routes.sync import router as sync_router
 from api.routes.sync_v2 import router as sync_v2_router
 from api.routes.system import router as system_router
@@ -41,6 +43,10 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup: initialize schema (idempotent, race-safe for multi-worker boot).
     ensure_db()
+    # Human sign-in is opt-in; when enabled it must be fully configured.
+    from api.app_jwt import validate_human_auth_config
+
+    validate_human_auth_config()
     # The __main__ runner refuses dev keys on LAN, but `uvicorn api.main:app
     # --host 0.0.0.0` bypasses it entirely: enforce here so every serve path
     # is covered. NOTE: the HOST env var is NOT authoritative (uvicorn CLI
@@ -220,6 +226,8 @@ app.include_router(patients_router)
 app.include_router(risk_router)
 app.include_router(retinal_router)
 app.include_router(review_router)
+app.include_router(specialists_router)
+app.include_router(specialist_admin_router)
 app.include_router(sync_router)
 app.include_router(sync_v2_router)
 app.include_router(results_router)

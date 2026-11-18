@@ -36,6 +36,28 @@ def human_auth_enabled() -> bool:
     return (os.environ.get(HUMAN_AUTH_ENV) or "").strip().lower() in ("1", "true", "yes", "on")
 
 
+def validate_human_auth_config() -> None:
+    """Fail fast at startup when the feature is enabled but unusable.
+
+    Called from the app lifespan. Disabled feature → no-op (existing
+    deployments never see these checks).
+    """
+    if not human_auth_enabled():
+        return
+    # Raises in prod when the secret is missing or too short.
+    jwt_secret()
+    from api.google_auth import configured_client_ids
+
+    if not configured_client_ids():
+        raise RuntimeError(
+            "DRISHTI_HUMAN_AUTH is enabled but DRISHTI_GOOGLE_CLIENT_IDS is empty. "
+            "Set the accepted OAuth client IDs (comma-separated) so Google tokens "
+            "for other applications cannot be replayed here."
+        )
+    logger.info("Human sign-in enabled (Google OAuth).")
+
+
+
 def _env_is_prod() -> bool:
     return (os.environ.get("ENV", "dev") or "dev").strip().lower() == "prod"
 

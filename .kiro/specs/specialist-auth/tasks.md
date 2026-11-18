@@ -16,22 +16,21 @@ field screening path. Every task ends with its tests green.
       rules R3.1–R3.5. Tests: role matrix incl. admin allowlist case-insensitivity.
       *(Also implemented here: the `DRISHTI_HUMAN_AUTH` flag defaulting to off,
       and the read-only specialist-status source that role mapping needs.)*
-- [ ] T4. `DRISHTI_HUMAN_AUTH` flag (default off) and startup validation of
+- [x] T4. `DRISHTI_HUMAN_AUTH` flag (default off) and startup validation of
       `DRISHTI_JWT_SECRET` / client IDs. Tests: off → 404/disabled; prod without
-      secret → refuses to start. *(Flag is in place from T3; startup validation
-      and its tests remain.)*
+      secret → refuses to start.
 
 
 ## Phase 2 — Specialist workflow (server)
 
-- [ ] T5. `specialist_applications` table + partial unique index; migration on
+- [x] T5. `specialist_applications` table + partial unique index; migration on
       startup (idempotent). Tests: insert, duplicate-pending rejected.
-- [ ] T6. `POST /specialists/apply` and `GET /specialists/me` with validation
+- [x] T6. `POST /specialists/apply` and `GET /specialists/me` with validation
       (required fields, no PHI). Tests: happy path, duplicate, pending state.
-- [ ] T7. `GET /admin/specialists` and `POST /admin/specialists/{id}/decide`
+- [x] T7. `GET /admin/specialists` and `POST /admin/specialists/{id}/decide`
       (admin only, note + actor + time recorded). Tests: 403 for non-admin,
       approve flips token role on next issue, reject blocks resubmission window.
-- [ ] T8. Audit events `auth.issue`, `specialist.apply`, `specialist.decide`.
+- [x] T8. Audit events `auth.issue`, `specialist.apply`, `specialist.decide`.
       Tests: events written with actor/role/outcome and no token strings.
 
 ## Phase 3 — Flutter client
