@@ -1,0 +1,102 @@
+name: Drishti Test Gates
+
+# Continuous test gates. The build workflow (build-all-platforms.yml) runs a
+# hand-picked critical-subset before packaging; this workflow is the
+# correctness gate for pull requests and main:
+#
+#   * Flutter: static analysis + the FULL widget/unit suite
+#   * Backend: pytest over contract/integration/red-team/unit suites
+#
+# Research-only tests that import torch (mBRSET multimodal, RetFound, DINOv3)
+# are excluded here because the gate installs the lean runtime (no DL
+# backend). They remain runnable locally with requirements-dev.txt.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: drishti-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_CHANNEL: stable
+  FLUTTER_VERSION: 3.50.0
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Flutter: analysis + complete test suite
+  # ---------------------------------------------------------------------------
+  flutter-tests:
+    name: Flutter analyze & full test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Flutter Dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Static Analysis (warnings fail, SDK deprecations do not)
+        working-directory: flutter_app
+        run: flutter analyze --no-pub --no-fatal-infos
+
+      - name: Full Widget & Unit Test Suite
+        working-directory: flutter_app
+        # Golden/parity and corpus tests are included here; the suite is
+        # expected to stay under the job timeout on GitHub runners.
+        run: flutter test --no-pub
+
+  # ---------------------------------------------------------------------------
+  # Backend: pytest on the lean runtime (no DL backend)
+  # ---------------------------------------------------------------------------
+  backend-tests:
+    name: Backend pytest (contract, integration, red-team, unit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-runtime.txt
+
+      - name: Install Runtime Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-runtime.txt
+          pip install pytest
+
+      - name: Run Test Suites
+        env:
+          # Tests import both root modules (src.*) and server modules (api.*).
+          PYTHONPATH: ".:server"
+          ENV: dev
+        run: |
+          pytest -q \
+            --ignore=tests/unit/test_multimodal_pipeline.py \
+            --ignore=tests/unit/test_retfound_classifier.py \
+            --ignore=tests/unit/test_dinov3_classifier.py \
+            tests

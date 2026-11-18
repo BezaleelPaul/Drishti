@@ -76,7 +76,8 @@ jobs:
             test/encrypted_payload_test.dart \
             test/specialist_routing_test.dart \
             test/smtp_service_test.dart \
-            test/flow_dark_restyle_test.dart
+            test/flow_dark_restyle_test.dart \
+            test/dashboard_responsive_test.dart
 
   # ---------------------------------------------------------------------------
   # 1. Android Release APK
