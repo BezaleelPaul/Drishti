@@ -1,0 +1,12 @@
+{
+  "feature": "specialist-auth",
+  "title": "Specialist & Admin Identity with Google Sign-In",
+  "language": "en",
+  "status": "requirements",
+  "created": "2026-11-18",
+  "approvals": {
+    "requirements": "pending",
+    "design": "pending",
+    "tasks": "pending"
+  }
+}

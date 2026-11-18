@@ -55,6 +55,14 @@ Flutter app is fully implemented and tested across platforms:
 - **Test & Code Quality**: 42/42 Flutter tests pass (`flutter test`), `flutter analyze` clean with 0 warnings/errors.
 - **Cross-Platform Deployments**: Pre-built Android APK, Windows executable, macOS app, Linux bundle, and Web on GitHub Pages.
 
+## Phase 7 — Specialist & admin identity — **Specced**
+Spec: `.kiro/specs/specialist-auth/` (requirements → design → tasks).
+Human identity for privileged roles only (Google sign-in + specialist approval
+workflow), replacing person-by-person API-key distribution. The field/ASHA
+workflow stays login-free by product decision; API-key auth remains the
+machine path. Implementation is gated behind `DRISHTI_HUMAN_AUTH` and starts
+after spec approval.
+
 ## Phase 5 — Docs & deck fidelity — **Ongoing**
 Every figure must be reproducible from code. Current rule: measured-on-M3 numbers are
 labeled as such; i3/4GB field figures stay as budgeted targets until measured on
