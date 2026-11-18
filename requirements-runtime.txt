@@ -21,3 +21,7 @@ python-multipart==0.0.32
 pydantic==2.13.5
 httpx==0.28.1
 requests==2.34.2
+
+# Human identity (specialist/admin sign-in). Optional at runtime: the server
+# records it as unavailable and keeps API-key auth working.
+google-auth==2.35.0

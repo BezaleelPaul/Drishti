@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from api.auth import ENV, IS_PROD, active_key_count, uses_dev_keys
 from api.database import ensure_db
 from api.ratelimit import RateLimiter
+from api.routes.auth import router as auth_router
 from api.routes.patients import router as patients_router
 from api.routes.results import router as results_router
 from api.routes.retinal import router as retinal_router
@@ -214,6 +215,7 @@ async def _redacted_validation_handler(request, exc: RequestValidationError):
 # Include API Routers
 # -----------------------------------------------------------------------------
 app.include_router(system_router)
+app.include_router(auth_router)
 app.include_router(patients_router)
 app.include_router(risk_router)
 app.include_router(retinal_router)

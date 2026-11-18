@@ -6,17 +6,21 @@ field screening path. Every task ends with its tests green.
 
 ## Phase 1 — Server foundation
 
-- [ ] T1. `Principal` model + dual credential resolution in `server/api/auth.py`
+- [x] T1. `Principal` model + dual credential resolution in `server/api/auth.py`
       (API key unchanged, Bearer JWT added). Tests: existing key tests pass;
       missing/invalid Bearer → 401.
-- [ ] T2. `server/api/google_auth.py`: Google ID token verification with
+- [x] T2. `server/api/google_auth.py`: Google ID token verification with
       audience/issuer/expiry checks and JWKS caching. Tests: valid, bad
       signature, wrong audience, expired, wrong issuer.
-- [ ] T3. `POST /auth/google` issuing app JWT (HS256, ≤60 min) with role mapping
+- [x] T3. `POST /auth/google` issuing app JWT (HS256, ≤60 min) with role mapping
       rules R3.1–R3.5. Tests: role matrix incl. admin allowlist case-insensitivity.
+      *(Also implemented here: the `DRISHTI_HUMAN_AUTH` flag defaulting to off,
+      and the read-only specialist-status source that role mapping needs.)*
 - [ ] T4. `DRISHTI_HUMAN_AUTH` flag (default off) and startup validation of
       `DRISHTI_JWT_SECRET` / client IDs. Tests: off → 404/disabled; prod without
-      secret → refuses to start.
+      secret → refuses to start. *(Flag is in place from T3; startup validation
+      and its tests remain.)*
+
 
 ## Phase 2 — Specialist workflow (server)
 

@@ -34,6 +34,25 @@ docker compose up
 ```
 Open **http://localhost:8000/app** in your browser.
 
+### 🔐 Optional: human sign-in for specialists & admins (off by default)
+
+The field/ASHA app never requires an account. Human identity applies only to
+the specialist review and admin surfaces, and is disabled unless enabled:
+
+```bash
+export DRISHTI_HUMAN_AUTH=1
+export DRISHTI_GOOGLE_CLIENT_IDS='<web client id>.apps.googleusercontent.com'
+export DRISHTI_JWT_SECRET="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+export DRISHTI_ADMIN_EMAILS='admin@yourorg.example'
+```
+
+Machines keep using `X-API-Key`; nothing above affects existing deployments.
+When enabled, `POST /auth/google` exchanges a verified Google ID token for a
+≤60-minute session token (`Authorization: Bearer …`). Specialists must be
+approved before their token carries the `doctor` role — see
+`.kiro/specs/specialist-auth/` for the full workflow (application endpoints
+land in T6–T7).
+
 
 ## 📦 What Is Inside the Software Ecosystem
 
