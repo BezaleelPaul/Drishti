@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shimmer/shimmer.dart';
 
 import '../../l10n/lang_scope.dart';
-import '../../services/api_service.dart';
 import '../../screens/about_screen.dart';
 import '../../screens/admin/admin_portal_screen.dart';
 import '../../screens/doctor_review_screen.dart';
@@ -12,10 +9,11 @@ import '../../screens/figma_help_screen.dart';
 import '../../screens/figma_history_screen.dart';
 import '../../screens/flow/flow_register_screen.dart';
 import '../../screens/queue_screen.dart';
-import '../../widgets/scanner/scanner_theme.dart';
-import '../fx/particle_field.dart';
+import '../../services/api_service.dart';
+import '../../theme/design_system.dart';
+import '../scanner/scanner_theme.dart';
 
-/// A single entry in the [NeonNavRail].
+/// A single destination in the application navigation drawer.
 class NavEntry {
   const NavEntry({
     required this.icon,
@@ -29,30 +27,17 @@ class NavEntry {
   final IconData icon;
   final String label;
   final Widget page;
-
-  /// Section header this entry groups under. When non-null and different
-  /// from the previous entry's section, a small HUD section header renders.
   final String? section;
-
-  /// Per-item accent so the rail reads as a spectrum rather than flat cyan.
   final Color accent;
-
-  /// Primary items render a filled glyph; secondary stay outline-only.
   final bool isPrimary;
 }
 
-/// Neural-link style navigation rail.
+/// Calm, accessible navigation for the clinical workspace.
 ///
-/// Replaces the plain white [Drawer] with a dark HUD rail that slides in from
-/// the left over a live particle field. Each item:
-///   * staggers in (fade + slide) so the rail feels like it "boots up",
-///   * carries its own accent colour used for the glyph and the active bar,
-///   * shows a shimmer sweep when selected, so the active destination is
-///     unmistakable without relying on colour alone.
-///
-/// A11y: the rail is a real [Drawer], so the system back gesture, focus order
-/// and screen-reader traversal all keep working. Every item exposes a
-/// [Semantics] label and the selected state is announced.
+/// The original particle/shimmer treatment was intentionally replaced with a
+/// quiet hierarchy: clear sections, one selected accent, generous touch
+/// targets, and an honest connection summary. This keeps attention on patient
+/// work and avoids continuous motion in a diagnostic environment.
 class NeonNavRail extends StatelessWidget {
   const NeonNavRail({
     super.key,
@@ -63,18 +48,14 @@ class NeonNavRail extends StatelessWidget {
   });
 
   final List<NavEntry> entries;
-
-  /// Label of the currently selected destination (drives the active bar).
   final String? activeLabel;
-
-  /// Offline queue depth shown in the footer chip.
   final int queuedCount;
 
   /// null = still probing; true/false = resolved link state.
   final bool? online;
 
   void _go(BuildContext context, NavEntry entry) {
-    Navigator.pop(context); // close the rail first
+    Navigator.pop(context);
     Navigator.push(context, MaterialPageRoute(builder: (_) => entry.page));
   }
 
@@ -82,65 +63,43 @@ class NeonNavRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final online = this.online;
     final statusColor = online == null
-        ? const Color(0xFF94A3B8)
-        : (online ? ScannerHUDTheme.success : ScannerHUDTheme.danger);
+        ? DrsTokens.textMuted
+        : (online ? DrsTokens.success : DrsTokens.danger);
     final statusText = online == null
         ? '…'
         : context.tr(online ? 'online' : 'offline');
 
     return Drawer(
       backgroundColor: ScannerHUDTheme.background,
-      width: 300,
-      shape: const RoundedRectangleBorder(),
-      child: Stack(
-        children: [
-          // Ambient particle backdrop, clipped to the rail.
-          Positioned.fill(
-            child: ParticleField(particleCount: 26, opacity: 0.4, speed: 0.8),
-          ),
-          // Subtle vertical neon gradient so the rail reads as glass, not flat.
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    ScannerHUDTheme.neonCyan.withValues(alpha: 0.07),
-                    Colors.transparent,
-                    ScannerHUDTheme.purple.withValues(alpha: 0.05),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
-                ),
+      surfaceTintColor: Colors.transparent,
+      width: 296,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.zero,
+        side: BorderSide(color: DrsTokens.border),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _header(),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Divider(height: 1),
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+                children: _buildSectionedList(context),
               ),
             ),
-          ),
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _header(context),
-                const SizedBox(height: 4),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    children: _buildSectionedList(context),
-                  ),
-                ),
-                _footer(context, statusColor, statusText),
-              ],
-            ),
-          ),
-        ],
+            _footer(context, statusColor, statusText),
+          ],
+        ),
       ),
     );
   }
 
-  /// Entries grouped under their declared [NavEntry.section] header; entries
-  /// without a section render flat (as tests and any custom rail expect).
   List<Widget> _buildSectionedList(BuildContext context) {
     final widgets = <Widget>[];
     for (var i = 0; i < entries.length; i++) {
@@ -149,272 +108,258 @@ class NeonNavRail extends StatelessWidget {
       if (entry.section != null && entry.section != previous) {
         widgets.add(_sectionHeader(entry.section!));
       }
-      widgets.add(_item(context, entry, i));
+      widgets.add(_item(context, entry));
     }
     return widgets;
   }
 
   Widget _sectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 14, 8, 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title.toUpperCase(),
-            style: ScannerHUDTheme.hudMonoStyle.copyWith(
-              fontSize: 9,
-              letterSpacing: 1.8,
-              color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.6),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.14),
-          ),
-        ],
+      padding: const EdgeInsets.fromLTRB(10, 18, 10, 7),
+      child: Text(
+        title.toUpperCase(),
+        style: const TextStyle(
+          color: DrsTokens.textSubtle,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.5,
+        ),
       ),
     );
   }
 
-  Widget _header(BuildContext context) {
+  Widget _header() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
       child: Row(
         children: [
-          // Pulsing brand mark.
           Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF0F172A),
-                  border: Border.all(color: ScannerHUDTheme.neonCyan, width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.4),
-                      blurRadius: 14,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(6),
-                child: Image.asset(
-                  'assets/branding/drishti_mark.png',
-                  fit: BoxFit.contain,
-                ),
-              )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .shimmer(
-                duration: 1800.ms,
-                color: Colors.white.withValues(alpha: 0.4),
+            width: 44,
+            height: 44,
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: DrsTokens.accent.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: DrsTokens.accent.withValues(alpha: 0.22),
               ),
+            ),
+            child: Image.asset(
+              'assets/branding/drishti_mark.png',
+              fit: BoxFit.contain,
+            ),
+          ),
           const SizedBox(width: 12),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'DRISHTI',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: DrsTokens.textPrimary,
                     fontWeight: FontWeight.w800,
                     fontSize: 17,
-                    letterSpacing: 0.3,
+                    height: 1.2,
+                    letterSpacing: 1.1,
                   ),
                 ),
+                SizedBox(height: 4),
                 Text(
-                  'RETINAL HUD // V1.2',
-                  style: ScannerHUDTheme.hudMonoStyle.copyWith(
-                    fontSize: 8,
-                    letterSpacing: 1.4,
-                    color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.7),
+                  'Retinal screening',
+                  style: TextStyle(
+                    color: DrsTokens.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ).animate().fadeIn(duration: 320.ms).slideX(begin: -0.3),
+      ),
     );
   }
 
-  Widget _item(BuildContext context, NavEntry entry, int index) {
+  Widget _item(BuildContext context, NavEntry entry) {
     final selected = entry.label == activeLabel;
-    final delay = (60 + index * 45).milliseconds;
-
-    final content = Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _go(context, entry),
-        child: AnimatedContainer(
-          duration: 220.ms,
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(
-            color: selected
-                ? entry.accent.withValues(alpha: 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected
-                  ? entry.accent.withValues(alpha: 0.35)
-                  : Colors.transparent,
-            ),
-          ),
-          child: Row(
-            children: [
-              // Active indicator bar — grows in when selected.
-              AnimatedContainer(
-                duration: 260.ms,
-                curve: Curves.easeOut,
-                width: 3,
-                height: selected ? 22 : 0,
-                decoration: BoxDecoration(
-                  color: entry.accent,
-                  borderRadius: BorderRadius.circular(3),
-                  boxShadow: selected
-                      ? [
-                          BoxShadow(
-                            color: entry.accent.withValues(alpha: 0.7),
-                            blurRadius: 8,
-                          ),
-                        ]
-                      : null,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: entry.label,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: DrsTokens.radii.mdRadius,
+            onTap: () => _go(context, entry),
+            hoverColor: DrsTokens.textPrimary.withValues(alpha: 0.035),
+            splashColor: entry.accent.withValues(alpha: 0.08),
+            child: AnimatedContainer(
+              duration: DrsTokens.motion.fast,
+              curve: DrsTokens.motion.ease,
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: selected
+                    ? entry.accent.withValues(alpha: 0.10)
+                    : Colors.transparent,
+                borderRadius: DrsTokens.radii.mdRadius,
+                border: Border.all(
+                  color: selected
+                      ? entry.accent.withValues(alpha: 0.22)
+                      : Colors.transparent,
                 ),
               ),
-              const SizedBox(width: 12),
-              Icon(
-                entry.icon,
-                size: 19,
-                color: selected ? entry.accent : const Color(0xFF94A3B8),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  entry.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected ? Colors.white : const Color(0xFFCBD5E1),
+              child: Row(
+                children: [
+                  Icon(
+                    entry.icon,
+                    size: 20,
+                    color: selected ? entry.accent : DrsTokens.textMuted,
                   ),
-                ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Text(
+                      entry.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.25,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: selected
+                            ? DrsTokens.textPrimary
+                            : DrsTokens.textSecondary,
+                      ),
+                    ),
+                  ),
+                  if (selected) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: entry.accent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              if (selected)
-                Icon(Icons.chevron_right, size: 18, color: entry.accent),
-            ],
+            ),
           ),
         ),
       ),
     );
-
-    // Shimmer sweep only on the selected item so it draws the eye.
-    // NOTE: the shimmer shader REPLACES child colours, so the base/highlight
-    // must be fully opaque — low-alpha values here rendered the selected
-    // row nearly black-on-dark (unreadable).
-    final wrapped = selected
-        ? Shimmer.fromColors(
-            baseColor: entry.accent,
-            highlightColor: Colors.white.withValues(alpha: 0.92),
-            period: const Duration(milliseconds: 1600),
-            child: content,
-          )
-        : content;
-
-    return Semantics(
-          button: true,
-          selected: selected,
-          label: entry.label,
-          child: wrapped,
-        )
-        .animate()
-        .fadeIn(delay: delay, duration: 300.ms)
-        .slideX(begin: -0.35, end: 0, delay: delay, curve: Curves.easeOutCubic);
   }
 
   Widget _footer(BuildContext context, Color statusColor, String statusText) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: ScannerHUDTheme.darkSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1E293B)),
-      ),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
         children: [
-          // Live status dot with a slow pulse.
           Container(
-                width: 9,
-                height: 9,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: statusColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: statusColor.withValues(alpha: 0.6),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-              )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scale(
-                begin: const Offset(0.8, 0.8),
-                end: const Offset(1.15, 1.15),
-                duration: 1100.ms,
-              ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: DrsTokens.surface,
+              borderRadius: DrsTokens.radii.mdRadius,
+              border: Border.all(color: DrsTokens.border),
+            ),
+            child: Row(
               children: [
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    online == null
+                        ? Icons.sync_rounded
+                        : (online!
+                              ? Icons.cloud_done_outlined
+                              : Icons.cloud_off_outlined),
+                    size: 18,
                     color: statusColor,
                   ),
                 ),
-                if (queuedCount > 0)
-                  Text(
-                    '$queuedCount queued',
-                    style: ScannerHUDTheme.hudMonoStyle.copyWith(
-                      fontSize: 9,
-                      color: const Color(0xFF94A3B8),
-                    ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'CONNECTION',
+                        style: TextStyle(
+                          color: DrsTokens.textSubtle,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        statusText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: statusColor,
+                        ),
+                      ),
+                      if (queuedCount > 0)
+                        Text(
+                          '$queuedCount queued',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: DrsTokens.textMuted,
+                          ),
+                        ),
+                    ],
                   ),
+                ),
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 11, color: DrsTokens.textSubtle),
+              SizedBox(width: 5),
+              Text(
+                'Private  ·  v1.10',
+                style: TextStyle(
+                  color: DrsTokens.textSubtle,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
-    ).animate().fadeIn(delay: 260.ms).slideY(begin: 0.3);
+    );
   }
 }
 
-/// Canonical clinical-workflow entry set, grouped by section:
-///   Screening            — Dashboard, New Screening, Patient History
-///   Triage & Operations  — Specialist Review Queue, Offline Queue
-///   Support              — Help & Guidelines, About / System Info
-/// Developer/facing prototypes (District Simulation, System Specs) are
-/// reachable from About / System Info instead of daily navigation.
+/// Canonical clinical-workflow entry set, grouped by task rather than by
+/// implementation prototype. Daily destinations come first; support last.
 List<NavEntry> buildNavEntries(BuildContext context) {
   final api = ApiService();
   return [
-    // --- Screening ---
     NavEntry(
       icon: Icons.dashboard_outlined,
       label: context.tr('nav_dashboard'),
       section: 'Screening',
       page: const FigmaDashboardScreen(),
-      accent: ScannerHUDTheme.neonCyan,
+      accent: DrsTokens.accent,
       isPrimary: true,
     ),
     NavEntry(
@@ -432,7 +377,6 @@ List<NavEntry> buildNavEntries(BuildContext context) {
       page: const FigmaHistoryScreen(),
       accent: const Color(0xFF38BDF8),
     ),
-    // --- Triage & Operations ---
     NavEntry(
       icon: Icons.medical_services_outlined,
       label: 'Specialist Review Queue',
@@ -452,22 +396,21 @@ List<NavEntry> buildNavEntries(BuildContext context) {
       label: 'Admin Portal (SMTP)',
       section: 'Triage & Operations',
       page: const AdminPortalScreen(),
-      accent: ScannerHUDTheme.neonCyan,
+      accent: DrsTokens.accent,
     ),
-    // --- Support ---
     NavEntry(
       icon: Icons.help_outline,
       label: 'Help & Guidelines',
       section: 'Support',
       page: const FigmaHelpScreen(),
-      accent: const Color(0xFFA855F7),
+      accent: const Color(0xFFA78BFA),
     ),
     NavEntry(
       icon: Icons.info_outline,
       label: 'About / System Info',
       section: 'Support',
       page: const AboutScreen(),
-      accent: const Color(0xFF94A3B8),
+      accent: DrsTokens.textMuted,
     ),
   ];
 }

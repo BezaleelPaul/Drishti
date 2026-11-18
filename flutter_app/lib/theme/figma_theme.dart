@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'design_system.dart';
+
 /// Design tokens lifted from "Enhance Drishti-AI Prototype (1)"
 /// (React + Tailwind): cyan primary, slate surfaces, Nunito type.
 abstract final class FigmaColors {
@@ -82,41 +84,82 @@ ThemeData buildFigmaTheme() {
   final base = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
+    visualDensity: VisualDensity.standard,
+    materialTapTargetSize: MaterialTapTargetSize.padded,
     colorScheme: ColorScheme.fromSeed(
       seedColor: FigmaColors.primary,
       brightness: Brightness.dark,
-      primary: const Color(0xFF00B4D8),
+      primary: DrsTokens.accent,
+      onPrimary: const Color(0xFF06232D),
       secondary: const Color(0xFF18D6C7),
-      surface: const Color(0xFF0B132B),
+      surface: DrsTokens.background,
+      onSurface: DrsTokens.textPrimary,
+      error: DrsTokens.danger,
+      outline: DrsTokens.border,
+      outlineVariant: DrsTokens.borderStrong,
+      surfaceContainerHighest: DrsTokens.surfaceElevated,
     ),
-    scaffoldBackgroundColor: const Color(0xFF0B132B),
+    scaffoldBackgroundColor: DrsTokens.background,
   );
 
   return base.copyWith(
-    textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme),
-    canvasColor: const Color(0xFF0B132B),
-    dialogTheme: const DialogThemeData(
-      backgroundColor: Color(0xFF0F172A),
+    textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme).apply(
+      bodyColor: DrsTokens.textSecondary,
+      displayColor: DrsTokens.textPrimary,
+    ),
+    canvasColor: DrsTokens.background,
+    dialogTheme: DialogThemeData(
+      backgroundColor: DrsTokens.surface,
+      elevation: 12,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(16)),
-        side: BorderSide(color: Color(0xFF1E293B)),
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: DrsTokens.border),
       ),
+    ),
+    tooltipTheme: TooltipThemeData(
+      waitDuration: const Duration(milliseconds: 400),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: DrsTokens.surfaceElevated,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: DrsTokens.border),
+      ),
+      textStyle: const TextStyle(color: DrsTokens.textSecondary, fontSize: 12),
     ),
     menuTheme: const MenuThemeData(
       style: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(Color(0xFF0F172A)),
       ),
     ),
-    snackBarTheme: const SnackBarThemeData(
-      backgroundColor: Color(0xFF1E293B),
-      contentTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: DrsTokens.surfaceElevated,
+      elevation: 8,
+      contentTextStyle: const TextStyle(
+        color: DrsTokens.textPrimary,
+        fontWeight: FontWeight.w600,
+        height: 1.35,
+      ),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(12)),
-        side: BorderSide(color: Color(0xFF334155)),
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: DrsTokens.borderStrong),
       ),
     ),
-    dividerTheme: const DividerThemeData(color: Color(0xFF243350), thickness: 1),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: DrsTokens.accent,
+      circularTrackColor: DrsTokens.border,
+      linearTrackColor: DrsTokens.border,
+    ),
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: DrsTokens.accent,
+      selectionColor: Color(0x5522C7E6),
+      selectionHandleColor: DrsTokens.accent,
+    ),
+    iconTheme: const IconThemeData(color: DrsTokens.textMuted, size: 20),
+    dividerTheme: const DividerThemeData(
+      color: Color(0xFF243350),
+      thickness: 1,
+    ),
     popupMenuTheme: PopupMenuThemeData(
       color: const Color(0xFF0F172A),
       shape: RoundedRectangleBorder(
@@ -125,59 +168,144 @@ ThemeData buildFigmaTheme() {
       ),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF0F172A),
-      foregroundColor: Color(0xFF7DF9FF),
+      backgroundColor: DrsTokens.surface,
+      foregroundColor: DrsTokens.textPrimary,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
       titleTextStyle: TextStyle(
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w700,
         fontSize: 18,
-        letterSpacing: 0.2,
-        color: Colors.white,
+        letterSpacing: -0.2,
+        color: DrsTokens.textPrimary,
       ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      height: 70,
+      elevation: 0,
+      backgroundColor: DrsTokens.surface,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: DrsTokens.accent.withValues(alpha: 0.14),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        return IconThemeData(
+          size: 21,
+          color: states.contains(WidgetState.selected)
+              ? DrsTokens.accent
+              : DrsTokens.textMuted,
+        );
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        return TextStyle(
+          fontSize: 10,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w700
+              : FontWeight.w500,
+          color: states.contains(WidgetState.selected)
+              ? DrsTokens.accent
+              : DrsTokens.textMuted,
+        );
+      }),
+    ),
+    scrollbarTheme: ScrollbarThemeData(
+      thumbColor: WidgetStatePropertyAll(
+        DrsTokens.textSubtle.withValues(alpha: 0.45),
+      ),
+      trackColor: const WidgetStatePropertyAll(Colors.transparent),
+      radius: const Radius.circular(8),
+      thickness: const WidgetStatePropertyAll(6),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF00B4D8),
-        foregroundColor: Colors.white,
-        elevation: 2,
-        shadowColor: const Color(0x5500B4D8),
+        backgroundColor: DrsTokens.accent,
+        foregroundColor: const Color(0xFF06232D),
+        disabledBackgroundColor: DrsTokens.surfaceElevated,
+        disabledForegroundColor: DrsTokens.textSubtle,
+        elevation: 0,
+        shadowColor: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+          height: 1.2,
+        ),
       ),
     ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: DrsTokens.accent,
+        side: const BorderSide(color: DrsTokens.borderStrong),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: DrsTokens.accent,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+      ),
+    ),
+    listTileTheme: ListTileThemeData(
+      textColor: DrsTokens.textSecondary,
+      iconColor: DrsTokens.textMuted,
+      tileColor: DrsTokens.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: DrsTokens.surface,
+      selectedColor: DrsTokens.accent.withValues(alpha: 0.18),
+      labelStyle: const TextStyle(
+        color: DrsTokens.textSecondary,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      side: const BorderSide(color: DrsTokens.border),
+    ),
     cardTheme: CardThemeData(
-      color: const Color(0xFF101932),
+      color: DrsTokens.surface,
       elevation: 0,
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFF1E2D4A), width: 1),
+        side: const BorderSide(color: DrsTokens.border, width: 1),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFF101A33),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      fillColor: DrsTokens.surfaceMuted,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF223254)),
+        borderSide: const BorderSide(color: DrsTokens.border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF223254)),
+        borderSide: const BorderSide(color: DrsTokens.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF00B4D8), width: 1.8),
+        borderSide: const BorderSide(color: DrsTokens.accent, width: 1.6),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+        borderSide: const BorderSide(color: DrsTokens.danger, width: 1.4),
       ),
-      labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-      hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: DrsTokens.danger, width: 1.6),
+      ),
+      labelStyle: const TextStyle(
+        color: DrsTokens.textMuted,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: const TextStyle(color: DrsTokens.textSubtle, fontSize: 13),
+      errorStyle: const TextStyle(color: DrsTokens.danger, fontSize: 11),
     ),
   );
 }

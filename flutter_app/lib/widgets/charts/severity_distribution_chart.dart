@@ -2,7 +2,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/lang_scope.dart';
+import '../../theme/design_system.dart';
 import '../scanner/scanner_theme.dart';
+import '../ui/section_header.dart';
 
 /// One severity bucket in the DR distribution.
 class SeverityBucket {
@@ -98,34 +100,44 @@ class SeverityDistributionChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = _total;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: ScannerHUDTheme.darkSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1E293B)),
+        gradient: DrsTokens.surfaceGradient(),
+        borderRadius: DrsTokens.radii.lgRadius,
+        border: Border.all(color: DrsTokens.border),
+        boxShadow: [DrsTokens.shadow(Colors.black, opacity: 0.10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            context.tr('severity_distribution'),
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: Colors.white,
+          SectionHeader(
+            icon: Icons.insights_rounded,
+            title: context.tr('severity_distribution'),
+            subtitle: '$total ${context.tr('severity_graded_count')}',
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: DrsTokens.surfaceMuted,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: DrsTokens.border),
+              ),
+              child: const Text(
+                'DR 0–4',
+                style: TextStyle(
+                  color: DrsTokens.textMuted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '$total ${context.tr('severity_graded_count')}',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           if (total == 0)
             _emptyState(context)
           else
             SizedBox(
-              height: 168,
+              height: 188,
               child: BarChart(
                 _chartData(context),
                 duration: const Duration(milliseconds: 450),
@@ -138,17 +150,38 @@ class SeverityDistributionChart extends StatelessWidget {
   }
 
   Widget _emptyState(BuildContext context) {
-    return SizedBox(
-      height: 120,
+    return Container(
+      height: 132,
+      decoration: BoxDecoration(
+        color: DrsTokens.surfaceMuted.withValues(alpha: 0.65),
+        borderRadius: DrsTokens.radii.mdRadius,
+        border: Border.all(color: DrsTokens.border.withValues(alpha: 0.7)),
+      ),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.bar_chart, color: Color(0xFF334155), size: 28),
-            const SizedBox(height: 8),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: DrsTokens.accent.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.bar_chart_rounded,
+                color: DrsTokens.textSubtle,
+                size: 21,
+              ),
+            ),
+            const SizedBox(height: 10),
             Text(
               context.tr('severity_empty'),
-              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: DrsTokens.textMuted,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -159,18 +192,63 @@ class SeverityDistributionChart extends StatelessWidget {
 
   BarChartData _chartData(BuildContext context) {
     final maxCount = buckets.fold<int>(1, (m, b) => b.count > m ? b.count : m);
+    final maxY = (maxCount * 1.3).ceilToDouble();
     return BarChartData(
       alignment: BarChartAlignment.spaceAround,
-      maxY: (maxCount * 1.25).ceilToDouble(),
-      barTouchData: BarTouchData(enabled: false),
-      gridData: const FlGridData(show: false),
+      maxY: maxY,
+      barTouchData: BarTouchData(
+        enabled: true,
+        touchTooltipData: BarTouchTooltipData(
+          getTooltipColor: (_) => DrsTokens.surfaceElevated,
+          tooltipBorder: const BorderSide(color: DrsTokens.borderStrong),
+          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            final bucket = buckets[group.x];
+            return BarTooltipItem(
+              '${context.tr(bucket.labelKey)}\n${bucket.count}',
+              const TextStyle(
+                color: DrsTokens.textPrimary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            );
+          },
+        ),
+      ),
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: maxY / 3,
+        getDrawingHorizontalLine: (_) => FlLine(
+          color: DrsTokens.border.withValues(alpha: 0.45),
+          strokeWidth: 1,
+        ),
+      ),
       borderData: FlBorderData(show: false),
       titlesData: FlTitlesData(
         leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         rightTitles: const AxisTitles(
           sideTitles: SideTitles(showTitles: false),
         ),
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        topTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 24,
+            getTitlesWidget: (value, meta) {
+              final i = value.toInt();
+              if (i < 0 || i >= buckets.length || buckets[i].count == 0) {
+                return const SizedBox.shrink();
+              }
+              return Text(
+                '${buckets[i].count}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: buckets[i].color,
+                ),
+              );
+            },
+          ),
+        ),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
@@ -201,9 +279,14 @@ class SeverityDistributionChart extends StatelessWidget {
             barRods: [
               BarChartRodData(
                 toY: buckets[i].count.toDouble(),
-                width: 20,
+                width: 24,
+                backDrawRodData: BackgroundBarChartRodData(
+                  show: true,
+                  toY: maxY,
+                  color: DrsTokens.surfaceMuted.withValues(alpha: 0.85),
+                ),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(5),
+                  top: Radius.circular(6),
                 ),
                 gradient: buckets[i].count > 0
                     ? LinearGradient(

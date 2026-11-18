@@ -9,9 +9,14 @@ import '../services/ml/pipeline_schema.dart';
 import '../services/offline_queue_service.dart';
 import '../services/referral_uplink_service.dart';
 import '../services/smtp/smtp_service.dart';
+import '../theme/design_system.dart';
 import '../theme/figma_theme.dart';
 import '../widgets/charts/severity_distribution_chart.dart';
-import '../widgets/futuristic/futuristic_ui.dart';
+import '../widgets/ui/clinical_surface.dart';
+import '../widgets/ui/empty_state.dart';
+import '../widgets/ui/metric_card.dart';
+import '../widgets/ui/page_header.dart';
+import '../widgets/ui/section_header.dart';
 import '../widgets/nav/neon_nav_rail.dart';
 import '../widgets/orbit/orbit.dart';
 import '../widgets/scanner/scanner_theme.dart';
@@ -82,7 +87,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
       OfflineQueueService.kindDeidReferral,
     );
     final live = online ? await _api.getDashboardScreenings() : null;
-    
+
     // Always load all local on-device screening records
     final localRows = await _loadLocalScreenings(limit: 100);
 
@@ -129,7 +134,9 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
       if (mounted) {
         setState(() {
           _queuedCount =
-              persisted.screenings.length + persisted.patients.length + deid.length;
+              persisted.screenings.length +
+              persisted.patients.length +
+              deid.length;
           _queuedAi = persisted.screenings.length;
         });
       }
@@ -144,7 +151,9 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     required int limit,
   }) async {
     try {
-      final records = await ScreeningPersistenceService().getRecentScreenings(limit: limit);
+      final records = await ScreeningPersistenceService().getRecentScreenings(
+        limit: limit,
+      );
       return records;
     } catch (_) {
       return const [];
@@ -161,7 +170,10 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
   List<(String, String, String, String, FigmaStatus)> get _rows {
     final items = _live?['items'];
     if (_liveReady && items is List) {
-      final liveItems = items.whereType<Map<String, dynamic>>().map(_liveRow).toList();
+      final liveItems = items
+          .whereType<Map<String, dynamic>>()
+          .map(_liveRow)
+          .toList();
       if (liveItems.isNotEmpty) return liveItems;
     }
     return _localRows.map(localScreeningRow).toList();
@@ -194,10 +206,12 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
       final created = DateTime.tryParse('${r['created_at'] ?? ''}');
       if (created != null) {
         final localCreated = created.toLocal();
-        final isSameCalendarDay = localCreated.year == now.year &&
+        final isSameCalendarDay =
+            localCreated.year == now.year &&
             localCreated.month == now.month &&
             localCreated.day == now.day;
-        final isWithin24Hours = now.difference(localCreated).inHours.abs() <= 24;
+        final isWithin24Hours =
+            now.difference(localCreated).inHours.abs() <= 24;
         if (isSameCalendarDay || isWithin24Hours) {
           count++;
           continue;
@@ -214,7 +228,8 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
 
   int get _localAwaitingReviewCount => _localRows.where((r) {
     final reviewReq = ((r['requires_human_review'] as num?)?.toInt() ?? 0) == 1;
-    final hasReviewType = r['human_review_type'] != null &&
+    final hasReviewType =
+        r['human_review_type'] != null &&
         (r['human_review_type'] ?? '').toString().isNotEmpty;
     final isDr = ((r['dr_grade_num'] as num?)?.toInt() ?? 0) > 0;
     final notAcked = (r['sync_state'] ?? '').toString() != 'acked';
@@ -267,10 +282,15 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     if (mounted) await _refresh();
   }
 
-  Future<void> _openHistory(BuildContext context, {String initialFilter = 'all'}) async {
+  Future<void> _openHistory(
+    BuildContext context, {
+    String initialFilter = 'all',
+  }) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => FigmaHistoryScreen(initialFilter: initialFilter)),
+      MaterialPageRoute(
+        builder: (_) => FigmaHistoryScreen(initialFilter: initialFilter),
+      ),
     );
     if (mounted) await _refresh();
   }
@@ -304,15 +324,19 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
 
       if (_selectedFilter == 'today') {
         final rawRecord = _localRows.firstWhere(
-          (lr) => (lr['local_patient_id'] ?? '').toString().toLowerCase() == pid ||
-                  (lr['local_screening_id'] ?? '').toString().toLowerCase() == pid,
+          (lr) =>
+              (lr['local_patient_id'] ?? '').toString().toLowerCase() == pid ||
+              (lr['local_screening_id'] ?? '').toString().toLowerCase() == pid,
           orElse: () => const {},
         );
         final createdIso = rawRecord['created_at']?.toString() ?? '';
         final parsed = DateTime.tryParse(createdIso)?.toLocal();
         bool isToday = false;
         if (parsed != null) {
-          isToday = (parsed.year == now.year && parsed.month == now.month && parsed.day == now.day) ||
+          isToday =
+              (parsed.year == now.year &&
+                  parsed.month == now.month &&
+                  parsed.day == now.day) ||
               now.difference(parsed).inHours < 24;
         } else {
           isToday = r.$3.contains('${now.year}');
@@ -320,13 +344,17 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
         if (!isToday) return false;
       } else if (_selectedFilter == 'urgent') {
         final rawRecord = _localRows.firstWhere(
-          (lr) => (lr['local_patient_id'] ?? '').toString().toLowerCase() == pid ||
-                  (lr['local_screening_id'] ?? '').toString().toLowerCase() == pid,
+          (lr) =>
+              (lr['local_patient_id'] ?? '').toString().toLowerCase() == pid ||
+              (lr['local_screening_id'] ?? '').toString().toLowerCase() == pid,
           orElse: () => const {},
         );
         final grade = (rawRecord['dr_grade_num'] as num?)?.toInt() ?? 0;
-        final reviewType = (rawRecord['human_review_type'] ?? '').toString().toUpperCase();
-        final isUrgent = status == FigmaStatus.referral ||
+        final reviewType = (rawRecord['human_review_type'] ?? '')
+            .toString()
+            .toUpperCase();
+        final isUrgent =
+            status == FigmaStatus.referral ||
             grade >= 3 ||
             reviewType == 'URGENT' ||
             res.contains('severe') ||
@@ -335,11 +363,13 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
             res.contains('grade 4');
         if (!isUrgent) return false;
       } else if (_selectedFilter == 'awaiting') {
-        final isAwaiting = status == FigmaStatus.awaitingAi ||
+        final isAwaiting =
+            status == FigmaStatus.awaitingAi ||
             status == FigmaStatus.awaitingSpecialist;
         if (!isAwaiting) return false;
       } else if (_selectedFilter == 'normal') {
-        final isNormal = status == FigmaStatus.verified ||
+        final isNormal =
+            status == FigmaStatus.verified ||
             res.contains('no dr') ||
             res.contains('mild');
         if (!isNormal) return false;
@@ -375,36 +405,73 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
         online: _online,
       ),
       appBar: AppBar(
-        backgroundColor: ScannerHUDTheme.darkSurface,
-        foregroundColor: ScannerHUDTheme.neonCyan,
+        backgroundColor: DrsTokens.surface.withValues(alpha: 0.96),
+        foregroundColor: DrsTokens.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/branding/drishti_mark.png',
-              height: 24,
-              width: 24,
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'DRISHTI',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                letterSpacing: 0.5,
+        toolbarHeight: 68,
+        titleSpacing: 16,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: DrsTokens.accent.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: DrsTokens.accent.withValues(alpha: 0.20),
+                  ),
+                ),
+                child: Image.asset('assets/branding/drishti_mark.png'),
               ),
-            ),
-          ],
+              const SizedBox(width: 11),
+              const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'DRISHTI',
+                    style: TextStyle(
+                      color: DrsTokens.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      height: 1.15,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'CLINICAL WORKSPACE',
+                    style: TextStyle(
+                      color: DrsTokens.textMuted,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 8,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: DrsTokens.border),
         ),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
               color: badgeBg,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.22)),
             ),
             child: Row(
               children: [
@@ -502,12 +569,19 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 896),
+          constraints: const BoxConstraints(maxWidth: 1180),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 720;
+              final desktop = constraints.maxWidth >= 960;
+              final pagePadding = desktop ? 28.0 : (wide ? 22.0 : 16.0);
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.fromLTRB(
+                  pagePadding,
+                  pagePadding,
+                  pagePadding,
+                  pagePadding + 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -529,21 +603,22 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                               _startButton(context),
                             ],
                           ),
-                    const SizedBox(height: 12),
-                    // Orbit hero centered under the header; keeps the header
-                    // row's baseline layout intact on every width.
-                    Center(child: _orbitHero(context)),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 22),
+                    _orbitHero(context),
+                    const SizedBox(height: 16),
                     _quickActions(context),
-                    const SizedBox(height: 14),
-                    // Stat cards
-                    GridView.count(
-                      crossAxisCount: wide ? 4 : 2,
+                    const SizedBox(height: 24),
+                    // Stat cards use a fixed, accessible height at every
+                    // breakpoint so labels never get crushed on tablets.
+                    GridView(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: wide ? 1.25 : 1.35,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: desktop ? 4 : 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        mainAxisExtent: desktop ? 118 : 132,
+                      ),
                       children: [
                         _statCard(
                           context,
@@ -605,11 +680,28 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                         ),
                         child: Row(
                           children: [
-                            Text(
-                              _online == true ? '🔄' : '📡',
-                              style: const TextStyle(fontSize: 20),
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color:
+                                    (_online == true
+                                            ? DrsTokens.accent
+                                            : DrsTokens.warning)
+                                        .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                _online == true
+                                    ? Icons.cloud_sync_outlined
+                                    : Icons.cloud_off_outlined,
+                                size: 19,
+                                color: _online == true
+                                    ? DrsTokens.accent
+                                    : DrsTokens.warning,
+                              ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,46 +743,39 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 24),
                     SeverityDistributionChart(
                       buckets: buildSeverityBuckets(_rows.map((r) => r.$4)),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      context.tr('recent_screenings'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_rows.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: ScannerHUDTheme.darkSurface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF1E293B)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.folder_off_outlined,
-                              color: FigmaColors.faint,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Text(
-                                'No screenings on this device yet — '
-                                'capture one to begin.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF94A3B8),
-                                ),
+                    const SizedBox(height: 28),
+                    SectionHeader(
+                      icon: Icons.recent_actors_rounded,
+                      title: context.tr('recent_screenings'),
+                      subtitle: _rows.isEmpty
+                          ? 'Your latest on-device and synced activity'
+                          : '${_rows.length} record${_rows.length == 1 ? '' : 's'} · encrypted on this device',
+                      trailing: _rows.isEmpty
+                          ? null
+                          : TextButton.icon(
+                              onPressed: () => _openHistory(context),
+                              icon: const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 16,
                               ),
+                              label: const Text('View all'),
                             ),
-                          ],
+                    ),
+                    const SizedBox(height: 14),
+                    if (_rows.isEmpty)
+                      EmptyState(
+                        icon: Icons.visibility_off_outlined,
+                        title: 'No screenings yet',
+                        message:
+                            'Capture a fundus photograph to begin the first on-device screening. Your records stay encrypted on this device.',
+                        action: OutlinedButton.icon(
+                          onPressed: () => _startScreening(context),
+                          icon: const Icon(Icons.add_circle_outline, size: 17),
+                          label: const Text('Start first screening'),
                         ),
                       )
                     else ...[
@@ -750,80 +835,13 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFF101A33),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.4),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.1),
-                blurRadius: 8,
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: ScannerHUDTheme.neonCyan,
-                  boxShadow: [
-                    BoxShadow(
-                      color: ScannerHUDTheme.neonCyan,
-                      blurRadius: 4,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  'RETINAL DIAGNOSTIC HUD // AI V1.2',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: ScannerHUDTheme.hudMonoStyle.copyWith(
-                    fontSize: 10,
-                    letterSpacing: 1.2,
-                    fontWeight: FontWeight.w700,
-                    color: ScannerHUDTheme.neonCyan,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Text(
-          context.tr('dash_title'),
-          textAlign: TextAlign.start,
-          softWrap: true,
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 24,
-            letterSpacing: -0.3,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          context.tr('dash_subtitle'),
-          style: const TextStyle(
-            fontSize: 13,
-            color: Color(0xFF94A3B8),
-            fontWeight: FontWeight.w500,
-          ),
+        PageHeader(
+          eyebrow: _hudEyebrow(),
+          title: context.tr('dash_title'),
+          subtitle: context.tr('dash_subtitle'),
         ),
         if (_localRows.isNotEmpty && !_liveReady) ...[
-          const SizedBox(height: 5),
+          const SizedBox(height: 8),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: const [
@@ -848,118 +866,283 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     );
   }
 
-  Widget _startButton(BuildContext context) {
-    return FuturisticGlowButton(
-      label: context.tr('start_screening'),
-      icon: const Icon(
-        Icons.add_circle_outline_rounded,
-        color: Colors.white,
-        size: 18,
+  Widget _hudEyebrow() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: DrsTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: DrsTokens.neon.withValues(alpha: 0.30),
+          width: 1,
+        ),
       ),
-      glowColor: const Color(0xFF00B4D8),
-      backgroundColor: const Color(0xFF00B4D8),
-      onPressed: () => _startScreening(context),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 260),
+        child: Row(
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: DrsTokens.neon,
+                boxShadow: [BoxShadow(color: DrsTokens.neon, blurRadius: 5)],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'PRIMARY HEALTH CENTRE · SCREENING DESK',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: ScannerHUDTheme.hudMonoStyle.copyWith(
+                  fontSize: 10,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w700,
+                  color: DrsTokens.neon,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  /// Ambient orbit hero: idle rings plus an honest link-state label derived
-  /// from the real ping result (never claims readiness it does not have).
+  Widget _startButton(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: () => _startScreening(context),
+      icon: const Icon(Icons.add_rounded, size: 20),
+      label: Text(context.tr('start_screening')),
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(190, 50),
+        backgroundColor: DrsTokens.accent,
+        foregroundColor: const Color(0xFF06232D),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+
+  /// Compact clinical overview with an honest link state derived from the
+  /// real server ping. The scanner remains a visual anchor without competing
+  /// with patient work and primary actions.
   Widget _orbitHero(BuildContext context) {
     final online = _online;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF101B36),
-            Color(0xFF0B1328),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.25),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: ScannerHUDTheme.neonCyan.withValues(alpha: 0.08),
-            blurRadius: 24,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: ScannerHUDTheme.neonCyan,
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 560;
+        final showMid = !compact && constraints.maxWidth >= 760;
+        final copy = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: DrsTokens.accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'AI SCANNER HUD',
-                    style: ScannerHUDTheme.hudMonoStyle.copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.1,
-                      color: ScannerHUDTheme.neonCyan,
-                    ),
+                  child: const Icon(
+                    Icons.visibility_outlined,
+                    size: 15,
+                    color: DrsTokens.accent,
                   ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF223254)),
                 ),
-                child: Text(
-                  online == true ? 'EDGE ENGINE ACTIVE' : 'OFFLINE STORE & FORWARD',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: Color(0xFF94A3B8),
+                const SizedBox(width: 8),
+                const Flexible(
+                  child: Text(
+                    'AI-ASSISTED SCREENING',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: DrsTokens.accent,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
                   ),
+                ),
+              ],
+            ),
+            SizedBox(height: compact ? 10 : 12),
+            Text(
+              'Clarity at the\npoint of care.',
+              style: TextStyle(
+                color: DrsTokens.textPrimary,
+                fontSize: compact ? 19 : 24,
+                height: 1.18,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+            if (!compact) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'On-device retinal analysis, encrypted records, and a clear path to specialist review.',
+                maxLines: 2,
+                style: TextStyle(
+                  color: DrsTokens.textMuted,
+                  fontSize: 12,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: 220,
-            height: 220,
-            child: MediaQuery(
-              data: MediaQuery.of(context).copyWith(size: const Size(480, 480)),
-              child: OrbitScanner(
-                state: OrbitScannerState.idle,
-                statusText: online == null
-                    ? 'PROBING LINK'
-                    : (online ? 'LINK ONLINE' : 'LINK OFFLINE'),
-                technicalLabel: _queuedCount > 0 ? 'queued: $_queuedCount' : null,
-              ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                _heroCapability(
+                  Icons.lock_outline_rounded,
+                  'Private by design',
+                ),
+                if (!compact)
+                  _heroCapability(Icons.offline_bolt_outlined, 'Offline ready'),
+              ],
+            ),
+          ],
+        );
+        final visual = SizedBox(
+          width: compact ? 126 : 186,
+          height: compact ? 172 : 190,
+          child: MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(size: Size(compact ? 170 : 260, compact ? 170 : 260)),
+            child: OrbitScanner(
+              state: OrbitScannerState.idle,
+              statusText: online == null
+                  ? 'PROBING LINK'
+                  : (online ? 'LINK ONLINE' : 'LINK OFFLINE'),
+              technicalLabel: _queuedCount > 0 ? 'queued: $_queuedCount' : null,
             ),
           ),
-          const SizedBox(height: 6),
+        );
+        return Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 16 : 22,
+            vertical: compact ? 14 : 18,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.alphaBlend(
+                  DrsTokens.accent.withValues(alpha: 0.075),
+                  DrsTokens.surfaceElevated,
+                ),
+                DrsTokens.surfaceMuted,
+              ],
+            ),
+            borderRadius: DrsTokens.radii.xlRadius,
+            border: Border.all(
+              color: DrsTokens.borderStrong.withValues(alpha: 0.65),
+            ),
+            boxShadow: [
+              DrsTokens.shadow(Colors.black, opacity: 0.16, blur: 24),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(child: copy),
+              if (showMid) ...[
+                const SizedBox(width: 20),
+                Container(
+                  width: 1,
+                  color: DrsTokens.border.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 20),
+                _heroStatusColumn(context),
+              ],
+              SizedBox(width: compact ? 6 : 20),
+              visual,
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Honest session facts that fill the hero's desktop dead zone: what runs
+  /// where, how deep the offline queue is, and how records are stored.
+  Widget _heroStatusColumn(BuildContext context) {
+    Widget _row(IconData icon, String label, String value) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: DrsTokens.textMuted),
+          const SizedBox(width: 7),
           Text(
-            'Dual-Eye Screening Protocol • Non-Mydriatic Fundus Engine',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.3,
-              color: const Color(0xFF94A3B8).withValues(alpha: 0.8),
+            label,
+            style: const TextStyle(
+              color: DrsTokens.textSubtle,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            value,
+            style: const TextStyle(
+              color: DrsTokens.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _row(Icons.memory_rounded, 'ENGINE', 'On-device'),
+        const SizedBox(height: 12),
+        _row(
+          Icons.cloud_upload_outlined,
+          'SYNC QUEUE',
+          _queuedCount > 0 ? '$_queuedCount pending' : 'Clear',
+        ),
+        const SizedBox(height: 12),
+        _row(Icons.enhanced_encryption_outlined, 'RECORDS', 'Encrypted'),
+      ],
+    );
+  }
+
+  Widget _heroCapability(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: DrsTokens.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: DrsTokens.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: DrsTokens.success),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: DrsTokens.textSecondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -975,163 +1158,65 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     IconData icon, {
     VoidCallback? onTap,
   }) {
-    final card = Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF121D38),
-            Color(0xFF0C1428),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: numberColor.withValues(alpha: 0.28),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: numberColor.withValues(alpha: 0.08),
-            blurRadius: 14,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: numberColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 16, color: numberColor),
-              ),
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: numberColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: numberColor.withValues(alpha: 0.8),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 26,
-                  letterSpacing: -0.5,
-                  color: numberColor,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                context.tr(labelKey),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF94A3B8),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-
-    if (onTap == null) return card;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: card,
-      ),
+    return MetricCard(
+      label: context.tr(labelKey),
+      value: value,
+      icon: icon,
+      accent: numberColor,
+      onTap: onTap,
+      semanticLabel:
+          '${context.tr(labelKey)}: $value${onTap == null ? '' : '. Open details.'}',
     );
   }
 
   Widget _quickActions(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E2D4A), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isCompact = constraints.maxWidth < 500;
-          final specialistSubtitle = _specialistEmail.isNotEmpty
-              ? _specialistEmail
-              : 'Set receiver in Admin';
-          return Row(
-            children: [
-              Expanded(
-                child: _quickActionTile(
-                  context,
-                  icon: Icons.add_circle_outline_rounded,
-                  label: isCompact ? 'Screen' : 'New Screening',
-                  subtitle: isCompact ? null : 'Intake & AI',
-                  color: ScannerHUDTheme.neonCyan,
-                  onTap: () => _startScreening(context),
-                  isPrimary: true,
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 500;
+        final specialistSubtitle = _specialistEmail.isNotEmpty
+            ? _specialistEmail
+            : 'Set receiver in Admin';
+        return Row(
+          children: [
+            Expanded(
+              child: _quickActionTile(
+                context,
+                icon: Icons.add_circle_outline_rounded,
+                label: isCompact ? 'Screen' : 'New Screening',
+                subtitle: isCompact ? null : 'Intake & AI',
+                color: ScannerHUDTheme.neonCyan,
+                onTap: () => _startScreening(context),
+                isPrimary: true,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _quickActionTile(
-                  context,
-                  icon: Icons.history_edu_outlined,
-                  label: isCompact ? 'History' : 'Records',
-                  subtitle: isCompact ? null : 'Patient History',
-                  color: const Color(0xFF38BDF8),
-                  onTap: () => _openHistory(context),
-                ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _quickActionTile(
+                context,
+                icon: Icons.history_edu_outlined,
+                label: isCompact ? 'History' : 'Records',
+                subtitle: isCompact ? null : 'Patient History',
+                color: const Color(0xFF38BDF8),
+                onTap: () => _openHistory(context),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _quickActionTile(
-                  context,
-                  icon: Icons.medical_services_outlined,
-                  label: 'Specialist',
-                  subtitle: specialistSubtitle,
-                  color: const Color(0xFFA855F7),
-                  badge: _localAwaitingReviewCount > 0 ? '$_localAwaitingReviewCount' : null,
-                  onTap: () => _openDoctorReview(context),
-                ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _quickActionTile(
+                context,
+                icon: Icons.medical_services_outlined,
+                label: 'Specialist',
+                subtitle: specialistSubtitle,
+                color: const Color(0xFFA855F7),
+                badge: _localAwaitingReviewCount > 0
+                    ? '$_localAwaitingReviewCount'
+                    : null,
+                onTap: () => _openDoctorReview(context),
               ),
-            ],
-          );
-        },
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1145,94 +1230,82 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     bool isPrimary = false,
     String? badge,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-          decoration: BoxDecoration(
-            gradient: isPrimary
-                ? LinearGradient(
-                    colors: [
-                      color.withValues(alpha: 0.25),
-                      color.withValues(alpha: 0.08),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: isPrimary ? null : const Color(0xFF131F38),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isPrimary
-                  ? color.withValues(alpha: 0.5)
-                  : const Color(0xFF223254),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return ClinicalSurface(
+      onTap: onTap,
+      semanticLabel: '$label${subtitle == null ? '' : ', $subtitle'}',
+      accent: color,
+      padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
+      gradient: isPrimary
+          ? LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withValues(alpha: 0.24),
+                color.withValues(alpha: 0.08),
+              ],
+            )
+          : null,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(icon, size: 20, color: color),
-                  if (badge != null)
-                    Positioned(
-                      top: -6,
-                      right: -10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          badge,
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
+              Icon(icon, size: 21, color: color),
+              if (badge != null)
+                Positioned(
+                  top: -6,
+                  right: -10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: DrsTokens.danger,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      badge,
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 5),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isPrimary ? FontWeight.w700 : FontWeight.w600,
-                  color: isPrimary ? Colors.white : const Color(0xFFCBD5E1),
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: subtitle.contains('@')
-                        ? const Color(0xFFC084FC)
-                        : const Color(0xFF94A3B8),
                   ),
                 ),
-              ],
             ],
           ),
-        ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isPrimary ? FontWeight.w800 : FontWeight.w600,
+              color: isPrimary
+                  ? DrsTokens.textPrimary
+                  : DrsTokens.textSecondary,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: subtitle.contains('@')
+                    ? DrsTokens.purple
+                    : DrsTokens.textMuted,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1254,7 +1327,10 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
             decoration: InputDecoration(
               isDense: true,
               hintText: 'Search screenings by name or patient ID...',
-              hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+              hintStyle: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 13,
+              ),
               prefixIcon: const Icon(
                 Icons.search,
                 color: Color(0xFF94A3B8),
@@ -1288,11 +1364,23 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
             children: [
               _filterChip('all', 'All (${_rows.length})', null),
               const SizedBox(width: 6),
-              _filterChip('today', 'Today ($_localTodayCount)', ScannerHUDTheme.neonCyan),
+              _filterChip(
+                'today',
+                'Today ($_localTodayCount)',
+                ScannerHUDTheme.neonCyan,
+              ),
               const SizedBox(width: 6),
-              _filterChip('urgent', 'Urgent / Referral ($_localUrgentCount)', const Color(0xFFEF4444)),
+              _filterChip(
+                'urgent',
+                'Urgent / Referral ($_localUrgentCount)',
+                const Color(0xFFEF4444),
+              ),
               const SizedBox(width: 6),
-              _filterChip('awaiting', 'Pending Review', const Color(0xFFF59E0B)),
+              _filterChip(
+                'awaiting',
+                'Pending Review',
+                const Color(0xFFF59E0B),
+              ),
               const SizedBox(width: 6),
               _filterChip('normal', 'Normal / Mild', const Color(0xFF10B981)),
             ],
@@ -1309,7 +1397,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? ScannerHUDTheme.neonCyan.withValues(alpha: 0.18)
@@ -1339,11 +1427,9 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? ScannerHUDTheme.neonCyan
-                    : const Color(0xFF94A3B8),
+                color: isSelected ? DrsTokens.accent : DrsTokens.textMuted,
               ),
             ),
           ],
@@ -1354,151 +1440,57 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
 
   Widget? _mobileBottomBar(BuildContext context) {
     if (MediaQuery.of(context).size.width >= 720) return null;
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF0B132B).withValues(alpha: 0.95),
-        border: const Border(
-          top: BorderSide(color: Color(0xFF1E2D4A), width: 1),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: DrsTokens.border)),
+      ),
+      child: NavigationBar(
+        selectedIndex: 0,
+        onDestinationSelected: (index) async {
+          switch (index) {
+            case 0:
+              return;
+            case 1:
+              await _openHistory(context);
+            case 2:
+              await _startScreening(context);
+            case 3:
+              await _openDoctorReview(context);
+            case 4:
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdminPortalScreen()),
+              );
+              if (mounted) await _refresh();
+          }
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard_rounded),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history_rounded),
+            label: 'History',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.add_circle_outline),
+            selectedIcon: Icon(Icons.add_circle),
+            label: 'Screen',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.medical_services_outlined),
+            selectedIcon: Icon(Icons.medical_services),
+            label: 'Review',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.admin_panel_settings_outlined),
+            selectedIcon: Icon(Icons.admin_panel_settings),
+            label: 'Admin',
           ),
         ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _bottomNavItem(
-              icon: Icons.dashboard_rounded,
-              label: 'Dashboard',
-              isSelected: true,
-              onTap: () {},
-            ),
-            _bottomNavItem(
-              icon: Icons.history_rounded,
-              label: 'History',
-              isSelected: false,
-              onTap: () => _openHistory(context),
-            ),
-            InkWell(
-              onTap: () => _startScreening(context),
-              borderRadius: BorderRadius.circular(24),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF00B4D8), Color(0xFF0077B6)],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF00B4D8).withValues(alpha: 0.4),
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.add, color: Colors.white, size: 18),
-                    SizedBox(width: 4),
-                    Text(
-                      'Screen',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            _bottomNavItem(
-              icon: Icons.medical_services_rounded,
-              label: 'Review',
-              isSelected: false,
-              onTap: () => _openDoctorReview(context),
-            ),
-            _bottomNavItem(
-              icon: Icons.admin_panel_settings_outlined,
-              label: 'Admin',
-              isSelected: false,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AdminPortalScreen()),
-                );
-                if (mounted) await _refresh();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _bottomNavItem({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-    String? badge,
-  }) {
-    final color = isSelected
-        ? ScannerHUDTheme.neonCyan
-        : const Color(0xFF64748B);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(icon, size: 20, color: color),
-                if (badge != null)
-                  Positioned(
-                    top: -4,
-                    right: -8,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEF4444),
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 12,
-                        minHeight: 12,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: color,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1508,123 +1500,96 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     (String, String, String, String, FigmaStatus) s,
   ) {
     final initial = s.$2.isNotEmpty ? s.$2.trim()[0].toUpperCase() : 'P';
-    return InkWell(
+    return ClinicalSurface(
       onTap: () => _openHistory(context),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF111B34),
-              Color(0xFF0C1428),
-            ],
+      semanticLabel: '${s.$2}, ${s.$4}, ${s.$3}. Open patient history.',
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0E7490), Color(0xFF22C7E6)],
+              ),
+              border: Border.all(
+                color: DrsTokens.accent.withValues(alpha: 0.25),
+              ),
+              boxShadow: [DrsTokens.shadow(DrsTokens.accent, opacity: 0.16)],
+            ),
+            child: Center(
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF1E2D4A), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0E7490),
-                    Color(0xFF00B4D8),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF00B4D8).withValues(alpha: 0.25),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        s.$2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: DrsTokens.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (s.$1.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A2642),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFF283A64)),
+                        ),
                         child: Text(
-                          s.$2,
-                          overflow: TextOverflow.ellipsis,
+                          s.$1,
                           style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            letterSpacing: 0.1,
-                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: DrsTokens.neon,
                           ),
                         ),
                       ),
-                      if (s.$1.isNotEmpty) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1A2642),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: const Color(0xFF283A64)),
-                          ),
-                          child: Text(
-                            s.$1,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF7DF9FF),
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${s.$4} · ${s.$3}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: DrsTokens.textMuted,
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${s.$4} · ${s.$3}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            StatusBadge(status: s.$5),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          StatusBadge(status: s.$5),
+        ],
       ),
     );
   }

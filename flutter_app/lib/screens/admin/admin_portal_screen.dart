@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import '../../services/db/local_store.dart';
 import '../../services/offline_queue_service.dart';
 import '../../services/smtp/smtp_service.dart';
+import '../../theme/design_system.dart';
 import '../../theme/figma_theme.dart';
+import '../../widgets/ui/clinical_surface.dart';
 import '../../widgets/scanner/scanner_theme.dart';
 import 'specialist_routing_screen.dart';
 
@@ -745,41 +747,53 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
     required String subtitle,
     required IconData icon,
   }) {
-    return Row(
-      children: [
-        Icon(icon, color: ScannerHUDTheme.neonCyan, size: 20),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-              ),
-            ],
+    return Semantics(
+      header: true,
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: DrsTokens.accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: DrsTokens.accent.withValues(alpha: 0.24)),
+            ),
+            child: Icon(icon, color: DrsTokens.accent, size: 18),
           ),
-        ),
-      ],
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: DrsTokens.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.4,
+                    color: DrsTokens.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _card(List<Widget> children) {
-    return Container(
+    return ClinicalSurface(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ScannerHUDTheme.darkSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF1E2D4A)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: children,
