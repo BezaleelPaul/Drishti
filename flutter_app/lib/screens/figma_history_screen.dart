@@ -10,6 +10,7 @@ import '../services/db/screening_persistence_service.dart';
 import '../services/hospital_auth_service.dart';
 import '../services/pdf/clinical_pdf_generator.dart';
 import '../services/platform/platform_files.dart';
+import '../services/printer/thermal_slip_service.dart';
 import '../services/smtp/smtp_service.dart';
 import '../theme/figma_theme.dart';
 import '../widgets/scanner/scanner_theme.dart';
@@ -718,6 +719,48 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                                 ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E293B),
+                        foregroundColor: const Color(0xFF7DF9FF),
+                        side: const BorderSide(color: Color(0xFF334155)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                      label: const Text(
+                        'Print Camp Thermal Slip (58mm / 80mm ESC/POS)',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      onPressed: () {
+                        final grade = (r['dr_grade_num'] as num?)?.toInt() ?? 0;
+                        final gradeLabel = r['dr_label']?.toString() ?? (grade == 0 ? 'No DR' : 'DR Grade $grade');
+                        final pid = (r['local_patient_id'] ?? r['abha_id'] ?? 'TK-0000').toString();
+                        final name = (r['name'] ?? 'Patient').toString();
+                        final isUrgent = grade >= 3;
+
+                        final slip = CampSlipData(
+                          tokenNumber: pid,
+                          patientName: isClinician ? name : HospitalAuthService.instance.maskPatientName(name),
+                          patientId: isClinician ? pid : HospitalAuthService.instance.maskPatientId(pid),
+                          age: (r['age'] as num?)?.toInt(),
+                          gender: r['gender']?.toString(),
+                          screeningDate: DateTime.tryParse(r['created_at']?.toString() ?? '') ?? DateTime.now(),
+                          facilityName: HospitalAuthService.instance.currentFacility,
+                          operatorName: HospitalAuthService.instance.operatorName,
+                          odGradeLabel: (r['eye_side'] ?? 'Right') == 'Right' ? gradeLabel : 'Unspecified',
+                          osGradeLabel: (r['eye_side'] ?? 'Right') == 'Left' ? gradeLabel : 'Unspecified',
+                          referralStatus: isUrgent ? 'URGENT VR REFERRAL REQUIRED' : 'ROUTINE 1-YEAR FOLLOW-UP',
+                          followUpDate: isUrgent ? 'Within 48-72 Hours' : 'Annual (12 Months)',
+                          qrPayload: 'DRISHTI:TOKEN=$pid;GRADE=$gradeLabel;FACILITY=${HospitalAuthService.instance.currentFacility}',
+                        );
+
+                        ThermalSlipService.instance.showThermalSlipDialog(context, slip);
+                      },
                     ),
                     const SizedBox(height: 10),
                     Row(

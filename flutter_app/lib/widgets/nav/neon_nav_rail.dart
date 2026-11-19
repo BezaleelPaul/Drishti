@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/lang_scope.dart';
 import '../../screens/about_screen.dart';
 import '../../screens/admin/admin_portal_screen.dart';
+import '../../screens/doctor_batch_triage_screen.dart';
 import '../../screens/doctor_review_screen.dart';
 import '../../screens/figma_dashboard_screen.dart';
 import '../../screens/figma_help_screen.dart';
@@ -486,6 +487,14 @@ List<NavEntry> buildNavEntries(BuildContext context) {
       page: const FigmaHistoryScreen(),
       accent: const Color(0xFF38BDF8),
     ),
+    if (HospitalAuthService.instance.isClinician)
+      const NavEntry(
+        icon: Icons.bolt_rounded,
+        label: 'Rapid Batch Triage Deck',
+        section: 'Triage & Operations',
+        page: DoctorBatchTriageScreen(),
+        accent: Color(0xFFF59E0B),
+      ),
     NavEntry(
       icon: Icons.medical_services_outlined,
       label: 'Specialist Review Queue',

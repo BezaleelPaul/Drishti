@@ -8,6 +8,8 @@ import '../../models/screening_models.dart';
 import '../../services/api_service.dart';
 import '../../services/ml/on_device_pipeline.dart';
 import '../../services/platform/platform_files.dart';
+import '../../services/workplace/darkroom_service.dart';
+import '../../services/workplace/workplace_audio_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/orbit/orbit.dart';
 import '../../widgets/review/zoomable_fundus_screen.dart';
@@ -31,6 +33,7 @@ class FlowCaptureScreen extends StatefulWidget {
 class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
   final _api = ApiService();
   final _onDevice = OnDevicePipeline();
+  final _focusNode = FocusNode();
   String _sample = 'assets/images/2_clear_eye_normal.jpg';
   bool _checking = false;
 
@@ -44,14 +47,45 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
   void initState() {
     super.initState();
     unawaited(PlatformFileService.preparePicker());
-    // Fresh operator session starts EMPTY at the viewfinder ('RETINAL
-    // VIEWFINDER READY'): a bundled sample is loaded only by explicit
-    // dropdown selection (demo/kiosk mode). A restored in-flight capture
-    // (bytes already in state) re-runs the quality gate directly — never
-    // replaced by a sample image.
     if (widget.state.imageBytes != null) {
       unawaited(_runQuality());
     }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.space || key == LogicalKeyboardKey.numpad0) {
+      if (widget.state.imageBytes == null) {
+        _openCamera();
+      } else {
+        final q = widget.state.quality;
+        if (q != null && q.qualityGrade != 'BAD') {
+          _proceed();
+        }
+      }
+    } else if (key == LogicalKeyboardKey.tab || key == LogicalKeyboardKey.keyT) {
+      _toggleEye();
+    } else if (key == LogicalKeyboardKey.keyD || key == LogicalKeyboardKey.f9) {
+      DarkroomService.instance.toggleNext();
+    } else if (key == LogicalKeyboardKey.keyR) {
+      _rescan();
+    }
+  }
+
+  void _toggleEye() {
+    widget.state.saveCurrentEye();
+    setState(() {
+      widget.state.switchToOtherEye();
+    });
+    WorkplaceAudioService.instance.playEyeAdvance();
   }
 
   /// Demo/kiosk sample loader — explicit selection only. A load failure is
@@ -60,6 +94,7 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
     try {
       final data = await rootBundle.load(asset);
       if (!mounted) return;
+      await WorkplaceAudioService.instance.playShutterClick();
       setState(() {
         _sample = asset;
         widget.state.imageBytes = data.buffer.asUint8List();
@@ -156,6 +191,9 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
       );
       if (q.qualityGrade == 'BAD') {
         widget.state.recaptureAttemptCount += 1;
+        WorkplaceAudioService.instance.playQcAlert();
+      } else if (q.qualityGrade == 'GOOD') {
+        WorkplaceAudioService.instance.playQcSuccess();
       }
       if (mounted) setState(() => widget.state.quality = q);
     } finally {
@@ -190,6 +228,7 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
 
   void _proceed() {
     if (widget.state.imageBytes == null) return;
+    widget.state.saveCurrentEye();
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -205,29 +244,81 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
     final good = q != null && q.qualityGrade == 'GOOD';
     final borderline = q != null && q.qualityGrade == 'BORDERLINE';
     final bad = q != null && q.qualityGrade == 'BAD';
-    return Scaffold(
-      backgroundColor: ScannerHUDTheme.background,
-      appBar: AppBar(
-        backgroundColor: ScannerHUDTheme.darkSurface,
-        foregroundColor: ScannerHUDTheme.neonCyan,
-        elevation: 0,
-        title: Text(
-          context.tr('capture_title'),
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 672),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const WorkflowBar(step: 2, dark: true),
+
+    return ListenableBuilder(
+      listenable: DarkroomService.instance,
+      builder: (context, _) {
+        final dr = DarkroomService.instance;
+        return KeyboardListener(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKeyEvent: _handleKeyEvent,
+          child: Scaffold(
+            backgroundColor: dr.background,
+            appBar: AppBar(
+              backgroundColor: dr.surface,
+              foregroundColor: dr.accent,
+              elevation: 0,
+              title: Text(
+                context.tr('capture_title'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: Icon(dr.icon, color: dr.accent),
+                  tooltip: 'Darkroom Mode: ${dr.label} [Key D / F9]',
+                  onPressed: dr.toggleNext,
+                ),
+              ],
+            ),
+            body: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 672),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: dr.surfaceHighlight,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: dr.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.touch_app_rounded, size: 15, color: dr.accent),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'FOOT-PEDAL / KEYS: [ Space: Capture/Proceed ]  [ Tab: OD ↔ OS ]  [ D: Darkroom ]',
+                                style: TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: dr.textPrimary,
+                                ),
+                              ),
+                            ),
+                            if (dr.isDarkroom)
+                              Text(
+                                dr.label.split(' ').first.toUpperCase(),
+                                style: TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  color: dr.accent,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const WorkflowBar(step: 2, dark: true),
                 const SizedBox(height: 12),
                 Text(
                   context.tr('select_eye'),
@@ -662,6 +753,9 @@ class _FlowCaptureScreenState extends State<FlowCaptureScreen> {
           ),
         ),
       ),
+    ),
+  );
+      },
     );
   }
 

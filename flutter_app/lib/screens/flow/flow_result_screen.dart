@@ -5,6 +5,8 @@ import '../../l10n/evidence_strings.dart';
 import '../../models/retinal_markers.dart';
 import '../../models/screening_models.dart' as ui;
 import '../../services/hospital_auth_service.dart';
+import '../../services/printer/thermal_slip_service.dart';
+import '../../services/workplace/workplace_audio_service.dart';
 import '../../services/ml/pipeline/structure_segmenter.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/orbit/orbit.dart';
@@ -103,6 +105,52 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
     widget.state.analysis = null;
     widget.state.markers = null;
     Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => FlowCaptureScreen(state: widget.state),
+      ),
+    );
+  }
+
+  void _printThermalSlip() {
+    final st = widget.state;
+    st.saveCurrentEye();
+    final a = st.analysis;
+    final grade = a?.drGrade ?? 0;
+    final gradeLabel = (grade == 0) ? 'No DR' : 'DR Grade $grade';
+    final otherEyeLabel = st.eyeSide == 'Right'
+        ? (st.osAnalysis != null ? 'DR Grade ${st.osAnalysis?.drGrade ?? 0}' : 'Pending Capture')
+        : (st.odAnalysis != null ? 'DR Grade ${st.odAnalysis?.drGrade ?? 0}' : 'Pending Capture');
+
+    final odLabel = st.eyeSide == 'Right' ? gradeLabel : otherEyeLabel;
+    final osLabel = st.eyeSide == 'Left' ? gradeLabel : otherEyeLabel;
+
+    final isUrgent = grade >= 3 || (st.osAnalysis?.drGrade ?? 0) >= 3 || (st.odAnalysis?.drGrade ?? 0) >= 3;
+
+    final slip = CampSlipData(
+      tokenNumber: st.patient.patientId.isNotEmpty ? st.patient.patientId : 'TK-0842',
+      patientName: HospitalAuthService.instance.maskPatientName(st.patient.name),
+      patientId: HospitalAuthService.instance.maskPatientId(st.patient.patientId),
+      age: st.patient.age,
+      gender: st.patient.gender,
+      screeningDate: DateTime.now(),
+      facilityName: HospitalAuthService.instance.currentFacility,
+      operatorName: HospitalAuthService.instance.operatorName,
+      odGradeLabel: odLabel,
+      osGradeLabel: osLabel,
+      referralStatus: isUrgent ? 'URGENT VR REFERRAL REQUIRED' : 'ROUTINE 1-YEAR FOLLOW-UP',
+      followUpDate: isUrgent ? 'Within 48-72 Hours' : 'November 2027',
+      qrPayload: 'DRISHTI:TOKEN=${st.patient.patientId};OD=$odLabel;OS=$osLabel;FACILITY=${HospitalAuthService.instance.currentFacility}',
+    );
+
+    ThermalSlipService.instance.showThermalSlipDialog(context, slip);
+  }
+
+  void _screenOtherEye() {
+    widget.state.saveCurrentEye();
+    widget.state.switchToOtherEye();
+    WorkplaceAudioService.instance.playEyeAdvance();
+    Navigator.pushReplacement(
+      context,
       MaterialPageRoute(
         builder: (_) => FlowCaptureScreen(state: widget.state),
       ),
@@ -906,6 +954,180 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                // Dual-Eye Sequential Screening Status Card
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF334155)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.remove_red_eye_rounded, size: 16, color: Color(0xFF7DF9FF)),
+                              SizedBox(width: 8),
+                              Text(
+                                'DUAL-EYE CAMP SCREENING SEQUENCE',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.8,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            'TOKEN: ${widget.state.patient.patientId.isNotEmpty ? widget.state.patient.patientId : "CAMP"}',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF7DF9FF),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: widget.state.eyeSide == 'Right'
+                                    ? const Color(0xFF0C1F3F)
+                                    : const Color(0xFF1E293B),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: widget.state.eyeSide == 'Right'
+                                      ? const Color(0xFF00B4D8)
+                                      : const Color(0xFF334155),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'OD (Right Eye)',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: widget.state.eyeSide == 'Right'
+                                          ? const Color(0xFF7DF9FF)
+                                          : const Color(0xFF94A3B8),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    widget.state.eyeSide == 'Right'
+                                        ? 'Captured & Screened'
+                                        : (widget.state.odAnalysis != null
+                                            ? 'Captured & Screened'
+                                            : 'Pending Alignment'),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: widget.state.eyeSide == 'Left'
+                                    ? const Color(0xFF0C1F3F)
+                                    : const Color(0xFF1E293B),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: widget.state.eyeSide == 'Left'
+                                      ? const Color(0xFF00B4D8)
+                                      : const Color(0xFF334155),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'OS (Left Eye)',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: widget.state.eyeSide == 'Left'
+                                          ? const Color(0xFF7DF9FF)
+                                          : const Color(0xFF94A3B8),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    widget.state.eyeSide == 'Left'
+                                        ? 'Captured & Screened'
+                                        : (widget.state.osAnalysis != null
+                                            ? 'Captured & Screened'
+                                            : 'Pending Alignment'),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _screenOtherEye,
+                              icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                              label: Text(
+                                widget.state.eyeSide == 'Right'
+                                    ? 'Align & Screen Left Eye (OS)'
+                                    : 'Align & Screen Right Eye (OD)',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF7DF9FF),
+                                side: const BorderSide(color: Color(0xFF00B4D8)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton.icon(
+                            onPressed: _printThermalSlip,
+                            icon: const Icon(Icons.receipt_long_rounded, size: 16),
+                            label: const Text(
+                              'Thermal Slip',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF1E293B),
+                              foregroundColor: const Color(0xFFE2E8F0),
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
                 Text(
                   '${context.tr('ai_note_label')} ${context.tr('ai_note_text')}',
                   style: const TextStyle(

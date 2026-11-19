@@ -101,6 +101,8 @@ class HospitalAuthService extends ChangeNotifier {
   bool get isClinician => _session?.isClinician ?? false;
   bool get isTech => _session?.isTech ?? true;
   String get activeHospital => _session?.hospitalName ?? 'District Eye Hospital';
+  String get currentFacility => activeHospital;
+  String get operatorName => _session?.staffName ?? 'Camp Operator';
 
   // -------------------------------------------------------------
   // Role-Based Data Hiding & Abstraction (Least Privilege Model)
@@ -115,6 +117,17 @@ class HospitalAuthService extends ChangeNotifier {
 
   /// Whether the active role has permission to dispatch specialist email referrals.
   bool get canDispatchReferrals => isClinician;
+
+  /// Masks patient ID / ABHA number for data protection in non-clinician views.
+  String maskPatientId(String? id) {
+    if (id == null || id.trim().isEmpty) return 'TK-****';
+    if (isClinician) return id.trim();
+    final clean = id.trim();
+    if (clean.length <= 4) return 'TK-**';
+    final prefix = clean.substring(0, 3.clamp(0, clean.length));
+    final suffix = clean.substring(clean.length - 2);
+    return '$prefix•••$suffix';
+  }
 
   /// Masks patient full name for privacy if the active user is a camera operator.
   /// Example: "Ramesh Patel" -> "R. Patel", protecting PII in the capture booth.

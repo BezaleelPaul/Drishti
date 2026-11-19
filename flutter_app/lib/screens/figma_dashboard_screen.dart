@@ -23,6 +23,7 @@ import '../widgets/scanner/scanner_theme.dart';
 import '../widgets/status_badge.dart';
 import 'admin/admin_portal_screen.dart';
 import 'auth/hospital_login_screen.dart';
+import 'doctor_batch_triage_screen.dart';
 import 'flow/flow_register_screen.dart';
 import 'doctor_review_screen.dart';
 import 'figma_history_screen.dart';
@@ -796,10 +797,71 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                       ),
                     ],
                     const SizedBox(height: 24),
-                    if (_isClinician)
+                    if (_isClinician) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1E1B4B), Color(0xFF0F172A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.bolt_rounded, color: Color(0xFFA5B4FC), size: 24),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'High-Velocity Batch Triage Deck Available',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    '1-Key sprint mode (1=Normal, 2=Mild, 3=Refer, Space=Next). Rapidly clear high-volume field camp batches.',
+                                    style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const DoctorBatchTriageScreen()),
+                              ),
+                              icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                              label: const Text('Launch Triage Deck'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF6366F1),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       SeverityDistributionChart(
                         buckets: buildSeverityBuckets(_rows.map((r) => r.$4)),
-                      )
+                      ),
+                    ]
                     else
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
