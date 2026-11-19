@@ -4,6 +4,7 @@ import '../../l10n/lang_scope.dart';
 import '../../l10n/evidence_strings.dart';
 import '../../models/retinal_markers.dart';
 import '../../models/screening_models.dart' as ui;
+import '../../services/hospital_auth_service.dart';
 import '../../services/ml/pipeline/structure_segmenter.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/orbit/orbit.dart';
@@ -540,27 +541,64 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        ungraded
-                            ? context.tr('awaiting_verif')
-                            : '${context.tr('ai_detected')}: ${context.tr(_sevKeys[idx])}'
-                                  '${provisional ? ' — provisional, clinician sign-off required' : ''}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          color: ungraded
-                              ? FigmaColors.warning
-                              : _sevColors[idx],
+                      if (HospitalAuthService.instance.isTech)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8, bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0C1833),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.35)),
+                          ),
+                          child: const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.lock_outline_rounded, color: Color(0xFFF59E0B), size: 16),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'DIAGNOSIS ABSTRACTED FOR CAMERA OPERATOR',
+                                    style: TextStyle(
+                                      color: Color(0xFFFBBF24),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 11,
+                                      letterSpacing: 0.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Fundus image verified and encrypted. Diagnostic grades and specialist referral plans are reserved for the hospital clinician.',
+                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5),
+                              ),
+                            ],
+                          ),
+                        )
+                      else ...[
+                        Text(
+                          ungraded
+                              ? context.tr('awaiting_verif')
+                              : '${context.tr('ai_detected')}: ${context.tr(_sevKeys[idx])}'
+                                    '${provisional ? ' — provisional, clinician sign-off required' : ''}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: ungraded
+                                ? FigmaColors.warning
+                                : _sevColors[idx],
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${context.tr('confidence')}: $conf'
-                        '${_backendSuffix(a)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF94A3B8),
+                        Text(
+                          '${context.tr('confidence')}: $conf'
+                          '${_backendSuffix(a)}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
-                      ),
+                      ],
                       if (a.qualityGrade.toUpperCase() == 'BORDERLINE') ...[
                         const SizedBox(height: 10),
                         Container(
@@ -646,69 +684,93 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 10),
-                      Text(
-                        context.tr('severity_scale'),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF94A3B8),
+                      if (HospitalAuthService.instance.isClinician) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          context.tr('severity_scale'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          for (var i = 0; i < 5; i++)
-                            Expanded(
-                              child: Container(
-                                height: 10,
-                                margin: EdgeInsets.only(right: i < 4 ? 4 : 0),
-                                decoration: BoxDecoration(
-                                  color: !ungraded && i <= idx
-                                      ? _sevColors[idx]
-                                      : const Color(0xFF1E293B),
-                                  borderRadius: BorderRadius.circular(5),
-                                  boxShadow: !ungraded && i == idx
-                                      ? [
-                                          BoxShadow(
-                                            color: _sevColors[idx].withValues(alpha: 0.6),
-                                            blurRadius: 6,
-                                          ),
-                                        ]
-                                      : null,
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            for (var i = 0; i < 5; i++)
+                              Expanded(
+                                child: Container(
+                                  height: 10,
+                                  margin: EdgeInsets.only(right: i < 4 ? 4 : 0),
+                                  decoration: BoxDecoration(
+                                    color: !ungraded && i <= idx
+                                        ? _sevColors[idx]
+                                        : const Color(0xFF1E293B),
+                                    borderRadius: BorderRadius.circular(5),
+                                    boxShadow: !ungraded && i == idx
+                                        ? [
+                                            BoxShadow(
+                                              color: _sevColors[idx].withValues(alpha: 0.6),
+                                              blurRadius: 6,
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            context.tr('sev_no_dr'),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ),
-                          Text(
-                            context.tr('sev_pdr'),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${context.tr('risk_level')} ${(a.isReferable ?? false) ? context.tr('badge_referral') : (idx == 0 ? '${context.tr('sev_no_dr')} (Low Risk)' : (idx == 1 ? '${context.tr('sev_mild_npdr')} (Low Risk)' : context.tr('sev_moderate')))}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          ],
                         ),
-                      ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              context.tr('sev_no_dr'),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ),
+                            Text(
+                              context.tr('sev_pdr'),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${context.tr('risk_level')} ${(a.isReferable ?? false) ? context.tr('badge_referral') : (idx == 0 ? '${context.tr('sev_no_dr')} (Low Risk)' : (idx == 1 ? '${context.tr('sev_mild_npdr')} (Low Risk)' : context.tr('sev_moderate')))}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F223D),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.3)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.check_circle_outline, color: Color(0xFF00E5FF), size: 16),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Image Quality Passed · Optical Centering & Illumination Adequate',
+                                  style: TextStyle(fontSize: 11, color: Color(0xFF7DF9FF), fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -832,11 +894,14 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      GradcamExplanationCard(analysis: a),
+                      if (HospitalAuthService.instance.isClinician)
+                        GradcamExplanationCard(analysis: a),
                       const SizedBox(height: 8),
                       _markerCard(),
-                      _criteriaCard(),
-                      _disagreementBanner(),
+                      if (HospitalAuthService.instance.isClinician) ...[
+                        _criteriaCard(),
+                        _disagreementBanner(),
+                      ],
                     ],
                   ),
                 ),
@@ -895,7 +960,9 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
                           ),
                         ),
                         child: Text(
-                          context.tr('btn_proceed_specialist'),
+                          HospitalAuthService.instance.isClinician
+                              ? context.tr('btn_proceed_specialist')
+                              : 'Queue & Screen Next Eye',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 14,
@@ -918,6 +985,36 @@ class _FlowResultScreenState extends State<FlowResultScreen> {
   Widget _urgentReferralBanner(ui.ScreeningAnalysisModel a) {
     if (a.isReferable != true && (a.drGrade ?? 0) < 2) {
       return const SizedBox.shrink();
+    }
+    if (HospitalAuthService.instance.isTech) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0C1833),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF00E5FF).withValues(alpha: 0.35),
+            width: 1.1,
+          ),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.shield_outlined, color: Color(0xFF00E5FF), size: 18),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Retinal Image Acquired & Verified · Stored in Clinical Queue for Doctor Review',
+                style: TextStyle(
+                  color: Color(0xFF7DF9FF),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
     final grade = a.drGrade ?? 0;
     final isUrgent = grade >= 3;

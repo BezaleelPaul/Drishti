@@ -4,8 +4,8 @@ class AppConfig {
 
   /// Keep this in sync with pubspec.yaml. Centralised so the About screen,
   /// diagnostics and referral metadata never drift from the release tag.
-  static const String version = '1.10.0';
-  static const int buildNumber = 10;
+  static const String version = '1.11.0';
+  static const int buildNumber = 11;
 
   /// Demonstration data is NEVER enabled implicitly in a clinical build.
   /// Build with `--dart-define=DRISHTI_DEMO_MODE=true` for kiosk/demo use.

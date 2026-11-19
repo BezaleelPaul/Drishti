@@ -104,18 +104,16 @@ Drishti/
 
 ---
 
-## 📱 Cross-Platform Standalone Downloads (Release v1.10.0)
+## 📱 Cross-Platform Standalone Downloads (Release v1.11.0)
 
 Pre-built binaries are packaged and downloadable from [GitHub Releases](https://github.com/BezaleelPaul/Drishti/releases), with SHA-256 checksums:
-- **macOS (Latest v1.10.0):** `Drishti_macos_v1.10.0.zip` — Extract and double-click `run_macos.command`.
-- **Linux:** `Drishti_linux_v1.10.0.tar.gz` — Extract and run `./run_drishti.sh` (or `./drishti`).
-- **Windows:** `Drishti_windows_v1.10.0.zip` — Extract and run `run_drishti.bat` or `drishti.exe`.
+- **macOS (Latest v1.11.0):** `Drishti_macos_v1.11.0.zip` — Extract and double-click `run_macos.command`.
+- **Linux:** `Drishti_linux_v1.11.0.tar.gz` — Extract and run `./run_drishti.sh` (or `./drishti`).
+- **Windows:** `Drishti_windows_v1.11.0.zip` — Extract and run `run_drishti.bat` or `drishti.exe`.
 - **Android (per ABI):**
-  - `Drishti_mobile_v1.10.0_arm64-v8a.apk` — modern phones/tablets
-  - `Drishti_mobile_v1.10.0_armeabi-v7a.apk` — older 32-bit devices
-  - `Drishti_mobile_v1.10.0_x86_64.apk` — emulators/x86 tablets
-- **iOS:** `Drishti_ios_unsigned_v1.10.0.zip` — Unsigned iOS release archive for sideloading / TestFlight.
+  - `Drishti_mobile_v1.11.0_arm64-v8a.apk` — modern phones/tablets
+  - `Drishti_mobile_v1.11.0_armeabi-v7a.apk` — older 32-bit devices
+  - `Drishti_mobile_v1.11.0_x86_64.apk` — emulators/x86 tablets
+- **iOS:** `Drishti_ios_unsigned_v1.11.0.zip` — Unsigned iOS release archive for sideloading / TestFlight.
 
-> **v1.10.0 highlights:** offline Dijkstra specialist routing with in-person/teleconsult guidance, addressed clinical dossiers, encrypted secondary persistence, secure SMTP credentials, de-identified report filenames, opt-in demo data, rotated Android signing key and per-ABI APKs. See [`presentation/RELEASE_NOTES_v1.10.0.md`](presentation/RELEASE_NOTES_v1.10.0.md).
-
-> ⚠️ **Android signing key rotation:** uninstall the old v1.9.x sideloaded APK once before installing v1.10.0; Android will not update across signing keys.
+> **v1.11.0 highlights:** 100% offline local hospital authentication system with dual-role separation (Camera Operator vs Clinician Doctor), role-based clinical data hiding & PII abstraction (HIPAA/DISHA compliant), PIN-gated doctor records, adaptive Bento-grid dashboard, and Impeller-accelerated Linux desktop workstation. See [`presentation/RELEASE_NOTES_v1.11.0.md`](presentation/RELEASE_NOTES_v1.11.0.md).

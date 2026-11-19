@@ -6,6 +6,7 @@ import 'l10n/lang_scope.dart';
 import 'screens/splash/futuristic_splash_screen.dart';
 import 'services/api_service.dart';
 import 'services/db/local_store.dart';
+import 'services/hospital_auth_service.dart';
 import 'services/offline_queue_service.dart';
 import 'services/platform/platform_files.dart';
 import 'services/referral_uplink_service.dart';
@@ -25,6 +26,7 @@ void main() {
 
 Future<void> _initOfflinePersistence() async {
   try {
+    await HospitalAuthService.instance.init();
     await OfflineQueueService.init();
     await ApiService.restoreQueues();
     // Ticket D-2: connectivity window at boot — flush consented de-identified

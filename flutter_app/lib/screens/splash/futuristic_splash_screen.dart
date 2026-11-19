@@ -3,8 +3,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../services/hospital_auth_service.dart';
 import '../../widgets/fx/particle_field.dart';
 import '../../widgets/scanner/scanner.dart';
+import '../auth/hospital_login_screen.dart';
 import '../figma_dashboard_screen.dart';
 
 /// Cinematic boot & optical-calibration splash.
@@ -115,11 +117,15 @@ class _FuturisticSplashScreenState extends State<FuturisticSplashScreen>
   void _proceed() {
     if (_navigated || !mounted) return;
     _navigated = true;
+    final targetScreen = HospitalAuthService.instance.isLoggedIn
+        ? const FigmaDashboardScreen()
+        : const HospitalLoginScreen();
+
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 700),
-        pageBuilder: (context, anim, secondary) => const FigmaDashboardScreen(),
+        pageBuilder: (context, anim, secondary) => targetScreen,
         transitionsBuilder: (context, anim, secondary, child) {
           return FadeTransition(
             opacity: CurvedAnimation(parent: anim, curve: Curves.easeInOut),

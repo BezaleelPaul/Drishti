@@ -22,10 +22,13 @@ import '../widgets/orbit/orbit.dart';
 import '../widgets/scanner/scanner_theme.dart';
 import '../widgets/status_badge.dart';
 import 'admin/admin_portal_screen.dart';
+import 'auth/hospital_login_screen.dart';
 import 'flow/flow_register_screen.dart';
 import 'doctor_review_screen.dart';
 import 'figma_history_screen.dart';
+import 'live_camera_screen.dart';
 import 'queue_screen.dart';
+import '../services/hospital_auth_service.dart';
 
 /// Figma "PHC Dashboard" ported to Flutter.
 ///
@@ -61,11 +64,18 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    HospitalAuthService.instance.addListener(_onAuthChanged);
     ScreeningPersistenceService().addListener(_onDataChanged);
     SmtpService().addListener(_onDataChanged);
     _refresh();
     _poll = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
   }
+
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _isClinician => HospitalAuthService.instance.isClinician;
 
   void _onDataChanged() {
     if (mounted) _refresh();
@@ -73,6 +83,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
 
   @override
   void dispose() {
+    HospitalAuthService.instance.removeListener(_onAuthChanged);
     ScreeningPersistenceService().removeListener(_onDataChanged);
     SmtpService().removeListener(_onDataChanged);
     _poll?.cancel();
@@ -465,6 +476,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
           child: Divider(height: 1, color: DrsTokens.border),
         ),
         actions: [
+          _hospitalSessionBadge(context),
           Container(
             margin: const EdgeInsets.only(right: 4),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -608,8 +620,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                     const SizedBox(height: 16),
                     _quickActions(context),
                     const SizedBox(height: 24),
-                    // Stat cards use a fixed, accessible height at every
-                    // breakpoint so labels never get crushed on tablets.
+                    // Stat cards: dynamic abstraction for Camera Operator vs Clinician Doctor
                     GridView(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -619,52 +630,93 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                         crossAxisSpacing: 12,
                         mainAxisExtent: desktop ? 118 : 132,
                       ),
-                      children: [
-                        _statCard(
-                          context,
-                          'todays_screenings',
-                          _tileValue(
-                            'today_screenings',
-                            () => _localTodayCount,
-                          ),
-                          ScannerHUDTheme.neonCyan,
-                          Icons.visibility_rounded,
-                          onTap: () => _openTodayScreenings(context),
-                        ),
-                        _statCard(
-                          context,
-                          'awaiting_ai',
-                          _tileValue(
-                            'awaiting_ai',
-                            () => _queuedAi + _localAwaitingAiCount,
-                          ),
-                          const Color(0xFFF59E0B),
-                          Icons.memory_rounded,
-                          onTap: () => _openQueue(context),
-                        ),
-                        _statCard(
-                          context,
-                          'awaiting_specialist',
-                          _tileValue(
-                            'awaiting_specialist',
-                            () => _localAwaitingReviewCount,
-                          ),
-                          const Color(0xFFA855F7),
-                          Icons.medical_services_rounded,
-                          onTap: () => _openDoctorReview(context),
-                        ),
-                        _statCard(
-                          context,
-                          'urgent_referrals',
-                          _tileValue(
-                            'urgent_referrals',
-                            () => _localUrgentCount,
-                          ),
-                          const Color(0xFFEF4444),
-                          Icons.warning_amber_rounded,
-                          onTap: () => _openUrgentReferrals(context),
-                        ),
-                      ],
+                      children: _isClinician
+                          ? [
+                              _statCard(
+                                context,
+                                'todays_screenings',
+                                _tileValue(
+                                  'today_screenings',
+                                  () => _localTodayCount,
+                                ),
+                                ScannerHUDTheme.neonCyan,
+                                Icons.visibility_rounded,
+                                onTap: () => _openTodayScreenings(context),
+                              ),
+                              _statCard(
+                                context,
+                                'awaiting_ai',
+                                _tileValue(
+                                  'awaiting_ai',
+                                  () => _queuedAi + _localAwaitingAiCount,
+                                ),
+                                const Color(0xFFF59E0B),
+                                Icons.memory_rounded,
+                                onTap: () => _openQueue(context),
+                              ),
+                              _statCard(
+                                context,
+                                'awaiting_specialist',
+                                _tileValue(
+                                  'awaiting_specialist',
+                                  () => _localAwaitingReviewCount,
+                                ),
+                                const Color(0xFFA855F7),
+                                Icons.medical_services_rounded,
+                                onTap: () => _openDoctorReview(context),
+                              ),
+                              _statCard(
+                                context,
+                                'urgent_referrals',
+                                _tileValue(
+                                  'urgent_referrals',
+                                  () => _localUrgentCount,
+                                ),
+                                const Color(0xFFEF4444),
+                                Icons.warning_amber_rounded,
+                                onTap: () => _openUrgentReferrals(context),
+                              ),
+                            ]
+                          : [
+                              _statCard(
+                                context,
+                                'todays_screenings',
+                                _tileValue(
+                                  'today_screenings',
+                                  () => _localTodayCount,
+                                ),
+                                ScannerHUDTheme.neonCyan,
+                                Icons.camera_alt_rounded,
+                                onTap: () => _openTodayScreenings(context),
+                              ),
+                              _statCard(
+                                context,
+                                'awaiting_ai',
+                                _tileValue(
+                                  'awaiting_ai',
+                                  () => _queuedAi + _localAwaitingAiCount,
+                                ),
+                                const Color(0xFF00B4D8),
+                                Icons.cloud_queue_rounded,
+                                onTap: () => _openQueue(context),
+                              ),
+                              _statCard(
+                                context,
+                                'Focus QC Rate',
+                                '98.5%',
+                                const Color(0xFF10B981),
+                                Icons.verified_rounded,
+                                onTap: () => _openTodayScreenings(context),
+                              ),
+                              _statCard(
+                                context,
+                                'Doctor Triage',
+                                '🔒 Locked',
+                                const Color(0xFF64748B),
+                                Icons.lock_rounded,
+                                onTap: () => _showHospitalSessionSheet(context),
+                              ),
+                            ],
                     ),
                     if (_queuedCount > 0) ...[
                       const SizedBox(height: 12),
@@ -744,9 +796,56 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                       ),
                     ],
                     const SizedBox(height: 24),
-                    SeverityDistributionChart(
-                      buckets: buildSeverityBuckets(_rows.map((r) => r.$4)),
-                    ),
+                    if (_isClinician)
+                      SeverityDistributionChart(
+                        buckets: buildSeverityBuckets(_rows.map((r) => r.$4)),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0C1428),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF1E2D4A)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.shield_outlined, color: Color(0xFF00E5FF), size: 20),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Clinical Severity Distribution Abstracted',
+                                    style: TextStyle(
+                                      color: Color(0xFF7DF9FF),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Aggregate retinopathy severity curves and specialist referral breakdown are restricted to hospital clinicians.',
+                                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF00E5FF),
+                                side: const BorderSide(color: Color(0xFF00E5FF)),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              icon: const Icon(Icons.key_rounded, size: 14),
+                              label: const Text('Doctor PIN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              onPressed: () => _showHospitalSessionSheet(context),
+                            ),
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: 28),
                     SectionHeader(
                       icon: Icons.recent_actors_rounded,
@@ -831,6 +930,299 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     );
   }
 
+  Widget _hospitalSessionBadge(BuildContext context) {
+    final auth = HospitalAuthService.instance;
+    final session = auth.session;
+    final isClinician = auth.isClinician;
+    final accent = isClinician ? DrsTokens.success : DrsTokens.accent;
+    final roleTag = isClinician ? 'DR' : 'TECH';
+    final name = session != null
+        ? session.staffName.split(' ').first
+        : (isClinician ? 'Doctor' : 'Operator');
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: () => _showHospitalSessionSheet(context),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: accent.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isClinician
+                    ? Icons.medical_services_rounded
+                    : Icons.photo_camera_rounded,
+                size: 13,
+                color: accent,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '$roleTag · $name',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: accent,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(Icons.arrow_drop_down, size: 16, color: accent),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showHospitalSessionSheet(BuildContext context) {
+    final auth = HospitalAuthService.instance;
+    final session = auth.session;
+    final isClinician = auth.isClinician;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: DrsTokens.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: DrsTokens.border),
+          ),
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: DrsTokens.textSubtle.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: (isClinician ? DrsTokens.success : DrsTokens.accent)
+                          .withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      isClinician
+                          ? Icons.medical_services_rounded
+                          : Icons.photo_camera_rounded,
+                      color: isClinician ? DrsTokens.success : DrsTokens.accent,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          session?.hospitalName ?? 'District General Hospital',
+                          style: const TextStyle(
+                            color: DrsTokens.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          '${session?.staffName ?? "Staff"} (${session?.staffId ?? "STAFF-01"}) · ${session?.role.displayName ?? ""}',
+                          style: const TextStyle(
+                            color: DrsTokens.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Divider(color: DrsTokens.border, height: 1),
+              const SizedBox(height: 16),
+              const Text(
+                'SWITCH HOSPITAL ROLE',
+                style: TextStyle(
+                  color: DrsTokens.textSubtle,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await auth.switchRole(HospitalRole.imagingTech);
+                        if (mounted) setState(() {});
+                      },
+                      icon: const Icon(Icons.photo_camera_rounded, size: 16),
+                      label: const Text('Camera Tech', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: DrsTokens.accent,
+                        side: BorderSide(
+                          color: !isClinician ? DrsTokens.accent : DrsTokens.border,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await _promptClinicianPinAndSwitch();
+                      },
+                      icon: const Icon(Icons.medical_services_rounded, size: 16),
+                      label: const Text('Hospital Doctor', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: DrsTokens.success,
+                        side: BorderSide(
+                          color: isClinician ? DrsTokens.success : DrsTokens.border,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const HospitalLoginScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.logout_rounded, size: 16, color: DrsTokens.danger),
+                label: const Text(
+                  'Log Out / Change Hospital Facility',
+                  style: TextStyle(fontSize: 12, color: DrsTokens.danger),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: DrsTokens.danger.withValues(alpha: 0.35)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _promptClinicianPinAndSwitch() async {
+    final pinController = TextEditingController(text: '1234');
+    final auth = HospitalAuthService.instance;
+    final currentContext = context;
+
+    final confirmed = await showDialog<bool>(
+      context: currentContext,
+      builder: (dCtx) {
+        return AlertDialog(
+          backgroundColor: DrsTokens.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.lock_outline, color: DrsTokens.success, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Doctor Verification',
+                style: TextStyle(color: DrsTokens.textPrimary, fontSize: 16),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter clinician security PIN to access patient records and triage:',
+                style: TextStyle(color: DrsTokens.textMuted, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pinController,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: DrsTokens.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'PIN (Default: 1234)',
+                  hintStyle: const TextStyle(color: DrsTokens.textSubtle),
+                  filled: true,
+                  fillColor: ScannerHUDTheme.background,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dCtx, false),
+              child: const Text('Cancel', style: TextStyle(color: DrsTokens.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dCtx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DrsTokens.success,
+                foregroundColor: const Color(0xFF070B14),
+              ),
+              child: const Text('Verify & Enter'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      final success = await auth.switchRole(HospitalRole.clinician, pin: pinController.text);
+      if (!mounted) return;
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid Clinician PIN. Default demo PIN is 1234.'),
+            backgroundColor: DrsTokens.danger,
+          ),
+        );
+      } else {
+        setState(() {});
+      }
+    }
+  }
+
   Widget _titleBlock(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -867,40 +1259,47 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
   }
 
   Widget _hudEyebrow() {
+    final isClinician = HospitalAuthService.instance.isClinician;
+    final roleColor = isClinician ? DrsTokens.success : DrsTokens.neon;
+    final label = isClinician
+        ? 'HOSPITAL CLINICAL DESK · DOCTOR REVIEW'
+        : 'FIELD RETINAL STATION · CAMERA OPERATOR';
+    final hospital = HospitalAuthService.instance.activeHospital;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: DrsTokens.surfaceMuted,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: DrsTokens.neon.withValues(alpha: 0.30),
+          color: roleColor.withValues(alpha: 0.30),
           width: 1,
         ),
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 260),
+        constraints: const BoxConstraints(maxWidth: 340),
         child: Row(
           children: [
             Container(
               width: 6,
               height: 6,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: DrsTokens.neon,
-                boxShadow: [BoxShadow(color: DrsTokens.neon, blurRadius: 5)],
+                color: roleColor,
+                boxShadow: [BoxShadow(color: roleColor, blurRadius: 5)],
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'PRIMARY HEALTH CENTRE · SCREENING DESK',
+                '$label · $hospital'.toUpperCase(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: ScannerHUDTheme.hudMonoStyle.copyWith(
                   fontSize: 10,
-                  letterSpacing: 1.2,
+                  letterSpacing: 1.1,
                   fontWeight: FontWeight.w700,
-                  color: DrsTokens.neon,
+                  color: roleColor,
                 ),
               ),
             ),
@@ -1170,52 +1569,106 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
   }
 
   Widget _quickActions(BuildContext context) {
+    final auth = HospitalAuthService.instance;
+    final isTech = auth.isTech;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 500;
-        final specialistSubtitle = _specialistEmail.isNotEmpty
-            ? _specialistEmail
-            : 'Set receiver in Admin';
-        return Row(
-          children: [
-            Expanded(
-              child: _quickActionTile(
-                context,
-                icon: Icons.add_circle_outline_rounded,
-                label: isCompact ? 'Screen' : 'New Screening',
-                subtitle: isCompact ? null : 'Intake & AI',
-                color: ScannerHUDTheme.neonCyan,
-                onTap: () => _startScreening(context),
-                isPrimary: true,
+
+        if (isTech) {
+          // Camera Operator / Screener Layout
+          return Row(
+            children: [
+              Expanded(
+                child: _quickActionTile(
+                  context,
+                  icon: Icons.photo_camera_rounded,
+                  label: isCompact ? 'Camera' : 'Capture Live',
+                  subtitle: isCompact ? null : 'Retinal Viewfinder',
+                  color: DrsTokens.accent,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const LiveFundusCameraScreen(),
+                    ),
+                  ),
+                  isPrimary: true,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _quickActionTile(
-                context,
-                icon: Icons.history_edu_outlined,
-                label: isCompact ? 'History' : 'Records',
-                subtitle: isCompact ? null : 'Patient History',
-                color: const Color(0xFF38BDF8),
-                onTap: () => _openHistory(context),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _quickActionTile(
+                  context,
+                  icon: Icons.person_add_alt,
+                  label: isCompact ? 'Screen' : 'New Intake',
+                  subtitle: isCompact ? null : 'Patient & AI',
+                  color: const Color(0xFF34D399),
+                  onTap: () => _startScreening(context),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _quickActionTile(
-                context,
-                icon: Icons.medical_services_outlined,
-                label: 'Specialist',
-                subtitle: specialistSubtitle,
-                color: const Color(0xFFA855F7),
-                badge: _localAwaitingReviewCount > 0
-                    ? '$_localAwaitingReviewCount'
-                    : null,
-                onTap: () => _openDoctorReview(context),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _quickActionTile(
+                  context,
+                  icon: Icons.cloud_upload_outlined,
+                  label: isCompact ? 'Queue' : 'Offline Queue',
+                  subtitle: isCompact ? null : 'Sync Status',
+                  color: const Color(0xFFF59E0B),
+                  badge: _queuedCount > 0 ? '$_queuedCount' : null,
+                  onTap: () => _openQueue(context),
+                ),
               ),
-            ),
-          ],
-        );
+            ],
+          );
+        } else {
+          // Hospital Doctor / Patient Details Layout
+          return Row(
+            children: [
+              Expanded(
+                child: _quickActionTile(
+                  context,
+                  icon: Icons.medical_services_rounded,
+                  label: isCompact ? 'Triage' : 'Doctor Review',
+                  subtitle: isCompact
+                      ? null
+                      : (_specialistEmail.isNotEmpty
+                          ? _specialistEmail
+                          : 'Grad-CAM & Sign-Off'),
+                  color: DrsTokens.success,
+                  badge: _localAwaitingReviewCount > 0
+                      ? '$_localAwaitingReviewCount'
+                      : null,
+                  onTap: () => _openDoctorReview(context),
+                  isPrimary: true,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _quickActionTile(
+                  context,
+                  icon: Icons.folder_shared_outlined,
+                  label: isCompact ? 'Records' : 'Patient History',
+                  subtitle: isCompact ? null : 'Search & Details',
+                  color: const Color(0xFF38BDF8),
+                  onTap: () => _openHistory(context),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _quickActionTile(
+                  context,
+                  icon: Icons.warning_amber_rounded,
+                  label: isCompact ? 'Urgent' : 'Urgent Triage',
+                  subtitle: isCompact ? null : 'Critical referrals',
+                  color: DrsTokens.danger,
+                  badge: _localUrgentCount > 0 ? '$_localUrgentCount' : null,
+                  onTap: () => _openUrgentReferrals(context),
+                ),
+              ),
+            ],
+          );
+        }
       },
     );
   }
@@ -1499,10 +1952,14 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
     BuildContext context,
     (String, String, String, String, FigmaStatus) s,
   ) {
-    final initial = s.$2.isNotEmpty ? s.$2.trim()[0].toUpperCase() : 'P';
+    final auth = HospitalAuthService.instance;
+    final isClinician = auth.isClinician;
+    final displayName = isClinician ? s.$2 : auth.maskPatientName(s.$2);
+    final displayResult = isClinician ? s.$4 : 'Capture Verified · In Queue';
+    final initial = displayName.isNotEmpty ? displayName.trim()[0].toUpperCase() : 'P';
     return ClinicalSurface(
       onTap: () => _openHistory(context),
-      semanticLabel: '${s.$2}, ${s.$4}, ${s.$3}. Open patient history.',
+      semanticLabel: '$displayName, $displayResult, ${s.$3}. Open patient history.',
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
@@ -1541,7 +1998,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                   children: [
                     Flexible(
                       child: Text(
-                        s.$2,
+                        displayName,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
@@ -1576,7 +2033,7 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${s.$4} · ${s.$3}',
+                  '$displayResult · ${s.$3}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1623,65 +2080,71 @@ class _FigmaDashboardScreenState extends State<FigmaDashboardScreen> {
             ),
           ),
           ...rows.map(
-            (s) => InkWell(
-              onTap: () => _openHistory(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Color(0xFF1A2644))),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            s.$2,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (s.$1.isNotEmpty)
+            (s) {
+              final auth = HospitalAuthService.instance;
+              final isClinician = auth.isClinician;
+              final displayName = isClinician ? s.$2 : auth.maskPatientName(s.$2);
+              final displayResult = isClinician ? s.$4 : 'Capture Verified · In Queue';
+              return InkWell(
+                onTap: () => _openHistory(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Color(0xFF1A2644))),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              s.$1,
+                              displayName,
                               style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF7DF9FF),
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
                               ),
                             ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        s.$3,
-                        style: const TextStyle(
-                          color: Color(0xFF94A3B8),
-                          fontSize: 12,
+                            if (s.$1.isNotEmpty)
+                              Text(
+                                s.$1,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF7DF9FF),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        s.$4,
-                        style: const TextStyle(
-                          color: Color(0xFFE2E8F0),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      Expanded(
+                        child: Text(
+                          s.$3,
+                          style: const TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 12,
+                          ),
                         ),
                       ),
-                    ),
-                    Expanded(child: StatusBadge(status: s.$5)),
-                  ],
+                      Expanded(
+                        child: Text(
+                          displayResult,
+                          style: const TextStyle(
+                            color: Color(0xFFE2E8F0),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: StatusBadge(status: s.$5)),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),

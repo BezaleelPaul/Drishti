@@ -7,6 +7,7 @@ import '../l10n/lang_scope.dart';
 import '../models/screening_models.dart';
 import '../models/specialist_models.dart';
 import '../services/db/screening_persistence_service.dart';
+import '../services/hospital_auth_service.dart';
 import '../services/pdf/clinical_pdf_generator.dart';
 import '../services/platform/platform_files.dart';
 import '../services/smtp/smtp_service.dart';
@@ -41,6 +42,7 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
     super.initState();
     _selectedFilter = widget.initialFilter;
     ScreeningPersistenceService().addListener(_onDataChanged);
+    HospitalAuthService.instance.addListener(_onDataChanged);
     unawaitedLoad();
   }
 
@@ -51,6 +53,7 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
   @override
   void dispose() {
     ScreeningPersistenceService().removeListener(_onDataChanged);
+    HospitalAuthService.instance.removeListener(_onDataChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -213,13 +216,116 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
     );
   }
 
+  Future<bool> _promptClinicianPin(BuildContext context) async {
+    final pinController = TextEditingController();
+    bool obscure = true;
+    String? errorText;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dlgCtx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF0C1428),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: Color(0xFF00E5FF), width: 1.2),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.shield_rounded, color: Color(0xFF00E5FF), size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Clinician PIN Required',
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Enter your 4-digit hospital clinician security PIN to access unmasked patient diagnostic records.',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: pinController,
+                    keyboardType: TextInputType.number,
+                    obscureText: obscure,
+                    maxLength: 8,
+                    style: const TextStyle(color: Colors.white, letterSpacing: 4, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      hintText: 'PIN (Default 1234)',
+                      hintStyle: const TextStyle(color: Color(0xFF475569), letterSpacing: 1),
+                      filled: true,
+                      fillColor: const Color(0xFF081226),
+                      errorText: errorText,
+                      suffixIcon: IconButton(
+                        icon: Icon(obscure ? Icons.visibility : Icons.visibility_off, color: const Color(0xFF64748B), size: 18),
+                        onPressed: () => setDlgState(() => obscure = !obscure),
+                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFF1E2D4A)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFF00E5FF)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dlgCtx, false),
+                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00E5FF),
+                    foregroundColor: const Color(0xFF0A1128),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () async {
+                    final entered = pinController.text.trim();
+                    final valid = await HospitalAuthService.instance.verifyClinicianPin(entered);
+                    if (valid) {
+                      await HospitalAuthService.instance.switchRole(HospitalRole.clinician, pin: entered);
+                      if (dlgCtx.mounted) Navigator.pop(dlgCtx, true);
+                    } else {
+                      setDlgState(() => errorText = 'Invalid PIN (Default: 1234)');
+                    }
+                  },
+                  child: const Text('Unlock', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    return result ?? false;
+  }
+
   void _showPatientDetailModal(Map<String, dynamic> r) {
+    final auth = HospitalAuthService.instance;
+    final isClinician = auth.isClinician;
     final pid = (r['local_patient_id'] ?? '').toString();
-    final name = (r['name'] ?? pid).toString();
+    final rawName = (r['name'] ?? pid).toString();
+    final name = isClinician ? rawName : auth.maskPatientName(rawName);
     final age = r['age']?.toString() ?? '—';
     final gender = (r['gender'] ?? '—').toString();
-    final village = (r['village'] ?? '—').toString();
-    final phone = (r['phone'] ?? '—').toString();
+    final village = isClinician
+        ? (r['village'] ?? '—').toString()
+        : auth.maskVillage((r['village'] ?? '—').toString());
+    final phone = isClinician
+        ? (r['phone'] ?? '—').toString()
+        : auth.maskPhone((r['phone'] ?? '—').toString());
     final eye = (r['eye_side'] ?? 'Right').toString();
     final grade = (r['dr_grade_num'] as num?)?.toInt() ?? 0;
     final label = (r['dr_label'] ?? 'Unknown').toString();
@@ -294,183 +400,322 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                       ],
                     ),
                     const Divider(color: Color(0xFF1E2D4A), height: 24),
-                    // Diagnostic Overview Card
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF111C38),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: grade >= 3
-                              ? const Color(0xFFEF4444).withValues(alpha: 0.5)
-                              : (grade > 0
-                                  ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
-                                  : const Color(0xFF10B981).withValues(alpha: 0.5)),
+                    // Diagnostic Overview or Abstraction Card
+                    if (isClinician)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF111C38),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: grade >= 3
+                                ? const Color(0xFFEF4444).withValues(alpha: 0.5)
+                                : (grade > 0
+                                    ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
+                                    : const Color(0xFF10B981).withValues(alpha: 0.5)),
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'AI Screening: $eye Eye',
-                                style: const TextStyle(
-                                  color: Color(0xFF7DF9FF),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'AI Screening: $eye Eye',
+                                  style: const TextStyle(
+                                    color: Color(0xFF7DF9FF),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
                                 ),
+                                Text(
+                                  date,
+                                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                color: grade >= 3
+                                    ? const Color(0xFFEF4444)
+                                    : (grade > 0
+                                        ? const Color(0xFFFBBF24)
+                                        : const Color(0xFF34D399)),
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
+                            ),
+                            if (reason.isNotEmpty) ...[
+                              const SizedBox(height: 6),
                               Text(
-                                date,
-                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                'Specialist / Triage: $reason',
+                                style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            label,
-                            style: TextStyle(
-                              color: grade >= 3
-                                  ? const Color(0xFFEF4444)
-                                  : (grade > 0
-                                      ? const Color(0xFFFBBF24)
-                                      : const Color(0xFF34D399)),
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                            if (phone.isNotEmpty && phone != '—') ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Contact: $phone',
+                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                              ),
+                            ],
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF111C38),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.camera_alt_outlined, color: Color(0xFF00E5FF), size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Capture Status: $eye Eye',
+                                      style: const TextStyle(
+                                        color: Color(0xFF7DF9FF),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  date,
+                                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                ),
+                              ],
                             ),
-                          ),
-                          if (reason.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'Specialist / Triage: $reason',
-                              style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF081226),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFF1E2D4A)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.lock_outline_rounded, color: Color(0xFFF59E0B), size: 15),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'CLINICAL DIAGNOSIS ABSTRACTED',
+                                        style: TextStyle(
+                                          color: Color(0xFFFBBF24),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Diabetic retinopathy grading, microaneurysm counts, and referral recommendations are restricted to hospital clinicians. Patient PII is masked for confidentiality in the imaging booth.',
+                                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5, height: 1.35),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF00E5FF),
+                                      side: const BorderSide(color: Color(0xFF00E5FF)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    icon: const Icon(Icons.key_rounded, size: 14),
+                                    label: const Text(
+                                      'Unlock Clinician View (PIN 1234)',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                    onPressed: () async {
+                                      final success = await _promptClinicianPin(context);
+                                      if (success && context.mounted) {
+                                        Navigator.pop(ctx);
+                                        _showPatientDetailModal(r);
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
-                          if (phone.isNotEmpty && phone != '—') ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Contact: $phone',
-                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                            ),
-                          ],
-                        ],
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 20),
                     // Action Buttons: PDF and Email
                     Row(
                       children: [
                         Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00E5FF),
-                              foregroundColor: const Color(0xFF0A1128),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: isExportingPdf
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Color(0xFF0A1128),
+                          child: isClinician
+                              ? ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF00E5FF),
+                                    foregroundColor: const Color(0xFF0A1128),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                  )
-                                : const Icon(Icons.picture_as_pdf_rounded, size: 20),
-                            label: Text(
-                              isExportingPdf ? 'Generating...' : 'Open PDF Report',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            onPressed: isExportingPdf
-                                ? null
-                                : () async {
-                                    final messenger = ScaffoldMessenger.of(context);
-                                    setModalState(() => isExportingPdf = true);
-                                    try {
-                                      final path = await ClinicalPdfGenerator.saveReportToFile(flowState);
-                                      final opened = await PlatformFileService.openFile(path);
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          backgroundColor: const Color(0xFF065F46),
-                                          content: Text(
-                                            opened
-                                                ? 'Clinical report opened · $path'
-                                                : 'Report saved to: $path',
+                                  ),
+                                  icon: isExportingPdf
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFF0A1128),
                                           ),
-                                        ),
-                                      );
-                                    } catch (e) {
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          backgroundColor: const Color(0xFF7F1D1D),
-                                          content: Text('Failed to generate PDF: $e'),
-                                        ),
-                                      );
-                                    } finally {
-                                      setModalState(() => isExportingPdf = false);
+                                        )
+                                      : const Icon(Icons.picture_as_pdf_rounded, size: 20),
+                                  label: Text(
+                                    isExportingPdf ? 'Generating...' : 'Open PDF Report',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  onPressed: isExportingPdf
+                                      ? null
+                                      : () async {
+                                          final messenger = ScaffoldMessenger.of(context);
+                                          setModalState(() => isExportingPdf = true);
+                                          try {
+                                            final path = await ClinicalPdfGenerator.saveReportToFile(flowState);
+                                            final opened = await PlatformFileService.openFile(path);
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                backgroundColor: const Color(0xFF065F46),
+                                                content: Text(
+                                                  opened
+                                                      ? 'Clinical report opened · $path'
+                                                      : 'Report saved to: $path',
+                                                ),
+                                              ),
+                                            );
+                                          } catch (e) {
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                backgroundColor: const Color(0xFF7F1D1D),
+                                                content: Text('Failed to generate PDF: $e'),
+                                              ),
+                                            );
+                                          } finally {
+                                            setModalState(() => isExportingPdf = false);
+                                          }
+                                        },
+                                )
+                              : OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF64748B),
+                                    side: const BorderSide(color: Color(0xFF1E2D4A)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.lock_outline_rounded, size: 18),
+                                  label: const Text(
+                                    'PDF Report (Clinician Only)',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                  ),
+                                  onPressed: () async {
+                                    final ok = await _promptClinicianPin(context);
+                                    if (ok && context.mounted) {
+                                      Navigator.pop(ctx);
+                                      _showPatientDetailModal(r);
                                     }
                                   },
-                          ),
+                                ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF00E5FF),
-                              side: const BorderSide(color: Color(0xFF00E5FF)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: isDispatchingEmail
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Color(0xFF00E5FF),
+                          child: isClinician
+                              ? OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF00E5FF),
+                                    side: const BorderSide(color: Color(0xFF00E5FF)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                  )
-                                : const Icon(Icons.mail_outline_rounded, size: 20),
-                            label: Text(
-                              isDispatchingEmail ? 'Sending...' : 'Email Specialist',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            onPressed: isDispatchingEmail
-                                ? null
-                                : () async {
-                                    final messenger = ScaffoldMessenger.of(context);
-                                    setModalState(() => isDispatchingEmail = true);
-                                    try {
-                                      final res = await SmtpService().sendSpecialistAlert(state: flowState);
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          backgroundColor: res.success
-                                              ? const Color(0xFF065F46)
-                                              : const Color(0xFF7F1D1D),
-                                          content: Text(res.success
-                                              ? 'Clinical alert & PDF emailed successfully!'
-                                              : 'SMTP error: ${res.message}'),
-                                        ),
-                                      );
-                                    } catch (e) {
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          backgroundColor: const Color(0xFF7F1D1D),
-                                          content: Text('Email failed: $e'),
-                                        ),
-                                      );
-                                    } finally {
-                                      setModalState(() => isDispatchingEmail = false);
+                                  ),
+                                  icon: isDispatchingEmail
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFF00E5FF),
+                                          ),
+                                        )
+                                      : const Icon(Icons.mail_outline_rounded, size: 20),
+                                  label: Text(
+                                    isDispatchingEmail ? 'Sending...' : 'Email Specialist',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  onPressed: isDispatchingEmail
+                                      ? null
+                                      : () async {
+                                          final messenger = ScaffoldMessenger.of(context);
+                                          setModalState(() => isDispatchingEmail = true);
+                                          try {
+                                            final res = await SmtpService().sendSpecialistAlert(state: flowState);
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                backgroundColor: res.success
+                                                    ? const Color(0xFF065F46)
+                                                    : const Color(0xFF7F1D1D),
+                                                content: Text(res.success
+                                                    ? 'Clinical alert & PDF emailed successfully!'
+                                                    : 'SMTP error: ${res.message}'),
+                                              ),
+                                            );
+                                          } catch (e) {
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                backgroundColor: const Color(0xFF7F1D1D),
+                                                content: Text('Email failed: $e'),
+                                              ),
+                                            );
+                                          } finally {
+                                            setModalState(() => isDispatchingEmail = false);
+                                          }
+                                        },
+                                )
+                              : OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF64748B),
+                                    side: const BorderSide(color: Color(0xFF1E2D4A)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.lock_outline_rounded, size: 18),
+                                  label: const Text(
+                                    'Email Specialist (Doctor Only)',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                  ),
+                                  onPressed: () async {
+                                    final ok = await _promptClinicianPin(context);
+                                    if (ok && context.mounted) {
+                                      Navigator.pop(ctx);
+                                      _showPatientDetailModal(r);
                                     }
                                   },
-                          ),
+                                ),
                         ),
                       ],
                     ),
@@ -488,12 +733,16 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                               ),
                             ),
                             icon: const Icon(Icons.edit_outlined, size: 18),
-                            label: const Text(
-                              'Edit Patient Details',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            label: Text(
+                              isClinician ? 'Edit Patient Details' : 'Edit (Clinician PIN)',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             ),
-                            onPressed: () {
-                              Navigator.pop(ctx);
+                            onPressed: () async {
+                              if (!isClinician) {
+                                final ok = await _promptClinicianPin(context);
+                                if (!ok) return;
+                              }
+                              if (ctx.mounted) Navigator.pop(ctx);
                               _showEditPatientDialog(r);
                             },
                           ),
@@ -509,12 +758,16 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                             ),
                           ),
                           icon: const Icon(Icons.delete_outline, size: 18),
-                          label: const Text(
-                            'Delete',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          label: Text(
+                            isClinician ? 'Delete' : 'Delete (PIN)',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                           ),
-                          onPressed: () {
-                            Navigator.pop(ctx);
+                          onPressed: () async {
+                            if (!isClinician) {
+                              final ok = await _promptClinicianPin(context);
+                              if (!ok) return;
+                            }
+                            if (ctx.mounted) Navigator.pop(ctx);
                             _confirmDeleteRecord(r);
                           },
                         ),
@@ -1053,7 +1306,13 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
           IconButton(
             tooltip: 'Add Patient Record Manually',
             icon: const Icon(Icons.person_add_alt_1_rounded, color: ScannerHUDTheme.neonCyan),
-            onPressed: () => _showEditPatientDialog(null),
+            onPressed: () async {
+              if (!HospitalAuthService.instance.isClinician) {
+                final ok = await _promptClinicianPin(context);
+                if (!ok) return;
+              }
+              _showEditPatientDialog(null);
+            },
           ),
           IconButton(
             tooltip: 'Refresh Local Records',
@@ -1068,6 +1327,75 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // Role & Data Privacy HUD Banner
+              Builder(
+                builder: (context) {
+                  final isClin = HospitalAuthService.instance.isClinician;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isClin
+                          ? const Color(0xFF052E16).withValues(alpha: 0.75)
+                          : const Color(0xFF0C1A38).withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isClin
+                            ? const Color(0xFF10B981).withValues(alpha: 0.35)
+                            : const Color(0xFF00E5FF).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isClin ? Icons.verified_user_rounded : Icons.shield_outlined,
+                          size: 18,
+                          color: isClin ? const Color(0xFF34D399) : const Color(0xFF00E5FF),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isClin
+                                    ? 'CLINICAL TRIAGE · UNMASKED MEDICAL RECORDS'
+                                    : 'CAMERA OPERATOR VIEW · ESSENTIAL DETAILS ONLY',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.6,
+                                  color: isClin ? const Color(0xFF34D399) : const Color(0xFF7DF9FF),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isClin
+                                    ? 'Full diagnostic classification, patient contacts, and specialist actions enabled.'
+                                    : 'Patient PII is masked and clinical diagnoses are abstracted for confidentiality.',
+                                style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!isClin)
+                          TextButton(
+                            onPressed: () => _promptClinicianPin(context),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF00E5FF),
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            ),
+                            child: const Text(
+                              'Doctor PIN',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
               Row(
                 children: [
                   Expanded(
@@ -1209,8 +1537,11 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                 else
                   ..._filteredRows.map(
                     (item) {
+                      final auth = HospitalAuthService.instance;
+                      final isClinician = auth.isClinician;
                       final pid = item.$1;
-                      final name = item.$2;
+                      final rawName = item.$2;
+                      final name = isClinician ? rawName : auth.maskPatientName(rawName);
                       final date = item.$3;
                       final res = item.$4;
                       final status = item.$5;
@@ -1319,7 +1650,9 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
-                                      '$res · $date',
+                                      isClinician
+                                          ? '$res · $date'
+                                          : 'Eye: ${record['eye_side'] ?? 'OD'} · In Queue · $date',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
@@ -1334,26 +1667,38 @@ class _FigmaHistoryScreenState extends State<FigmaHistoryScreen> {
                               StatusBadge(status: status),
                               const SizedBox(width: 2),
                               IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.edit_outlined,
-                                  color: Color(0xFF00E5FF),
+                                  color: isClinician ? const Color(0xFF00E5FF) : const Color(0xFF475569),
                                   size: 19,
                                 ),
-                                tooltip: 'Edit Patient Details',
+                                tooltip: isClinician ? 'Edit Patient Details' : 'Edit (Clinician PIN Required)',
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                onPressed: () => _showEditPatientDialog(record),
+                                onPressed: () async {
+                                  if (!isClinician) {
+                                    final ok = await _promptClinicianPin(context);
+                                    if (!ok) return;
+                                  }
+                                  _showEditPatientDialog(record);
+                                },
                               ),
                               IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.delete_outline_rounded,
-                                  color: Color(0xFFEF4444),
+                                  color: isClinician ? const Color(0xFFEF4444) : const Color(0xFF475569),
                                   size: 19,
                                 ),
-                                tooltip: 'Delete Patient Record',
+                                tooltip: isClinician ? 'Delete Patient Record' : 'Delete (Clinician PIN Required)',
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                onPressed: () => _confirmDeleteRecord(record),
+                                onPressed: () async {
+                                  if (!isClinician) {
+                                    final ok = await _promptClinicianPin(context);
+                                    if (!ok) return;
+                                  }
+                                  _confirmDeleteRecord(record);
+                                },
                               ),
                               const Icon(
                                 Icons.chevron_right_rounded,

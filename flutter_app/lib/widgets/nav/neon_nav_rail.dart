@@ -9,7 +9,9 @@ import '../../screens/figma_help_screen.dart';
 import '../../screens/figma_history_screen.dart';
 import '../../screens/flow/flow_register_screen.dart';
 import '../../screens/queue_screen.dart';
+import '../../screens/auth/hospital_login_screen.dart';
 import '../../services/api_service.dart';
+import '../../services/hospital_auth_service.dart';
 import '../../theme/design_system.dart';
 import '../scanner/scanner_theme.dart';
 
@@ -129,48 +131,116 @@ class NeonNavRail extends StatelessWidget {
   }
 
   Widget _header() {
+    final session = HospitalAuthService.instance.session;
+    final isClinician = session?.isClinician ?? false;
+    final roleColor = isClinician ? DrsTokens.success : DrsTokens.accent;
+    final roleBadge = session?.role.badgeLabel ?? 'LOCAL CLINIC';
+    final staffName = session?.staffName ?? 'Hospital Staff';
+    final hospitalName = session?.hospitalName ?? 'District General Hospital';
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: DrsTokens.accent.withValues(alpha: 0.09),
-              borderRadius: BorderRadius.circular(13),
-              border: Border.all(
-                color: DrsTokens.accent.withValues(alpha: 0.22),
-              ),
-            ),
-            child: Image.asset(
-              'assets/branding/drishti_mark.png',
-              fit: BoxFit.contain,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'DRISHTI',
-                  style: TextStyle(
-                    color: DrsTokens.textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 17,
-                    height: 1.2,
-                    letterSpacing: 1.1,
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: DrsTokens.accent.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(
+                    color: DrsTokens.accent.withValues(alpha: 0.22),
                   ),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Retinal screening',
-                  style: TextStyle(
-                    color: DrsTokens.textMuted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                child: Image.asset(
+                  'assets/branding/drishti_mark.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DRISHTI',
+                      style: TextStyle(
+                        color: DrsTokens.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 17,
+                        height: 1.2,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Retinal screening',
+                      style: TextStyle(
+                        color: DrsTokens.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: DrsTokens.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: DrsTokens.border),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isClinician
+                      ? Icons.medical_services_rounded
+                      : Icons.photo_camera_rounded,
+                  size: 16,
+                  color: roleColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        roleBadge,
+                        style: TextStyle(
+                          color: roleColor,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      Text(
+                        staffName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: DrsTokens.textPrimary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        hospitalName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: DrsTokens.textSubtle,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -327,7 +397,46 @@ class NeonNavRail extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const HospitalLoginScreen(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.swap_horiz_rounded,
+                      size: 14,
+                      color: DrsTokens.accent,
+                    ),
+                    SizedBox(width: 5),
+                    Text(
+                      'Switch Role / Facility',
+                      style: TextStyle(
+                        color: DrsTokens.accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
