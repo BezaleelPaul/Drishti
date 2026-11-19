@@ -50,15 +50,22 @@ class MetricCard extends StatelessWidget {
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: DrsTokens.textPrimary,
-                  fontSize: 27,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.8,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: DrsTokens.textPrimary,
+                    fontSize: 27,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.8,
+                  ),
                 ),
               ),
               const SizedBox(height: 4),
