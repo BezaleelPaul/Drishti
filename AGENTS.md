@@ -63,6 +63,7 @@ Skills are located in `.opencode/skills/kiro-*/SKILL.md`
 - Human review required each phase; use `-y` only for intentional fast-track
 - Keep steering current and verify alignment with `/kiro-spec-status`
 - Follow the user's instructions precisely, and within that scope act autonomously: gather the necessary context and complete the requested work end-to-end in this run, asking questions only when essential information is missing or the instructions are critically ambiguous.
+- **Live Architecture Sync & Screen Pop-up**: Whenever code changes or architectural modifications are completed, execute `node scripts/sync_architecture.mjs` (via the installed Archify skill) to generate the updated interactive standalone HTML diagram and automatically pop it up on the screen via `xdg-open` for visual verification.
 
 ## Steering Configuration
 - For spec and implementation work, load the core steering files below from `.kiro/steering/`. Reuse current context rather than rereading unchanged files.
